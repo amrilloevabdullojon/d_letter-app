@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { syncToGoogleSheets, importFromGoogleSheets } from '@/lib/google-sheets'
+import { prisma } from '@/lib/prisma'
+
+// POST /api/sync - синхронизация с Google Sheets
+export async function POST(request: NextRequest) {
+  let logId: string | null = null
+
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Только админ может синхронизировать
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { direction } = body // 'to_sheets' или 'from_sheets'
+
+    if (direction !== 'to_sheets' && direction !== 'from_sheets') {
+      return NextResponse.json(
+        { error: 'Invalid direction. Use "to_sheets" or "from_sheets"' },
+        { status: 400 }
+      )
+    }
+
+    // Создать запись лога
+    const log = await prisma.syncLog.create({
+      data: {
+        direction: direction === 'to_sheets' ? 'TO_SHEETS' : 'FROM_SHEETS',
+        status: 'IN_PROGRESS',
+      },
+    })
+    logId = log.id
+
+    let result
+
+    if (direction === 'to_sheets') {
+      const imported = await importFromGoogleSheets()
+      const exported = await syncToGoogleSheets()
+      result = {
+        success: true,
+        imported: imported.imported || 0,
+        rowsAffected: exported.rowsAffected || 0,
+        conflicts: imported.conflicts || [],
+      }
+    } else {
+      result = await importFromGoogleSheets()
+    }
+
+    // Обновить лог с результатом
+    await prisma.syncLog.update({
+      where: { id: logId },
+      data: {
+        status: result.success ? 'COMPLETED' : 'FAILED',
+        rowsAffected: ('rowsAffected' in result ? result.rowsAffected : 0) || ('imported' in result ? result.imported : 0),
+        error: result.success ? null : ('error' in result ? String(result.error) : 'Unknown error'),
+        finishedAt: new Date(),
+      },
+    })
+
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('POST /api/sync error:', error)
+
+    // Обновить лог с ошибкой если он был создан
+    if (logId) {
+      await prisma.syncLog.update({
+        where: { id: logId },
+        data: {
+          status: 'FAILED',
+          error: String(error),
+          finishedAt: new Date(),
+        },
+      })
+    }
+
+    return NextResponse.json(
+      { error: String(error) },
+      { status: 500 }
+    )
+  }
+}
+
+// GET /api/sync - получить историю синхронизаций
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const logs = await prisma.syncLog.findMany({
+      orderBy: { startedAt: 'desc' },
+      take: 20,
+    })
+
+    return NextResponse.json({ logs })
+  } catch (error) {
+    console.error('GET /api/sync error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

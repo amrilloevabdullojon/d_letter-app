@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== АВТОРИЗАЦИЯ (NextAuth) =====
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ===== ПОЛЬЗОВАТЕЛИ =====
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  role           Role      @default(EMPLOYEE)
+  canLogin       Boolean   @default(false)
+  telegramChatId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  letters         Letter[]        @relation("OwnerLetters")
+  comments        Comment[]
+  watchers        Watcher[]
+  favorites       Favorite[]
+  history         History[]
+  answerTemplates AnswerTemplate[]
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+// ===== ПИСЬМА =====
+
+model Letter {
+  id            String       @id @default(cuid())
+  number        String       // Номер письма
+  org           String       // Организация
+  date          DateTime     // Дата письма
+  deadlineDate  DateTime     // Дата дедлайна
+  status        LetterStatus @default(NOT_REVIEWED)
+  type          String?      // Тип запроса
+  content       String?      @db.Text // Содержание
+  zordoc        String?      // ZorDoc номер
+  answer        String?      @db.Text // Ответ
+  sendStatus    String?      // Статус отправки
+  ijroDate      DateTime?    // Дата исполнения
+  comment       String?      @db.Text // Комментарий
+  contacts      String?      // Контакты
+  closeDate     DateTime?    // Дата закрытия
+  jiraLink      String?      // Ссылка на Jira
+  priority      Int          @default(50) // Приоритет (0-100)
+
+  ownerId       String?
+  owner         User?        @relation("OwnerLetters", fields: [ownerId], references: [id])
+
+  files         File[]
+  tags          Tag[]
+  comments      Comment[]
+  watchers      Watcher[]
+  favorites     Favorite[]
+  history       History[]
+  linkedFrom    LinkedLetter[] @relation("LinkedFrom")
+  linkedTo      LinkedLetter[] @relation("LinkedTo")
+
+  // Для синхронизации с Google Sheets
+  sheetRowNum   Int?         // Номер строки в Google Sheets
+  lastSyncedAt  DateTime?    // Последняя синхронизация
+
+  // Soft delete
+  deletedAt     DateTime?    // Дата удаления (null = не удалено)
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status])
+  @@index([deletedAt])       // Индекс для фильтрации удалённых
+  @@index([ownerId])
+  @@index([deadlineDate])
+  @@index([number])
+  @@index([createdAt])
+  @@index([closeDate])
+  @@index([priority])
+  @@index([status, deadlineDate]) // Составной индекс для срочных/просроченных
+  @@index([status, ownerId])      // Составной индекс для фильтрации по статусу и ответственному
+}
+
+enum LetterStatus {
+  NOT_REVIEWED  // не рассмотрен
+  ACCEPTED      // принят
+  IN_PROGRESS   // взято в работу
+  CLARIFICATION // на уточнении
+  READY         // готово
+  DONE          // сделано
+}
+
+// ===== ФАЙЛЫ =====
+
+model File {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  mimeType  String?
+  size      Int?
+  letterId  String
+  letter    Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// ===== ТЕГИ =====
+
+model Tag {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  color   String   @default("#6B7280")
+  letters Letter[]
+}
+
+// ===== КОММЕНТАРИИ (threaded) =====
+
+model Comment {
+  id        String    @id @default(cuid())
+  text      String    @db.Text
+  letterId  String
+  letter    Letter    @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id])
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([letterId])
+}
+
+// ===== WATCHERS (подписки на письма) =====
+
+model Watcher {
+  id               String  @id @default(cuid())
+  letterId         String
+  letter           Letter  @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifyOnChange   Boolean @default(true)
+  notifyOnComment  Boolean @default(true)
+  notifyOnDeadline Boolean @default(true)
+  createdAt        DateTime @default(now())
+
+  @@unique([letterId, userId])
+}
+
+// ===== ИЗБРАННОЕ =====
+
+model Favorite {
+  id        String   @id @default(cuid())
+  letterId  String
+  letter    Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([letterId, userId])
+  @@index([userId])
+}
+
+// ===== СВЯЗАННЫЕ ПИСЬМА =====
+
+model LinkedLetter {
+  id         String @id @default(cuid())
+  fromId     String
+  from       Letter @relation("LinkedFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId       String
+  to         Letter @relation("LinkedTo", fields: [toId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([fromId, toId])
+}
+
+// ===== ИСТОРИЯ ИЗМЕНЕНИЙ =====
+
+model History {
+  id        String   @id @default(cuid())
+  letterId  String
+  letter    Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  field     String   // status, owner, comment, etc.
+  oldValue  String?  @db.Text
+  newValue  String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([letterId])
+}
+
+// ===== СИНХРОНИЗАЦИЯ =====
+
+model SyncLog {
+  id          String     @id @default(cuid())
+  direction   SyncDirection
+  status      SyncStatus
+  rowsAffected Int       @default(0)
+  error       String?    @db.Text
+  startedAt   DateTime   @default(now())
+  finishedAt  DateTime?
+}
+
+enum SyncDirection {
+  TO_SHEETS    // Из приложения в Google Sheets
+  FROM_SHEETS  // Из Google Sheets в приложение
+}
+
+enum SyncStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+// ===== ШАБЛОНЫ ОТВЕТОВ =====
+
+model AnswerTemplate {
+  id          String   @id @default(cuid())
+  name        String   // Название шаблона
+  content     String   @db.Text // Содержание шаблона
+  category    String?  // Категория (необязательно)
+  isPublic    Boolean  @default(false) // Доступен всем или только создателю
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdById])
+  @@index([category])
+}

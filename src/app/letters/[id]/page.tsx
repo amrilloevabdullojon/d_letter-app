@@ -1,0 +1,656 @@
+'use client'
+
+import { useSession } from 'next-auth/react'
+import { Header } from '@/components/Header'
+import { StatusBadge } from '@/components/StatusBadge'
+import { EditableField } from '@/components/EditableField'
+import { FileUpload } from '@/components/FileUpload'
+import { TemplateSelector } from '@/components/TemplateSelector'
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import type { LetterStatus } from '@prisma/client'
+import {
+  STATUS_LABELS,
+  formatDate,
+  getDaysUntilDeadline,
+  pluralizeDays,
+  getPriorityLabel,
+  isDoneStatus,
+} from '@/lib/utils'
+import { LETTER_TYPES } from '@/lib/constants'
+import {
+  ArrowLeft,
+  Calendar,
+  User,
+  FileText,
+  Clock,
+  AlertTriangle,
+  Loader2,
+  ExternalLink,
+  CheckCircle2,
+  Send,
+  Trash2,
+  Copy,
+  Printer,
+  Star,
+  Bell,
+} from 'lucide-react'
+import Link from 'next/link'
+import { toast } from 'sonner'
+
+interface Letter {
+  id: string
+  number: string
+  org: string
+  date: string
+  deadlineDate: string
+  status: LetterStatus
+  type: string | null
+  content: string | null
+  comment: string | null
+  contacts: string | null
+  priority: number
+  jiraLink: string | null
+  zordoc: string | null
+  answer: string | null
+  sendStatus: string | null
+  ijroDate: string | null
+  closeDate: string | null
+  owner: {
+    id: string
+    name: string | null
+    email: string | null
+  } | null
+  files: Array<{ id: string; name: string; url: string }>
+  comments: Array<{
+    id: string
+    text: string
+    createdAt: string
+    author: {
+      name: string | null
+      email: string | null
+    }
+  }>
+  history: Array<{
+    id: string
+    field: string
+    oldValue: string | null
+    newValue: string | null
+    createdAt: string
+    user: {
+      name: string | null
+      email: string | null
+    }
+  }>
+  isWatching: boolean
+  isFavorite: boolean
+}
+
+const STATUSES: LetterStatus[] = [
+  'NOT_REVIEWED',
+  'ACCEPTED',
+  'IN_PROGRESS',
+  'CLARIFICATION',
+  'READY',
+  'DONE',
+]
+
+export default function LetterDetailPage() {
+  const { data: session, status: authStatus } = useSession()
+  const params = useParams()
+  const router = useRouter()
+
+  const [letter, setLetter] = useState<Letter | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
+  const [togglingFavorite, setTogglingFavorite] = useState(false)
+  const [notifyingOwner, setNotifyingOwner] = useState(false)
+
+  useEffect(() => {
+    if (session && params.id) {
+      loadLetter()
+    }
+  }, [session, params.id])
+
+  const loadLetter = async () => {
+    try {
+      const res = await fetch(`/api/letters/${params.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setLetter(data)
+      } else {
+        router.push('/letters')
+      }
+    } catch (error) {
+      console.error('Failed to load letter:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateField = async (field: string, value: string) => {
+    if (!letter) return
+
+    setUpdating(true)
+    try {
+      const res = await fetch(`/api/letters/${letter.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, value }),
+      })
+
+      if (res.ok) {
+        await loadLetter()
+      }
+    } catch (error) {
+      console.error('Failed to update:', error)
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!letter) return
+    if (!confirm('Вы уверены, что хотите удалить это письмо? Это действие нельзя отменить.')) {
+      return
+    }
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/letters/${letter.id}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        toast.success('Письмо удалено')
+        router.push('/letters')
+      } else {
+        toast.error('Не удалось удалить письмо')
+      }
+    } catch (error) {
+      console.error('Failed to delete:', error)
+      toast.error('Ошибка при удалении письма')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleDuplicate = async () => {
+    if (!letter) return
+
+    setDuplicating(true)
+    try {
+      const res = await fetch(`/api/letters/${letter.id}/duplicate`, {
+        method: 'POST',
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        toast.success('Письмо скопировано')
+        router.push(`/letters/${data.id}`)
+      } else {
+        toast.error(data.error || 'Не удалось дублировать письмо')
+      }
+    } catch (error) {
+      console.error('Failed to duplicate:', error)
+      toast.error('Ошибка при дублировании письма')
+    } finally {
+      setDuplicating(false)
+    }
+  }
+
+  const handlePrint = () => {
+    window.print()
+  }
+
+  const handleNotifyOwner = async () => {
+    if (!letter) return
+    if (!letter.owner?.id) {
+      toast.error('\u041d\u0435\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a\u0430')
+      return
+    }
+
+    setNotifyingOwner(true)
+    const toastId = toast.loading('\u041e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u0435\u043c \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435...')
+
+    try {
+      const res = await fetch(`/api/letters/${letter.id}/notify`, { method: 'POST' })
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        toast.success('\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e', { id: toastId })
+      } else {
+        toast.error(data.error || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435', { id: toastId })
+      }
+    } catch (error) {
+      console.error('Failed to notify owner:', error)
+      toast.error('\u041e\u0448\u0438\u0431\u043a\u0430 \u043e\u0442\u043f\u0440\u0430\u0432\u043a\u0438 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u044f', { id: toastId })
+    } finally {
+      setNotifyingOwner(false)
+    }
+  }
+
+  const toggleFavorite = async () => {
+    if (!letter) return
+
+    setTogglingFavorite(true)
+    try {
+      const res = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ letterId: letter.id }),
+      })
+
+      if (res.ok) {
+        setLetter((prev) =>
+          prev ? { ...prev, isFavorite: !prev.isFavorite } : null
+        )
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error)
+    } finally {
+      setTogglingFavorite(false)
+    }
+  }
+
+  if (authStatus === 'loading' || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      </div>
+    )
+  }
+
+  if (!session || !letter) {
+    return null
+  }
+
+  const daysLeft = getDaysUntilDeadline(letter.deadlineDate)
+  const isDone = isDoneStatus(letter.status)
+  const isOverdue = !isDone && daysLeft < 0
+  const isUrgent = !isDone && daysLeft <= 2 && daysLeft >= 0
+  const priorityInfo = getPriorityLabel(letter.priority)
+  const letterTypeOptions = LETTER_TYPES.filter((type) => type.value !== 'all')
+  const typeValue = letter.type || ''
+  const hasCustomType =
+    !!typeValue && !letterTypeOptions.some((option) => option.value === typeValue)
+
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <Header />
+
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back button */}
+        <div className="flex items-center justify-between mb-6 print:hidden">
+          <Link
+            href="/letters"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Назад к списку
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleFavorite}
+              disabled={togglingFavorite}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition disabled:opacity-50 ${
+                letter.isFavorite
+                  ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+              title={letter.isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
+            >
+              {togglingFavorite ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Star className={`w-4 h-4 ${letter.isFavorite ? 'fill-current' : ''}`} />
+              )}
+              {letter.isFavorite ? 'В избранном' : 'В избранное'}
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
+              title="Печать"
+            >
+              <Printer className="w-4 h-4" />
+              Печать
+            </button>
+
+            <button
+              onClick={handleDuplicate}
+              disabled={duplicating}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition disabled:opacity-50"
+              title="Дублировать письмо"
+            >
+              {duplicating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+              Дублировать
+            </button>
+
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition disabled:opacity-50"
+            >
+              {deleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              Удалить
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Header Card */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-400 mb-2 block">
+                  {'\u0422\u0438\u043f \u0437\u0430\u043f\u0440\u043e\u0441\u0430'}
+                </label>
+                <select
+                  value={typeValue}
+                  onChange={(e) => updateField('type', e.target.value)}
+                  disabled={updating}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                >
+                  <option value="">{'\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d'}</option>
+                  {hasCustomType && <option value={typeValue}>{typeValue}</option>}
+                  {letterTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="font-mono text-lg text-emerald-400">
+                      №{letter.number}
+                    </span>
+                    {letter.type && (
+                      <span className="text-sm px-2 py-1 bg-gray-700 rounded text-gray-400">
+                        {letter.type}
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="text-2xl font-bold text-white">{letter.org}</h1>
+                </div>
+                <StatusBadge status={letter.status} size="lg" />
+              </div>
+
+              {/* Deadline warning */}
+              {(isOverdue || isUrgent) && (
+                <div
+                  className={`flex items-center gap-2 p-3 rounded-lg mb-4 ${
+                    isOverdue ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
+                  }`}
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  {isOverdue
+                    ? `Просрочено на ${Math.abs(daysLeft)} ${pluralizeDays(daysLeft)}`
+                    : `До дедлайна осталось ${daysLeft} ${pluralizeDays(daysLeft)}`}
+                </div>
+              )}
+
+              {/* Done indicator */}
+              {isDone && (
+                <div className="flex items-center gap-2 p-3 rounded-lg mb-4 bg-emerald-500/20 text-emerald-400">
+                  <CheckCircle2 className="w-5 h-5" />
+                  Выполнено
+                </div>
+              )}
+            </div>
+
+            {/* Editable Fields Card */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Информация о письме</h3>
+
+              <EditableField
+                label="Содержание"
+                value={letter.content}
+                field="content"
+                onSave={updateField}
+                type="textarea"
+                placeholder="Добавить содержание..."
+                rows={4}
+              />
+
+              <EditableField
+                label="Контакты"
+                value={letter.contacts}
+                field="contacts"
+                onSave={updateField}
+                placeholder="Добавить контакты..."
+              />
+
+              <EditableField
+                label="Ссылка на Jira"
+                value={letter.jiraLink}
+                field="jiraLink"
+                onSave={updateField}
+                type="url"
+                placeholder="https://jira.example.com/..."
+              />
+
+              <EditableField
+                label="Комментарии ZorDoc"
+                value={letter.zordoc}
+                field="zordoc"
+                onSave={updateField}
+                type="textarea"
+                placeholder="Добавить комментарий ZorDoc..."
+                rows={3}
+              />
+
+              {/* Ответ с шаблонами */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-300">Ответ</label>
+                  <TemplateSelector
+                    currentUserId={session.user.id}
+                    onSelect={(content) => {
+                      const newAnswer = letter.answer
+                        ? `${letter.answer}\n\n${content}`
+                        : content
+                      updateField('answer', newAnswer)
+                    }}
+                  />
+                </div>
+                <EditableField
+                  label=""
+                  value={letter.answer}
+                  field="answer"
+                  onSave={updateField}
+                  type="textarea"
+                  placeholder="Добавить ответ..."
+                  rows={4}
+                />
+              </div>
+
+              <EditableField
+                label="Статус отправки"
+                value={letter.sendStatus}
+                field="sendStatus"
+                onSave={updateField}
+                placeholder="Добавить статус отправки..."
+              />
+
+            </div>
+
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
+                {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439'}
+              </h3>
+              <EditableField
+                label=""
+                value={letter.comment}
+                field="comment"
+                onSave={updateField}
+                type="textarea"
+                placeholder={'\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439...'}
+                rows={3}
+              />
+            </div>
+
+            {/* History */}
+            {letter.history.length > 0 && (
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">История изменений</h3>
+                <div className="space-y-3">
+                  {letter.history.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-start gap-3 text-sm"
+                    >
+                      <Clock className="w-4 h-4 text-gray-500 mt-0.5" />
+                      <div>
+                        <span className="text-gray-400">
+                          {item.user.name || item.user.email}
+                        </span>
+                        <span className="text-gray-500"> изменил </span>
+                        <span className="text-white">{item.field}</span>
+                        {item.oldValue && (
+                          <>
+                            <span className="text-gray-500"> с </span>
+                            <span className="text-red-400 line-through">{item.oldValue}</span>
+                          </>
+                        )}
+                        <span className="text-gray-500"> на </span>
+                        <span className="text-emerald-400">{item.newValue}</span>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {new Date(item.createdAt).toLocaleString('ru-RU')}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Info Card */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Информация</h3>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-gray-500" />
+                  <div>
+                    <div className="text-xs text-gray-500">Дата письма</div>
+                    <div className="text-white">{formatDate(letter.date)}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-gray-500" />
+                  <div>
+                    <div className="text-xs text-gray-500">Дедлайн</div>
+                    <div className={isOverdue ? 'text-red-400' : isDone ? 'text-emerald-400' : 'text-white'}>
+                      {formatDate(letter.deadlineDate)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-gray-500" />
+                  <div>
+                    <div className="text-xs text-gray-500">?????????????</div>
+                    <div className="text-white">
+                      {letter.owner?.name || letter.owner?.email || '?? ????????'}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleNotifyOwner}
+                  disabled={notifyingOwner || !letter.owner?.id}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition disabled:opacity-50"
+                >
+                  {notifyingOwner ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Bell className="w-4 h-4" />
+                  )}
+                  {'\u0423\u0432\u0435\u0434\u043e\u043c\u0438\u0442\u044c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044f'}
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-gray-500" />
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Приоритет</div>
+                    <div className={`font-medium ${priorityInfo.color}`}>
+                      {priorityInfo.label} ({letter.priority})
+                    </div>
+                  </div>
+                </div>
+
+                {letter.ijroDate && (
+                  <div className="flex items-center gap-3">
+                    <Send className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <div className="text-xs text-gray-500">Дата ответа в IJRO</div>
+                      <div className="text-white">{formatDate(letter.ijroDate)}</div>
+                    </div>
+                  </div>
+                )}
+
+                {letter.closeDate && (
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    <div>
+                      <div className="text-xs text-gray-500">Дата закрытия</div>
+                      <div className="text-emerald-400">{formatDate(letter.closeDate)}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Status Change */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Изменить статус</h3>
+              <div className="space-y-2">
+                {STATUSES.map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => updateField('status', status)}
+                    disabled={updating || letter.status === status}
+                    className={`w-full text-left px-4 py-2 rounded-lg transition ${
+                      letter.status === status
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    } disabled:opacity-50`}
+                  >
+                    {STATUS_LABELS[status]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Files */}
+            <FileUpload
+              letterId={letter.id}
+              files={letter.files}
+              onFilesChange={loadLetter}
+            />
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
