@@ -329,7 +329,9 @@ export async function importFromGoogleSheets() {
     const ownerIdByKey = new Map<string, string>()
     const allowedUserIds = new Set<string>()
 
-    for (const [key, value] of ownerValues) {
+    for (const key of Array.from(ownerValues.keys())) {
+      const value = ownerValues.get(key)
+      if (!value) continue
       let owner = value.isEmail ? usersByEmail.get(key) : usersByName.get(key)
       if (!owner) {
         if (value.isEmail) {
@@ -364,10 +366,8 @@ export async function importFromGoogleSheets() {
         }
       }
 
-      if (owner) {
-        ownerIdByKey.set(key, owner.id)
-        allowedUserIds.add(owner.id)
-      }
+      ownerIdByKey.set(key, owner.id)
+      allowedUserIds.add(owner.id)
     }
 
     if (allowedUserIds.size > 0) {
