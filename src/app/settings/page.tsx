@@ -21,6 +21,7 @@ import {
   Clock,
   ArrowUpFromLine,
   ArrowDownToLine,
+  UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -62,6 +63,13 @@ export default function SettingsPage() {
     role: 'EMPLOYEE' | 'ADMIN'
     telegramChatId: string
   }>({ name: '', email: '', role: 'EMPLOYEE', telegramChatId: '' })
+  const [createData, setCreateData] = useState<{
+    name: string
+    email: string
+    role: 'EMPLOYEE' | 'ADMIN'
+    telegramChatId: string
+  }>({ name: '', email: '', role: 'EMPLOYEE', telegramChatId: '' })
+  const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -139,6 +147,36 @@ export default function SettingsPage() {
       toast.error('Ошибка при сохранении')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const createUser = async () => {
+    if (!createData.email.trim()) {
+      toast.error('\u0423\u043a\u0430\u0436\u0438\u0442\u0435 email \u0434\u043b\u044f \u0432\u0445\u043e\u0434\u0430 \u0447\u0435\u0440\u0435\u0437 Google')
+      return
+    }
+
+    setCreating(true)
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createData),
+      })
+
+      if (res.ok) {
+        toast.success('\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d')
+        setCreateData({ name: '', email: '', role: 'EMPLOYEE', telegramChatId: '' })
+        await loadUsers()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f')
+      }
+    } catch (error) {
+      console.error('Failed to create user:', error)
+      toast.error('\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u0438 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f')
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -320,6 +358,72 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3 mb-6">
             <Users className="w-6 h-6 text-emerald-400" />
             <h2 className="text-xl font-semibold text-white">Управление пользователями</h2>
+          </div>
+
+          <div className="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+              <UserPlus className="w-4 h-4 text-emerald-400" />
+              {'\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f'}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <input
+                type="text"
+                value={createData.name}
+                onChange={(e) =>
+                  setCreateData({ ...createData, name: e.target.value })
+                }
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                placeholder={'\u0418\u043c\u044f'}
+              />
+              <input
+                type="email"
+                value={createData.email}
+                onChange={(e) =>
+                  setCreateData({ ...createData, email: e.target.value })
+                }
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                placeholder="email@example.com"
+              />
+              <select
+                value={createData.role}
+                onChange={(e) =>
+                  setCreateData({
+                    ...createData,
+                    role: e.target.value as 'EMPLOYEE' | 'ADMIN',
+                  })
+                }
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+              >
+                <option value="EMPLOYEE">{'\u0421\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a'}</option>
+                <option value="ADMIN">{'\u0410\u0434\u043c\u0438\u043d'}</option>
+              </select>
+              <input
+                type="text"
+                value={createData.telegramChatId}
+                onChange={(e) =>
+                  setCreateData({ ...createData, telegramChatId: e.target.value })
+                }
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                placeholder="Telegram Chat ID"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+              <p className="text-xs text-gray-500">
+                {'\u0414\u043b\u044f \u0432\u0445\u043e\u0434\u0430 \u0447\u0435\u0440\u0435\u0437 Google \u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f email.'}
+              </p>
+              <button
+                onClick={createUser}
+                disabled={creating}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition disabled:opacity-50"
+              >
+                {creating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <UserPlus className="w-4 h-4" />
+                )}
+                {'\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c'}
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
