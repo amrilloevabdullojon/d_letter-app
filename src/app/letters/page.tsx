@@ -432,7 +432,7 @@ function LettersPageContent() {
                 <option value="">Выберите действие</option>
                 <option value="status">Изменить статус</option>
                 <option value="owner">Назначить ответственного</option>
-                {session.user.role === 'ADMIN' && (
+                {(session.user.role === 'ADMIN' || session.user.role === 'SUPERADMIN') && (
                   <option value="delete">Удалить</option>
                 )}
               </select>

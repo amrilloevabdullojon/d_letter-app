@@ -109,6 +109,7 @@ export const TEMPLATE_CATEGORIES = [
 // ==================== РОЛИ ====================
 
 export const USER_ROLES = {
+  SUPERADMIN: { label: "\u0421\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d", color: 'text-amber-400' },
   ADMIN: { label: "Администратор", color: 'text-red-500' },
   MANAGER: { label: "Менеджер", color: 'text-amber-500' },
   AUDITOR: { label: "Аудитор", color: 'text-purple-500' },

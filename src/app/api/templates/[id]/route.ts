@@ -115,7 +115,11 @@ export async function DELETE(
     }
 
     // Только создатель или админ может удалять
-    if (template.createdById !== session.user.id && session.user.role !== 'ADMIN') {
+    if (
+      template.createdById !== session.user.id &&
+      session.user.role !== 'ADMIN' &&
+      session.user.role !== 'SUPERADMIN'
+    ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

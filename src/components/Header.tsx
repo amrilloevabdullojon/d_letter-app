@@ -27,6 +27,13 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncMenuOpen, setSyncMenuOpen] = useState(false)
+  const isAdminRole = session?.user.role === 'ADMIN' || session?.user.role === 'SUPERADMIN'
+  const roleLabel =
+    session?.user.role === 'SUPERADMIN'
+      ? 'Суперадмин'
+      : session?.user.role === 'ADMIN'
+        ? 'Администратор'
+        : 'Сотрудник'
 
   // Закрыть мобильное меню при переходе на другую страницу
   useEffect(() => {
@@ -138,7 +145,7 @@ export function Header() {
               Отчёты
             </Link>
 
-            {session?.user.role === 'ADMIN' && (
+            {isAdminRole && (
               <>
                 <div className="relative">
                   <button
@@ -276,7 +283,7 @@ export function Header() {
                   {session.user.name || session.user.email?.split('@')[0]}
                 </p>
                 <p className="text-xs text-slate-400 truncate">
-                  {session.user.role === 'ADMIN' ? 'Администратор' : 'Сотрудник'}
+                  {roleLabel}
                 </p>
               </div>
             </div>
@@ -312,7 +319,7 @@ export function Header() {
             Отчёты
           </Link>
 
-          {session?.user.role === 'ADMIN' && (
+          {isAdminRole && (
             <>
               <div className="my-2 border-t border-white/10" />
 

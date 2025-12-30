@@ -20,6 +20,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Crown,
   ArrowUpFromLine,
   ArrowDownToLine,
   UserPlus,
@@ -38,7 +39,7 @@ interface User {
   name: string | null
   email: string | null
   image: string | null
-  role: 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
+  role: 'SUPERADMIN' | 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
   canLogin: boolean
   telegramChatId: string | null
   notifyEmail: boolean
@@ -122,6 +123,7 @@ interface LoginAuditDaySummary {
 }
 
 const ROLE_LABELS: Record<User['role'], string> = {
+  SUPERADMIN: '\u0421\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d',
   ADMIN: '\u0410\u0434\u043c\u0438\u043d',
   MANAGER: '\u041c\u0435\u043d\u0435\u0434\u0436\u0435\u0440',
   AUDITOR: '\u0410\u0443\u0434\u0438\u0442\u043e\u0440',
@@ -130,6 +132,8 @@ const ROLE_LABELS: Record<User['role'], string> = {
 }
 
 const ROLE_BADGE_CLASSES: Record<User['role'], string> = {
+  SUPERADMIN:
+    'bg-gradient-to-r from-yellow-500/30 via-amber-400/30 to-yellow-600/30 text-yellow-100 border border-yellow-400/40 shadow-[0_0_12px_rgba(251,191,36,0.35)]',
   ADMIN: 'bg-amber-500/20 text-amber-400',
   MANAGER: 'bg-blue-500/20 text-blue-400',
   AUDITOR: 'bg-purple-500/20 text-purple-400',
@@ -137,7 +141,7 @@ const ROLE_BADGE_CLASSES: Record<User['role'], string> = {
   VIEWER: 'bg-slate-500/20 text-slate-400',
 }
 
-const ROLE_ORDER: User['role'][] = ['ADMIN', 'MANAGER', 'AUDITOR', 'EMPLOYEE', 'VIEWER']
+const ROLE_ORDER: User['role'][] = ['SUPERADMIN', 'ADMIN', 'MANAGER', 'AUDITOR', 'EMPLOYEE', 'VIEWER']
 
 const ROLE_OPTIONS: Array<{ value: User['role']; label: string }> = ROLE_ORDER.map((role) => ({
   value: role,
@@ -192,6 +196,7 @@ const INACTIVE_WARNING_DAYS = 7
 export default function SettingsPage() {
   const { data: session, status: authStatus } = useSession()
   const router = useRouter()
+  const isSuperAdmin = session?.user.role === 'SUPERADMIN'
   const [users, setUsers] = useState<User[]>([])
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([])
   const [loading, setLoading] = useState(true)
@@ -199,7 +204,7 @@ export default function SettingsPage() {
   const [editData, setEditData] = useState<{
     name: string
     email: string
-    role: 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
+    role: 'SUPERADMIN' | 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
     telegramChatId: string
     canLogin: boolean
     notifyEmail: boolean
@@ -226,7 +231,7 @@ export default function SettingsPage() {
   const [createData, setCreateData] = useState<{
     name: string
     email: string
-    role: 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
+    role: 'SUPERADMIN' | 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
     telegramChatId: string
   }>({ name: '', email: '', role: 'EMPLOYEE', telegramChatId: '' })
   const [creating, setCreating] = useState(false)
@@ -234,7 +239,7 @@ export default function SettingsPage() {
   const [editSnapshot, setEditSnapshot] = useState<{
     name: string
     email: string
-    role: 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
+    role: 'SUPERADMIN' | 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
     telegramChatId: string
     canLogin: boolean
     notifyEmail: boolean
@@ -246,7 +251,7 @@ export default function SettingsPage() {
     digestFrequency: 'NONE' | 'DAILY' | 'WEEKLY'
   } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'all' | 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'>('all')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'SUPERADMIN' | 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'>('all')
   const [accessFilter, setAccessFilter] = useState<'all' | 'active' | 'invited' | 'blocked'>('all')
   const [telegramFilter, setTelegramFilter] = useState<'all' | 'has' | 'none'>('all')
   const [emailFilter, setEmailFilter] = useState<'all' | 'has' | 'none'>('all')
@@ -301,6 +306,11 @@ export default function SettingsPage() {
   }, [])
 
   const loadApprovals = useCallback(async () => {
+    if (!isSuperAdmin) {
+      setApprovals([])
+      setApprovalsLoading(false)
+      return
+    }
     setApprovalsLoading(true)
     try {
       const res = await fetch('/api/users/approvals')
@@ -313,7 +323,7 @@ export default function SettingsPage() {
     } finally {
       setApprovalsLoading(false)
     }
-  }, [])
+  }, [isSuperAdmin])
 
   const handleApproval = useCallback(async (approvalId: string, action: 'approve' | 'reject') => {
     setApprovalActionId(approvalId)
@@ -397,6 +407,18 @@ export default function SettingsPage() {
     })
   }, [users])
 
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      if (createData.role !== 'EMPLOYEE') {
+        setCreateData((prev) => ({ ...prev, role: 'EMPLOYEE' }))
+      }
+      if (bulkAction === 'role') {
+        setBulkAction('')
+        setBulkValue('')
+      }
+    }
+  }, [isSuperAdmin, createData.role, bulkAction])
+
   const startEdit = (user: User) => {
     setEditingId(user.id)
     const snapshot = {
@@ -460,7 +482,7 @@ export default function SettingsPage() {
             user.id === editingId ? { ...user, ...updated } : user
           )
         )
-        setEditSnapshot({
+        const nextSnapshot = {
           name: updated.name ?? editData.name,
           email: updated.email ?? editData.email,
           role: updated.role ?? editData.role,
@@ -473,7 +495,11 @@ export default function SettingsPage() {
           quietHoursStart: updated.quietHoursStart ?? editData.quietHoursStart,
           quietHoursEnd: updated.quietHoursEnd ?? editData.quietHoursEnd,
           digestFrequency: updated.digestFrequency ?? editData.digestFrequency,
-        })
+        }
+        if (data.requiresApproval) {
+          nextSnapshot.role = editData.role
+        }
+        setEditSnapshot(nextSnapshot)
         if (data.requiresApproval) {
           toast.message('\u041d\u0443\u0436\u043d\u043e \u0432\u0442\u043e\u0440\u043e\u0435 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435 \u0430\u0434\u043c\u0438\u043d\u0430', { id: toastId })
           loadApprovals()
@@ -582,7 +608,7 @@ export default function SettingsPage() {
   }
 
   const toggleUserAccess = async (user: User) => {
-    if (user.role === 'ADMIN') {
+    if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') {
       toast.error('\u041d\u0435\u043b\u044c\u0437\u044f \u043e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0430\u0434\u043c\u0438\u043d\u0430')
       return
     }
@@ -807,7 +833,7 @@ export default function SettingsPage() {
   }, [authStatus, loginAuditStatus, loginAuditQuery, loadLoginAudits])
 
   const getUserStatus = (user: User) => {
-    if (user.role === 'ADMIN') return 'active'
+    if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return 'active'
     if (!user.canLogin) return 'blocked'
     if (user._count.sessions === 0) return 'invited'
     return 'active'
@@ -840,6 +866,7 @@ export default function SettingsPage() {
   }
 
   const adminCount = users.filter((user) => user.role === 'ADMIN').length
+  const superAdminCount = users.filter((user) => user.role === 'SUPERADMIN').length
 
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const filteredUsers = users.filter((user) => {
@@ -869,6 +896,7 @@ export default function SettingsPage() {
 
   const groupedUsers = useMemo(() => {
     const groups: Record<User['role'], User[]> = {
+      SUPERADMIN: [],
       ADMIN: [],
       MANAGER: [],
       AUDITOR: [],
@@ -892,11 +920,14 @@ export default function SettingsPage() {
   const selectedAdminCount = users.filter(
     (user) => selectedIds.has(user.id) && user.role === 'ADMIN'
   ).length
+  const selectedSuperAdminCount = users.filter(
+    (user) => selectedIds.has(user.id) && user.role === 'SUPERADMIN'
+  ).length
   const bulkDemoteBlocked =
     bulkAction === 'role' &&
     !!bulkValue &&
-    bulkValue !== 'ADMIN' &&
-    adminCount - selectedAdminCount <= 0
+    ((bulkValue !== 'ADMIN' && adminCount - selectedAdminCount <= 0) ||
+      (bulkValue !== 'SUPERADMIN' && superAdminCount - selectedSuperAdminCount <= 0))
 
   const toggleSelect = useCallback((userId: string) => {
     setSelectedIds((prev) => {
@@ -954,17 +985,28 @@ export default function SettingsPage() {
       return
     }
 
+    if (bulkAction === 'role' && !isSuperAdmin) {
+      toast.error('\u0422\u043e\u043b\u044c\u043a\u043e \u0441\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d \u043c\u043e\u0436\u0435\u0442 \u043c\u0435\u043d\u044f\u0442\u044c \u0440\u043e\u043b\u0438')
+      return
+    }
+
     if (bulkAction === 'canLogin' && !bulkValue) {
       toast.error('\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f')
       return
     }
-
-    if (bulkAction === 'role' && bulkValue !== 'ADMIN') {
+    if (bulkAction === 'role') {
       const selectedAdmins = users.filter(
         (user) => selectedIds.has(user.id) && user.role === 'ADMIN'
       ).length
-      if (adminCount - selectedAdmins <= 0) {
+      const selectedSupers = users.filter(
+        (user) => selectedIds.has(user.id) && user.role === 'SUPERADMIN'
+      ).length
+      if (bulkValue !== 'ADMIN' && adminCount - selectedAdmins <= 0) {
         toast.error('Нельзя понизить единственного админа')
+        return
+      }
+      if (bulkValue !== 'SUPERADMIN' && superAdminCount - selectedSupers <= 0) {
+        toast.error('Нельзя понизить единственного суперадмина')
         return
       }
     }
@@ -1021,7 +1063,7 @@ export default function SettingsPage() {
     } finally {
       setBulkLoading(false)
     }
-  }, [bulkAction, bulkValue, selectedIds, users, adminCount, loadUsers, loadApprovals, clearSelection])
+  }, [bulkAction, bulkValue, selectedIds, users, adminCount, superAdminCount, isSuperAdmin, loadUsers, loadApprovals, clearSelection])
 
   const getStatusBadge = (status: SyncLog['status']) => {
     switch (status) {
@@ -1171,7 +1213,8 @@ export default function SettingsPage() {
             <h2 className="text-xl font-semibold text-white">Управление пользователями</h2>
           </div>
 
-          <div className="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 mb-6">
+          {isSuperAdmin && (
+            <div className="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <ShieldAlert className="w-4 h-4 text-amber-400" />
@@ -1201,6 +1244,7 @@ export default function SettingsPage() {
                     '\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439'
                   const targetLabel =
                     approval.targetUser.name || approval.targetUser.email || '\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438'
+                  const needsSecondAdmin = approval.requestedBy.id === session.user.id
                   return (
                     <div
                       key={approval.id}
@@ -1219,12 +1263,18 @@ export default function SettingsPage() {
                           )}
                           <div className="text-xs text-gray-500">
                             {requester} · {formatDate(approval.createdAt)}
+                          {needsSecondAdmin && (
+                            <div className="text-xs text-amber-400">
+                              {'\u041d\u0443\u0436\u0435\u043d \u0432\u0442\u043e\u0440\u043e\u0439 \u0430\u0434\u043c\u0438\u043d'}
+                            </div>
+                          )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleApproval(approval.id, 'approve')}
-                            disabled={approvalActionId === approval.id}
+                            disabled={approvalActionId === approval.id || needsSecondAdmin}
+                            title={needsSecondAdmin ? '\u041d\u0443\u0436\u0435\u043d \u0432\u0442\u043e\u0440\u043e\u0439 \u0430\u0434\u043c\u0438\u043d' : undefined}
                             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded transition disabled:opacity-50"
                           >
                             {approvalActionId === approval.id ? (
@@ -1236,7 +1286,8 @@ export default function SettingsPage() {
                           </button>
                           <button
                             onClick={() => handleApproval(approval.id, 'reject')}
-                            disabled={approvalActionId === approval.id}
+                            disabled={approvalActionId === approval.id || needsSecondAdmin}
+                            title={needsSecondAdmin ? '\u041d\u0443\u0436\u0435\u043d \u0432\u0442\u043e\u0440\u043e\u0439 \u0430\u0434\u043c\u0438\u043d' : undefined}
                             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition disabled:opacity-50"
                           >
                             <XCircle className="w-3 h-3" />
@@ -1251,7 +1302,8 @@ export default function SettingsPage() {
             ) : (
               <div className="text-xs text-gray-500">{'\u041d\u0435\u0442 \u0437\u0430\u043f\u0440\u043e\u0441\u043e\u0432 \u043d\u0430 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435'}</div>
             )}
-          </div>
+            </div>
+          )}
 
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
@@ -1287,7 +1339,8 @@ export default function SettingsPage() {
                     role: e.target.value as User['role'],
                   })
                 }
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                disabled={!isSuperAdmin}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white disabled:opacity-60"
                 aria-label="Role"
               >
                 {ROLE_OPTIONS.map((role) => (
@@ -1308,9 +1361,16 @@ export default function SettingsPage() {
               />
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
-              <p className="text-xs text-gray-500">
-                {'\u0414\u043b\u044f \u0432\u0445\u043e\u0434\u0430 \u0447\u0435\u0440\u0435\u0437 Google \u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f email.'}
-              </p>
+              <div className="space-y-1 text-xs text-gray-500">
+                <p>
+                  {'\u0414\u043b\u044f \u0432\u0445\u043e\u0434\u0430 \u0447\u0435\u0440\u0435\u0437 Google \u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f email.'}
+                </p>
+                {!isSuperAdmin && (
+                  <p className="text-amber-400">
+                    {'\u0420\u043e\u043b\u0438 \u043d\u0430\u0437\u043d\u0430\u0447\u0430\u0435\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d.'}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={createUser}
                 disabled={creating}
@@ -1418,7 +1478,9 @@ export default function SettingsPage() {
                 aria-label="Bulk action"
               >
                 <option value="">{'\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u0435'}</option>
-                <option value="role">{'\u0421\u043c\u0435\u043d\u0438\u0442\u044c \u0440\u043e\u043b\u044c'}</option>
+                {isSuperAdmin && (
+                  <option value="role">{'\u0421\u043c\u0435\u043d\u0438\u0442\u044c \u0440\u043e\u043b\u044c'}</option>
+                )}
                 <option value="canLogin">{'\u0414\u043e\u0441\u0442\u0443\u043f'}</option>
                 <option value="delete">{'\u0423\u0434\u0430\u043b\u0438\u0442\u044c'}</option>
               </select>
@@ -1469,7 +1531,7 @@ export default function SettingsPage() {
               </button>
               {bulkDemoteBlocked && (
                 <span className="text-xs text-amber-400">
-                  {'\u041d\u0435\u043b\u044c\u0437\u044f \u043f\u043e\u043d\u0438\u0437\u0438\u0442\u044c \u0435\u0434\u0438\u043d\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0430\u0434\u043c\u0438\u043d\u0430'}
+                  {'\u041d\u0435\u043b\u044c\u0437\u044f \u043f\u043e\u043d\u0438\u0437\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0433\u043e \u0430\u0434\u043c\u0438\u043d\u0430 \u0438\u043b\u0438 \u0441\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d\u0430'}
                 </span>
               )}
             </div>
@@ -1501,6 +1563,12 @@ export default function SettingsPage() {
               const isDirty = isEditing && hasEditChanges
               const isSelected = selectedIds.has(user.id)
               const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1
+              const isLastSuperAdmin = user.role === 'SUPERADMIN' && superAdminCount <= 1
+              const roleChangeLocked = !isSuperAdmin || isLastAdmin || isLastSuperAdmin
+              const isRoyal = user.role === 'SUPERADMIN'
+              const deleteLocked =
+                (user.role === 'ADMIN' && (!isSuperAdmin || isLastAdmin)) ||
+                (user.role === 'SUPERADMIN' && (!isSuperAdmin || isLastSuperAdmin))
 
               const items: JSX.Element[] = []
               if (showHeading) {
@@ -1517,7 +1585,7 @@ export default function SettingsPage() {
                   key={user.id}
                   className={`rounded-2xl border border-white/10 bg-white/5 p-4 transition ${
                     isSelected ? 'ring-2 ring-emerald-400/40' : ''
-                  }`}
+                  } ${isRoyal ? 'border-yellow-400/40 bg-gradient-to-br from-yellow-500/10 via-white/5 to-transparent' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -1545,7 +1613,11 @@ export default function SettingsPage() {
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${ROLE_BADGE_CLASSES[user.role]}`}
                           >
-                            <Shield className="w-3 h-3" />
+                            {user.role === 'SUPERADMIN' ? (
+                              <Crown className="w-3 h-3 text-yellow-200" />
+                            ) : (
+                              <Shield className="w-3 h-3" />
+                            )}
                             {formatRoleLabel(user.role)}
                           </span>
                         </div>
@@ -1626,7 +1698,7 @@ export default function SettingsPage() {
                               role: e.target.value as User['role'],
                             })
                           }
-                          disabled={isLastAdmin}
+                          disabled={roleChangeLocked}
                           className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-white disabled:opacity-60"
                           aria-label="User role"
                         >
@@ -1636,9 +1708,19 @@ export default function SettingsPage() {
                             </option>
                           ))}
                         </select>
-                        {isLastAdmin && (
+                        {!isSuperAdmin && (
+                          <span className="text-xs text-amber-400">
+                            {'\u0420\u043e\u043b\u0438 \u043c\u0435\u043d\u044f\u0435\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d'}
+                          </span>
+                        )}
+                        {isSuperAdmin && isLastAdmin && (
                           <span className="text-xs text-amber-400">
                             {'\u0415\u0434\u0438\u043d\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0439 \u0430\u0434\u043c\u0438\u043d \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u043e\u043d\u0438\u0436\u0435\u043d'}
+                          </span>
+                        )}
+                        {isSuperAdmin && isLastSuperAdmin && (
+                          <span className="text-xs text-amber-400">
+                            {'\u0415\u0434\u0438\u043d\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0439 \u0441\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u043e\u043d\u0438\u0436\u0435\u043d'}
                           </span>
                         )}
                       </div>
@@ -1652,7 +1734,7 @@ export default function SettingsPage() {
                               canLogin: e.target.value === 'open',
                             })
                           }
-                          disabled={user.role === 'ADMIN'}
+                          disabled={user.role === 'ADMIN' || user.role === 'SUPERADMIN'}
                           className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-white disabled:opacity-60"
                           aria-label="Access"
                         >
@@ -1835,13 +1917,15 @@ export default function SettingsPage() {
                             <button
                               onClick={() => toggleUserAccess(user)}
                               aria-label={user.canLogin ? 'Disable access' : 'Enable access'}
-                              disabled={user.role === 'ADMIN'}
+                              disabled={user.role === 'ADMIN' || user.role === 'SUPERADMIN'}
                               title={
-                                user.role === 'ADMIN'
-                                  ? '\u041d\u0435\u043b\u044c\u0437\u044f \u043e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0430\u0434\u043c\u0438\u043d\u0430'
-                                  : user.canLogin
-                                    ? '\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f'
-                                    : '\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f'
+                                user.role === 'SUPERADMIN'
+                                  ? '\u041d\u0435\u043b\u044c\u0437\u044f \u043e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0441\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d\u0430'
+                                  : user.role === 'ADMIN'
+                                    ? '\u041d\u0435\u043b\u044c\u0437\u044f \u043e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0430\u0434\u043c\u0438\u043d\u0430'
+                                    : user.canLogin
+                                      ? '\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f'
+                                      : '\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f'
                               }
                               className="p-2 text-gray-400 hover:text-emerald-300 transition disabled:opacity-60"
                             >
@@ -1863,11 +1947,15 @@ export default function SettingsPage() {
                             <button
                               onClick={() => deleteUser(user.id)}
                               aria-label="Delete user"
-                              disabled={isLastAdmin}
+                              disabled={deleteLocked}
                               title={
-                                isLastAdmin
-                                  ? '\u041d\u0435\u043b\u044c\u0437\u044f \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0435\u0434\u0438\u043d\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0430\u0434\u043c\u0438\u043d\u0430'
-                                  : undefined
+                                !isSuperAdmin && (user.role === 'ADMIN' || user.role === 'SUPERADMIN')
+                                  ? '\u0423\u0434\u0430\u043b\u044f\u0442\u044c \u0430\u0434\u043c\u0438\u043d\u043e\u0432 \u043c\u043e\u0436\u0435\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d'
+                                  : isLastSuperAdmin
+                                    ? '\u041d\u0435\u043b\u044c\u0437\u044f \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0435\u0434\u0438\u043d\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d\u0430'
+                                    : isLastAdmin
+                                      ? '\u041d\u0435\u043b\u044c\u0437\u044f \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0435\u0434\u0438\u043d\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0430\u0434\u043c\u0438\u043d\u0430'
+                                      : undefined
                               }
                               className="p-2 text-gray-400 hover:text-red-400 transition disabled:opacity-60"
                             >

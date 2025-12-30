@@ -14,7 +14,6 @@ export async function GET(
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
     if (
       !hasPermission(session.user.role, 'MANAGE_USERS') &&
       session.user.id !== params.id
@@ -82,6 +81,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
+    const isSuperAdmin = session.user.role === 'SUPERADMIN'
     const {
       role,
       name,
@@ -121,15 +121,53 @@ export async function PATCH(
     }
 
     const updateData: any = {}
+    const requestedRole =
+      role === 'SUPERADMIN'
+        ? 'SUPERADMIN'
+        : role === 'ADMIN'
+          ? 'ADMIN'
+          : role === 'MANAGER'
+            ? 'MANAGER'
+            : role === 'AUDITOR'
+              ? 'AUDITOR'
+              : role === 'VIEWER'
+                ? 'VIEWER'
+                : role === 'EMPLOYEE'
+                  ? 'EMPLOYEE'
+                  : null
 
-    if (
-      role === 'ADMIN' ||
-      role === 'MANAGER' ||
-      role === 'AUDITOR' ||
-      role === 'EMPLOYEE' ||
-      role === 'VIEWER'
-    ) {
-      updateData.role = role
+    if (requestedRole && requestedRole !== currentUser.role && !isSuperAdmin) {
+      return NextResponse.json({ error: 'Only superadmin can change roles' }, { status: 403 })
+    }
+
+    if (requestedRole && requestedRole !== currentUser.role) {
+      if (currentUser.role === 'ADMIN' && requestedRole !== 'ADMIN') {
+        const adminCount = await prisma.user.count({
+          where: { role: 'ADMIN' },
+        })
+        if (adminCount <= 1) {
+          return NextResponse.json(
+            { error: 'At least one admin is required' },
+            { status: 400 }
+          )
+        }
+      }
+
+      if (currentUser.role === 'SUPERADMIN' && requestedRole !== 'SUPERADMIN') {
+        const superAdminCount = await prisma.user.count({
+          where: { role: 'SUPERADMIN' },
+        })
+        if (superAdminCount <= 1) {
+          return NextResponse.json(
+            { error: 'At least one superadmin is required' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
+    if (requestedRole) {
+      updateData.role = requestedRole
     }
 
     if (name !== undefined) {
@@ -199,43 +237,6 @@ export async function PATCH(
     }
 
     let approvalRecord: { id: string } | null = null
-
-    if (updateData.role && updateData.role !== 'ADMIN' && currentUser.role === 'ADMIN') {
-      const adminCount = await prisma.user.count({
-        where: { role: 'ADMIN' },
-      })
-      if (adminCount <= 1) {
-        return NextResponse.json(
-          { error: 'At least one admin is required' },
-          { status: 400 }
-        )
-      }
-
-      const existingApproval = await prisma.adminApproval.findFirst({
-        where: {
-          targetUserId: params.id,
-          action: 'DEMOTE_ADMIN',
-          status: 'PENDING',
-        },
-        select: { id: true },
-      })
-
-      if (existingApproval) {
-        approvalRecord = existingApproval
-      } else {
-        approvalRecord = await prisma.adminApproval.create({
-          data: {
-            action: 'DEMOTE_ADMIN',
-            targetUserId: params.id,
-            requestedById: session.user.id,
-            payload: { newRole: updateData.role },
-          },
-          select: { id: true },
-        })
-      }
-
-      delete updateData.role
-    }
 
     let user = {
       ...currentUser,
@@ -453,6 +454,7 @@ export async function DELETE(
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const isSuperAdmin = session.user.role === 'SUPERADMIN'
 
     // Только админ может удалять пользователей
     if (!hasPermission(session.user.role, 'MANAGE_USERS')) {
@@ -490,6 +492,25 @@ export async function DELETE(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    if (user.role === 'SUPERADMIN') {
+      if (!isSuperAdmin) {
+        return NextResponse.json({ error: 'Only superadmin can delete a superadmin' }, { status: 403 })
+      }
+      const superAdminCount = await prisma.user.count({
+        where: { role: 'SUPERADMIN' },
+      })
+      if (superAdminCount <= 1) {
+        return NextResponse.json(
+          { error: 'Cannot delete the last superadmin' },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (user.role === 'ADMIN' && !isSuperAdmin) {
+      return NextResponse.json({ error: 'Only superadmin can delete an admin' }, { status: 403 })
+    }
+
     if (user.role === 'ADMIN') {
       const adminCount = await prisma.user.count({
         where: { role: 'ADMIN' },
@@ -500,37 +521,6 @@ export async function DELETE(
           { status: 400 }
         )
       }
-    }
-
-    if (user.role === 'ADMIN') {
-      const existingApproval = await prisma.adminApproval.findFirst({
-        where: {
-          targetUserId: params.id,
-          action: 'DELETE_ADMIN',
-          status: 'PENDING',
-        },
-        select: { id: true },
-      })
-
-      const approval = existingApproval
-        ? existingApproval
-        : await prisma.adminApproval.create({
-            data: {
-              action: 'DELETE_ADMIN',
-              targetUserId: params.id,
-              requestedById: session.user.id,
-            },
-            select: { id: true },
-          })
-
-      return NextResponse.json(
-        {
-          success: false,
-          requiresApproval: true,
-          approvalId: approval.id,
-        },
-        { status: 202 }
-      )
     }
 
     await prisma.userAudit.create({

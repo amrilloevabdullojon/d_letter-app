@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Только админ может синхронизировать
-    if (session.user.role !== 'ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
