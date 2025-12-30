@@ -66,6 +66,7 @@ model User {
   favorites       Favorite[]
   history         History[]
   answerTemplates AnswerTemplate[]
+  notifications   Notification[]
 }
 
 enum Role {
@@ -105,6 +106,7 @@ model Letter {
   history       History[]
   linkedFrom    LinkedLetter[] @relation("LinkedFrom")
   linkedTo      LinkedLetter[] @relation("LinkedTo")
+  notifications Notification[]
 
   // Для синхронизации с Google Sheets
   sheetRowNum   Int?         // Номер строки в Google Sheets
@@ -275,4 +277,29 @@ model AnswerTemplate {
 
   @@index([createdById])
   @@index([category])
+}
+
+// ===== Notifications =====
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  letterId  String?
+  letter    Letter?          @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String?          @db.Text
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead, createdAt])
+  @@index([letterId])
+}
+
+enum NotificationType {
+  COMMENT
+  STATUS
+  ASSIGNMENT
+  SYSTEM
 }

@@ -27,6 +27,10 @@ export default function NewLetterPage() {
     comment: '',
     contacts: '',
     jiraLink: '',
+    applicantName: '',
+    applicantEmail: '',
+    applicantPhone: '',
+    applicantTelegramChatId: '',
   })
   const [attachment, setAttachment] = useState<File | null>(null)
 
@@ -300,6 +304,71 @@ export default function NewLetterPage() {
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
                 placeholder="Телефон, email контактного лица"
               />
+            </div>
+
+            <div className="rounded-lg border border-gray-700 bg-gray-800/40 p-4">
+              <h4 className="text-sm font-semibold text-white mb-4">
+                {'Данные заявителя'}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {'Имя'}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.applicantName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, applicantName: e.target.value })
+                    }
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                    placeholder={'Имя заявителя'}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={formData.applicantEmail}
+                    onChange={(e) =>
+                      setFormData({ ...formData, applicantEmail: e.target.value })
+                    }
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                    placeholder="email@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {'Телефон'}
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.applicantPhone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, applicantPhone: e.target.value })
+                    }
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                    placeholder="+998901234567"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Telegram chat id
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.applicantTelegramChatId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, applicantTelegramChatId: e.target.value })
+                    }
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                    placeholder="123456789"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Комментарий */}

@@ -68,6 +68,10 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   const [contentRussian, setContentRussian] = useState('')
   const [region, setRegion] = useState('')
   const [type, setType] = useState('')
+  const [applicantName, setApplicantName] = useState('')
+  const [applicantEmail, setApplicantEmail] = useState('')
+  const [applicantPhone, setApplicantPhone] = useState('')
+  const [applicantTelegramChatId, setApplicantTelegramChatId] = useState('')
 
   /**
    * Парсит PDF через API
@@ -207,6 +211,10 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
           deadlineDate: deadlineDate || undefined,
           type: type || undefined,
           content: content || undefined,
+          applicantName: applicantName || undefined,
+          applicantEmail: applicantEmail || undefined,
+          applicantPhone: applicantPhone || undefined,
+          applicantTelegramChatId: applicantTelegramChatId || undefined,
         }),
       })
 
@@ -262,6 +270,10 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     setContentRussian('')
     setRegion('')
     setType('')
+    setApplicantName('')
+    setApplicantEmail('')
+    setApplicantPhone('')
+    setApplicantTelegramChatId('')
   }
 
   return (
@@ -470,6 +482,55 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500 resize-none"
               placeholder={'\u041e\u043f\u0438\u0448\u0438\u0442\u0435 \u0441\u043e\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u0435 \u043f\u0438\u0441\u044c\u043c\u0430...'}
             />
+          </div>
+
+
+          <div className="rounded-lg border border-gray-600/60 bg-gray-900/40 p-4">
+            <h4 className="text-sm font-semibold text-white mb-3">
+              {'Данные заявителя'}
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-gray-400">{'Имя'}</label>
+                <input
+                  type="text"
+                  value={applicantName}
+                  onChange={(e) => setApplicantName(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  placeholder={'Имя заявителя'}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">Email</label>
+                <input
+                  type="email"
+                  value={applicantEmail}
+                  onChange={(e) => setApplicantEmail(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">{'Телефон'}</label>
+                <input
+                  type="tel"
+                  value={applicantPhone}
+                  onChange={(e) => setApplicantPhone(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="+998901234567"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">Telegram chat id</label>
+                <input
+                  type="text"
+                  value={applicantTelegramChatId}
+                  onChange={(e) => setApplicantTelegramChatId(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="123456789"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Russian translation */}

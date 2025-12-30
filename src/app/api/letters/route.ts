@@ -3,8 +3,10 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
 import { addWorkingDays, sanitizeInput, STATUS_FROM_LABEL } from '@/lib/utils'
+import { buildApplicantPortalLink, sendMultiChannelNotification } from '@/lib/notifications'
 import type { LetterStatus } from '@prisma/client'
 import { z } from 'zod'
+import { randomUUID } from 'crypto'
 
 // Схема валидации для создания письма
 const createLetterSchema = z.object({
@@ -18,23 +20,44 @@ const createLetterSchema = z.object({
   contacts: z.string().max(500).optional(),
   jiraLink: z.string().max(500).optional(),
   ownerId: z.string().optional(),
+  applicantName: z.string().max(200).optional(),
+  applicantEmail: z.string().max(320).optional(),
+  applicantPhone: z.string().max(50).optional(),
+  applicantTelegramChatId: z.string().max(50).optional(),
 })
 
-const resolveAutoOwnerId = async (org: string) => {
-  const normalizedOrg = org.trim()
-  if (!normalizedOrg) return null
-
-  const previous = await prisma.letter.findFirst({
-    where: {
-      org: { equals: normalizedOrg, mode: 'insensitive' },
-      ownerId: { not: null },
-      deletedAt: null,
-    },
-    orderBy: { createdAt: 'desc' },
-    select: { ownerId: true },
+const resolveAutoOwnerId = async () => {
+  const users = await prisma.user.findMany({
+    where: { canLogin: true },
+    select: { id: true },
   })
 
-  return previous?.ownerId || null
+  if (users.length === 0) return null
+
+  const userIds = users.map((user) => user.id)
+
+  const counts = await prisma.letter.groupBy({
+    by: ['ownerId'],
+    where: {
+      ownerId: { in: userIds },
+      deletedAt: null,
+      status: { notIn: ['READY', 'DONE'] },
+    },
+    _count: { _all: true },
+  })
+
+  const countByUser = new Map(
+    counts.map((item) => [item.ownerId, item._count._all])
+  )
+
+  const sorted = [...userIds].sort((a, b) => {
+    const countA = countByUser.get(a) || 0
+    const countB = countByUser.get(b) || 0
+    if (countA !== countB) return countA - countB
+    return a.localeCompare(b)
+  })
+
+  return sorted[0] || null
 }
 
 // GET /api/letters - получить все письма
@@ -190,6 +213,10 @@ export async function POST(request: NextRequest) {
     if (data.comment) data.comment = sanitizeInput(data.comment, 5000)
     if (data.contacts) data.contacts = sanitizeInput(data.contacts, 500)
     if (data.jiraLink) data.jiraLink = sanitizeInput(data.jiraLink, 500)
+    if (data.applicantName) data.applicantName = sanitizeInput(data.applicantName, 200)
+    if (data.applicantEmail) data.applicantEmail = sanitizeInput(data.applicantEmail, 320)
+    if (data.applicantPhone) data.applicantPhone = sanitizeInput(data.applicantPhone, 50)
+    if (data.applicantTelegramChatId) data.applicantTelegramChatId = sanitizeInput(data.applicantTelegramChatId, 50)
 
 
     const existing = await prisma.letter.findFirst({
@@ -208,7 +235,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Рассчитать дедлайн (+7 рабочих дней если не указан)
-    const ownerId = data.ownerId || await resolveAutoOwnerId(data.org)
+    const ownerId = data.ownerId || await resolveAutoOwnerId()
+
+    const hasApplicantContact = !!(data.applicantEmail || data.applicantPhone || data.applicantTelegramChatId)
+    const applicantAccessToken = hasApplicantContact ? randomUUID() : null
+    const applicantAccessTokenExpiresAt = hasApplicantContact
+      ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 90)
+      : null
 
     const deadlineDate = data.deadlineDate || addWorkingDays(data.date, 7)
 
@@ -224,6 +257,12 @@ export async function POST(request: NextRequest) {
         comment: data.comment,
         contacts: data.contacts,
         jiraLink: data.jiraLink,
+        applicantName: data.applicantName,
+        applicantEmail: data.applicantEmail,
+        applicantPhone: data.applicantPhone,
+        applicantTelegramChatId: data.applicantTelegramChatId,
+        applicantAccessToken,
+        applicantAccessTokenExpiresAt,
         ownerId,
         status: 'NOT_REVIEWED',
         priority: 50,
@@ -260,6 +299,47 @@ export async function POST(request: NextRequest) {
       })
     }
 
+
+    if (letter.ownerId && letter.ownerId !== session.user.id) {
+      await prisma.notification.create({
+        data: {
+          userId: letter.ownerId,
+          letterId: letter.id,
+          type: 'ASSIGNMENT',
+          title: `????????? ????? ?????? ?${letter.number}`,
+          body: letter.org,
+        },
+      })
+    }
+
+    if (hasApplicantContact && applicantAccessToken) {
+      const portalLink = buildApplicantPortalLink(applicantAccessToken)
+      const subject = `???? ????????? ?${letter.number} ????????????????`
+      const text = `???? ????????? ????????????????.
+
+?????: ${letter.number}
+???????????: ${letter.org}
+????: ${new Date(letter.deadlineDate).toLocaleDateString('ru-RU')}
+
+??????: ${portalLink}`
+      const telegram = `
+<b>????????? ????????????????</b>
+
+?${letter.number}
+${letter.org}
+????: ${new Date(letter.deadlineDate).toLocaleDateString('ru-RU')}
+
+<a href="${portalLink}">??????? ??????</a>`
+
+      await sendMultiChannelNotification(
+        {
+          email: letter.applicantEmail,
+          phone: letter.applicantPhone,
+          telegramChatId: letter.applicantTelegramChatId,
+        },
+        { subject, text, telegram }
+      )
+    }
     return NextResponse.json({ success: true, letter }, { status: 201 })
   } catch (error) {
     console.error('POST /api/letters error:', error)

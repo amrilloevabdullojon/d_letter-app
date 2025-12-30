@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
-import { sanitizeInput, isDoneStatus } from '@/lib/utils'
+import { sanitizeInput, isDoneStatus, STATUS_LABELS } from '@/lib/utils'
 import type { LetterStatus } from '@prisma/client'
 import { sendTelegramMessage, formatStatusChangeMessage } from '@/lib/telegram'
+import { sendMultiChannelNotification } from '@/lib/notifications'
 
 // GET /api/letters/[id] - получить письмо по ID
 export async function GET(
@@ -232,6 +233,30 @@ export async function PATCH(
         }
         break
 
+      case 'applicantName':
+        oldValue = letter.applicantName
+        newValue = sanitizeInput(value, 200)
+        updateData.applicantName = newValue
+        break
+
+      case 'applicantEmail':
+        oldValue = letter.applicantEmail
+        newValue = sanitizeInput(value, 320)
+        updateData.applicantEmail = newValue
+        break
+
+      case 'applicantPhone':
+        oldValue = letter.applicantPhone
+        newValue = sanitizeInput(value, 50)
+        updateData.applicantPhone = newValue
+        break
+
+      case 'applicantTelegramChatId':
+        oldValue = letter.applicantTelegramChatId
+        newValue = sanitizeInput(value, 50)
+        updateData.applicantTelegramChatId = newValue
+        break
+
       default:
         return NextResponse.json(
           { error: 'Invalid field' },
@@ -261,8 +286,77 @@ export async function PATCH(
       },
     })
 
+    if (field === 'owner' && newValue && newValue !== session.user.id) {
+      await prisma.notification.create({
+        data: {
+          userId: newValue,
+          letterId: letter.id,
+          type: 'ASSIGNMENT',
+          title: `Назначено письмо №${letter.number}`,
+          body: letter.org,
+        },
+      })
+    }
+
     // Уведомить watchers через Telegram
+
     if (field === 'status') {
+      const watcherNotifyIds = letter.watchers
+        .filter((watcher) => watcher.notifyOnChange && watcher.userId !== session.user.id)
+        .map((watcher) => watcher.userId)
+
+      if (watcherNotifyIds.length > 0) {
+        await prisma.notification.createMany({
+          data: watcherNotifyIds.map((userId) => ({
+            userId,
+            letterId: letter.id,
+            type: 'STATUS',
+            title: `?????? ?????? ?${letter.number} ???????`,
+            body: `${STATUS_LABELS[letter.status]} -> ${STATUS_LABELS[newValue as LetterStatus]}`,
+          })),
+        })
+      }
+
+      const applicantHasContact = !!(
+        letter.applicantEmail ||
+        letter.applicantPhone ||
+        letter.applicantTelegramChatId
+      )
+
+      if (applicantHasContact) {
+        const oldStatusLabel = oldValue
+          ? STATUS_LABELS[oldValue as LetterStatus]
+          : ''
+        const newStatusLabel = newValue
+          ? STATUS_LABELS[newValue as LetterStatus]
+          : ''
+
+        const subject = `?????? ????????? ?${letter.number} ???????`
+        const text = `?????? ?????? ????????? ???????.
+
+?????: ${letter.number}
+???????????: ${letter.org}
+????: ${oldStatusLabel}
+?????: ${newStatusLabel}`
+        const telegram = `
+<b>?????? ????????? ???????</b>
+
+?${letter.number}
+${letter.org}
+
+????: ${oldStatusLabel}
+?????: ${newStatusLabel}`
+
+        await sendMultiChannelNotification(
+          {
+            email: letter.applicantEmail,
+            phone: letter.applicantPhone,
+            telegramChatId: letter.applicantTelegramChatId,
+          },
+          { subject, text, telegram }
+        )
+      }
+
       for (const watcher of letter.watchers) {
         if (
           watcher.notifyOnChange &&

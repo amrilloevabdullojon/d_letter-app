@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sanitizeInput } from '@/lib/utils'
 import { formatNewCommentMessage, sendTelegramMessage } from '@/lib/telegram'
+import { sendMultiChannelNotification } from '@/lib/notifications'
 import { z } from 'zod'
 
 const commentSchema = z.object({
@@ -86,23 +87,36 @@ export async function POST(
       },
     })
 
+    const notificationUserIds = new Set<string>()
+
     const recipientChatIds = new Set<string>()
 
     letter.watchers.forEach((watcher) => {
-      if (
-        watcher.notifyOnComment &&
-        watcher.user.telegramChatId &&
-        watcher.user.id !== session.user.id
-      ) {
-        recipientChatIds.add(watcher.user.telegramChatId)
+      if (watcher.notifyOnComment && watcher.user.id !== session.user.id) {
+        notificationUserIds.add(watcher.user.id)
+        if (watcher.user.telegramChatId) {
+          recipientChatIds.add(watcher.user.telegramChatId)
+        }
       }
     })
 
-    if (
-      createdBy?.user?.telegramChatId &&
-      createdBy.user.id !== session.user.id
-    ) {
-      recipientChatIds.add(createdBy.user.telegramChatId)
+    if (createdBy?.user?.id && createdBy.user.id !== session.user.id) {
+      notificationUserIds.add(createdBy.user.id)
+      if (createdBy.user.telegramChatId) {
+        recipientChatIds.add(createdBy.user.telegramChatId)
+      }
+    }
+
+    if (notificationUserIds.size > 0) {
+      await prisma.notification.createMany({
+        data: Array.from(notificationUserIds).map((userId) => ({
+          userId,
+          letterId: letter.id,
+          type: 'COMMENT',
+          title: `????? ??????????? ?? ?????? ?${letter.number}`,
+          body: text,
+        })),
+      })
     }
 
     if (recipientChatIds.size > 0) {
@@ -118,6 +132,38 @@ export async function POST(
         Array.from(recipientChatIds).map((chatId) =>
           sendTelegramMessage(chatId, message)
         )
+      )
+    }
+
+    const applicantHasContact = !!(
+      letter.applicantEmail ||
+      letter.applicantPhone ||
+      letter.applicantTelegramChatId
+    )
+
+    if (applicantHasContact) {
+      const subject = `????? ??????????? ?? ????????? ?${letter.number}`
+      const bodyText = `???????? ????? ??????????? ?? ?????? ?????????.
+
+?????: ${letter.number}
+???????????: ${letter.org}
+
+${text}`
+      const telegram = `
+<b>????? ???????????</b>
+
+?${letter.number}
+${letter.org}
+
+${text}`
+
+      await sendMultiChannelNotification(
+        {
+          email: letter.applicantEmail,
+          phone: letter.applicantPhone,
+          telegramChatId: letter.applicantTelegramChatId,
+        },
+        { subject, text: bodyText, telegram }
       )
     }
 
