@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
       case 'delete':
         // Только админ может удалять
-        if (session.user.role !== 'ADMIN') {
+        if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
 

@@ -353,7 +353,7 @@ export async function importFromGoogleSheets() {
           })
           usersByName.set(key, owner)
         }
-      } else if (!owner.canLogin && owner.role !== 'ADMIN') {
+      } else if (!owner.canLogin && owner.role !== 'ADMIN' && owner.role !== 'SUPERADMIN') {
         owner = await prisma.user.update({
           where: { id: owner.id },
           data: { canLogin: true },
@@ -373,7 +373,7 @@ export async function importFromGoogleSheets() {
     if (allowedUserIds.size > 0) {
       await prisma.user.updateMany({
         where: {
-          role: { not: 'ADMIN' },
+          role: { notIn: ['ADMIN', 'SUPERADMIN'] },
           id: { notIn: Array.from(allowedUserIds) },
         },
         data: { canLogin: false },

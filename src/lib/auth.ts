@@ -57,7 +57,7 @@ export const authOptions: AuthOptions = {
         return false
       }
 
-      const isAllowed = dbUser.role === 'ADMIN' || dbUser.canLogin
+      const isAllowed = dbUser.role === 'ADMIN' || dbUser.role === 'SUPERADMIN' || dbUser.canLogin
       if (isAllowed) {
         await prisma.$transaction([
           prisma.user.update({

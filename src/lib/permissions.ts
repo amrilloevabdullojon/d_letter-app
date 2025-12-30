@@ -9,6 +9,14 @@ export type Permission =
   | 'VIEW_LETTERS'
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+  SUPERADMIN: [
+    'MANAGE_USERS',
+    'VIEW_AUDIT',
+    'VIEW_REPORTS',
+    'MANAGE_SETTINGS',
+    'MANAGE_LETTERS',
+    'VIEW_LETTERS',
+  ],
   ADMIN: [
     'MANAGE_USERS',
     'VIEW_AUDIT',

@@ -70,13 +70,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const name = typeof body.name === 'string' ? body.name.trim() : ''
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-    const role = body.role === 'ADMIN' ? 'ADMIN' : body.role === 'MANAGER'
-      ? 'MANAGER'
-      : body.role === 'AUDITOR'
-        ? 'AUDITOR'
-        : body.role === 'VIEWER'
-          ? 'VIEWER'
-          : 'EMPLOYEE'
+    const isSuperAdmin = session.user.role === 'SUPERADMIN'
+    const requestedRole =
+      body.role === 'SUPERADMIN'
+        ? 'SUPERADMIN'
+        : body.role === 'ADMIN'
+          ? 'ADMIN'
+          : body.role === 'MANAGER'
+            ? 'MANAGER'
+            : body.role === 'AUDITOR'
+              ? 'AUDITOR'
+              : body.role === 'VIEWER'
+                ? 'VIEWER'
+                : 'EMPLOYEE'
+    if (!isSuperAdmin && body.role && requestedRole !== 'EMPLOYEE') {
+      return NextResponse.json({ error: 'Only superadmin can assign roles' }, { status: 403 })
+    }
+    const role = isSuperAdmin ? requestedRole : 'EMPLOYEE'
     const telegramChatId =
       typeof body.telegramChatId === 'string' && body.telegramChatId.trim()
         ? body.telegramChatId.trim()

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Только админ может смотреть логи
-    if (session.user.role !== 'ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

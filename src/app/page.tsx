@@ -151,6 +151,12 @@ export default function HomePage() {
   const completionRate = stats
     ? Math.round((stats.completed / stats.total) * 100) || 0
     : 0
+  const roleLabel =
+    session.user.role === 'SUPERADMIN'
+      ? 'Суперадмин'
+      : session.user.role === 'ADMIN'
+        ? 'Администратор'
+        : 'Сотрудник'
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -164,7 +170,7 @@ export default function HomePage() {
               Добро пожаловать, {session.user.name || session.user.email?.split('@')[0]}!
             </h1>
             <p className="text-gray-400 mt-1">
-              {session.user.role === 'ADMIN' ? 'Администратор' : 'Сотрудник'} •{' '}
+              {roleLabel} •{' '}
               {new Date().toLocaleDateString('ru-RU', {
                 weekday: 'long',
                 year: 'numeric',
@@ -494,7 +500,7 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              {session.user.role === 'ADMIN' && (
+              {(session.user.role === 'ADMIN' || session.user.role === 'SUPERADMIN') && (
                 <Link
                   href="/reports"
                   className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition group"

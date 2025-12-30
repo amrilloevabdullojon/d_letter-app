@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     if (!hasPermission(session.user.role, 'MANAGE_USERS')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+    const isSuperAdmin = session.user.role === 'SUPERADMIN'
 
     const body = await request.json()
     const parsed = bulkSchema.safeParse(body)
@@ -61,45 +62,42 @@ export async function POST(request: NextRequest) {
       }
 
       const adminTargets = targetUsers.filter((user) => user.role === 'ADMIN')
-      const adminCount = await prisma.user.count({
-        where: { role: 'ADMIN' },
-      })
-      if (adminTargets.length > 0 && adminCount - adminTargets.length <= 0) {
+      const superAdminTargets = targetUsers.filter((user) => user.role === 'SUPERADMIN')
+
+      if (!isSuperAdmin && (adminTargets.length > 0 || superAdminTargets.length > 0)) {
         return NextResponse.json(
-          { error: 'Cannot delete the last admin' },
-          { status: 400 }
+          { error: 'Only superadmin can delete admin accounts' },
+          { status: 403 }
         )
       }
 
-      const nonAdminTargets = targetUsers.filter((user) => user.role !== 'ADMIN')
-
       if (adminTargets.length > 0) {
-        const existingApprovals = await prisma.adminApproval.findMany({
-          where: {
-            targetUserId: { in: adminTargets.map((user) => user.id) },
-            action: 'DELETE_ADMIN',
-            status: 'PENDING',
-          },
-          select: { targetUserId: true },
+        const adminCount = await prisma.user.count({
+          where: { role: 'ADMIN' },
         })
-
-        const existingIds = new Set(existingApprovals.map((item) => item.targetUserId))
-        const approvalsToCreate = adminTargets
-          .filter((user) => !existingIds.has(user.id))
-          .map((user) => ({
-            action: 'DELETE_ADMIN' as const,
-            targetUserId: user.id,
-            requestedById: session.user.id,
-          }))
-
-        if (approvalsToCreate.length > 0) {
-          await prisma.adminApproval.createMany({ data: approvalsToCreate })
+        if (adminCount - adminTargets.length <= 0) {
+          return NextResponse.json(
+            { error: 'Cannot delete the last admin' },
+            { status: 400 }
+          )
         }
       }
 
-      if (nonAdminTargets.length > 0) {
+      if (superAdminTargets.length > 0) {
+        const superAdminCount = await prisma.user.count({
+          where: { role: 'SUPERADMIN' },
+        })
+        if (superAdminCount - superAdminTargets.length <= 0) {
+          return NextResponse.json(
+            { error: 'Cannot delete the last superadmin' },
+            { status: 400 }
+          )
+        }
+      }
+
+      if (targetUsers.length > 0) {
         await prisma.userAudit.createMany({
-          data: nonAdminTargets.map((user) => ({
+          data: targetUsers.map((user) => ({
             userId: user.id,
             actorId: session.user.id,
             action: 'DELETE',
@@ -122,27 +120,37 @@ export async function POST(request: NextRequest) {
       }
 
       const result = await prisma.user.deleteMany({
-        where: { id: { in: nonAdminTargets.map((user) => user.id) } },
+        where: { id: { in: targetUsers.map((user) => user.id) } },
       })
       return NextResponse.json({
         success: true,
         deleted: result.count,
-        requiresApproval: adminTargets.length > 0,
-        pendingApprovals: adminTargets.length,
-      }, { status: adminTargets.length > 0 ? 202 : 200 })
+      })
     }
 
     if (action === 'role') {
-      const role = value === 'ADMIN' ? 'ADMIN' : value === 'MANAGER'
-        ? 'MANAGER'
-        : value === 'AUDITOR'
-          ? 'AUDITOR'
-          : value === 'VIEWER'
-            ? 'VIEWER'
-            : 'EMPLOYEE'
+      if (!isSuperAdmin) {
+        return NextResponse.json({ error: 'Only superadmin can change roles' }, { status: 403 })
+      }
+
+      const role =
+        value === 'SUPERADMIN'
+          ? 'SUPERADMIN'
+          : value === 'ADMIN'
+            ? 'ADMIN'
+            : value === 'MANAGER'
+              ? 'MANAGER'
+              : value === 'AUDITOR'
+                ? 'AUDITOR'
+                : value === 'VIEWER'
+                  ? 'VIEWER'
+                  : 'EMPLOYEE'
 
       const adminTargets = role !== 'ADMIN'
         ? targetUsers.filter((user) => user.role === 'ADMIN')
+        : []
+      const superAdminTargets = role !== 'SUPERADMIN'
+        ? targetUsers.filter((user) => user.role === 'SUPERADMIN')
         : []
 
       if (adminTargets.length > 0) {
@@ -155,35 +163,21 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
+      }
 
-        const existingApprovals = await prisma.adminApproval.findMany({
-          where: {
-            targetUserId: { in: adminTargets.map((user) => user.id) },
-            action: 'DEMOTE_ADMIN',
-            status: 'PENDING',
-          },
-          select: { targetUserId: true },
+      if (superAdminTargets.length > 0) {
+        const superAdminCount = await prisma.user.count({
+          where: { role: 'SUPERADMIN' },
         })
-
-        const existingIds = new Set(existingApprovals.map((item) => item.targetUserId))
-        const approvalsToCreate = adminTargets
-          .filter((user) => !existingIds.has(user.id))
-          .map((user) => ({
-            action: 'DEMOTE_ADMIN' as const,
-            targetUserId: user.id,
-            requestedById: session.user.id,
-            payload: { newRole: role },
-          }))
-
-        if (approvalsToCreate.length > 0) {
-          await prisma.adminApproval.createMany({ data: approvalsToCreate })
+        if (superAdminCount - superAdminTargets.length <= 0) {
+          return NextResponse.json(
+            { error: 'At least one superadmin is required' },
+            { status: 400 }
+          )
         }
       }
 
-      const nonAdminTargets = adminTargets.length > 0
-        ? targetUsers.filter((user) => user.role !== 'ADMIN')
-        : targetUsers
-      const changedUsers = nonAdminTargets.filter((user) => user.role !== role)
+      const changedUsers = targetUsers.filter((user) => user.role !== role)
       if (changedUsers.length > 0) {
         await prisma.userAudit.createMany({
           data: changedUsers.map((user) => ({
@@ -198,15 +192,13 @@ export async function POST(request: NextRequest) {
       }
 
       const result = await prisma.user.updateMany({
-        where: { id: { in: nonAdminTargets.map((user) => user.id) } },
+        where: { id: { in: targetUsers.map((user) => user.id) } },
         data: { role },
       })
       return NextResponse.json({
         success: true,
         updated: result.count,
-        requiresApproval: adminTargets.length > 0,
-        pendingApprovals: adminTargets.length,
-      }, { status: adminTargets.length > 0 ? 202 : 200 })
+      })
     }
 
     if (action === 'canLogin') {
