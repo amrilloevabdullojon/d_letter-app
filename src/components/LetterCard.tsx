@@ -102,6 +102,7 @@ export function LetterCard({ letter, onToggleFavorite }: LetterCardProps) {
                        : 'bg-white/10 text-slate-300 opacity-0 group-hover:opacity-100'
                      }
                      hover:scale-110 hover:bg-amber-500/30`}
+          aria-label={letter.isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
         >
           <Star className={`w-4 h-4 ${letter.isFavorite ? 'fill-current' : ''}`} />
         </button>

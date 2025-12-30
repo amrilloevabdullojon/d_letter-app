@@ -34,9 +34,22 @@ import {
   Printer,
   Star,
   Bell,
+  MessageSquare,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+
+interface CommentItem {
+  id: string
+  text: string
+  createdAt: string
+  author: {
+    id: string
+    name: string | null
+    email: string | null
+  }
+  replies?: CommentItem[]
+}
 
 interface Letter {
   id: string
@@ -62,15 +75,7 @@ interface Letter {
     email: string | null
   } | null
   files: Array<{ id: string; name: string; url: string }>
-  comments: Array<{
-    id: string
-    text: string
-    createdAt: string
-    author: {
-      name: string | null
-      email: string | null
-    }
-  }>
+  comments: CommentItem[]
   history: Array<{
     id: string
     field: string
@@ -107,6 +112,8 @@ export default function LetterDetailPage() {
   const [duplicating, setDuplicating] = useState(false)
   const [togglingFavorite, setTogglingFavorite] = useState(false)
   const [notifyingOwner, setNotifyingOwner] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [commentSubmitting, setCommentSubmitting] = useState(false)
 
   useEffect(() => {
     if (session && params.id) {
@@ -233,6 +240,34 @@ export default function LetterDetailPage() {
     }
   }
 
+  const handleAddComment = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!letter || !commentText.trim()) return
+
+    setCommentSubmitting(true)
+    try {
+      const res = await fetch(`/api/letters/${letter.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: commentText }),
+      })
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        setCommentText('')
+        await loadLetter()
+        toast.success('Комментарий добавлен')
+      } else {
+        toast.error(data.error || 'Не удалось добавить комментарий')
+      }
+    } catch (error) {
+      console.error('Failed to add comment:', error)
+      toast.error('Ошибка добавления комментария')
+    } finally {
+      setCommentSubmitting(false)
+    }
+  }
+
   const toggleFavorite = async () => {
     if (!letter) return
 
@@ -277,6 +312,29 @@ export default function LetterDetailPage() {
   const typeValue = letter.type || ''
   const hasCustomType =
     !!typeValue && !letterTypeOptions.some((option) => option.value === typeValue)
+
+  const renderComment = (comment: CommentItem, depth = 0) => {
+    const author = comment.author.name || comment.author.email || 'Пользователь'
+    return (
+      <div
+        key={comment.id}
+        className={`rounded-lg border border-gray-700/60 bg-gray-900/40 p-4 ${
+          depth > 0 ? 'ml-6' : ''
+        }`}
+      >
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span className="font-medium text-gray-200">{author}</span>
+          <span>{new Date(comment.createdAt).toLocaleString('ru-RU')}</span>
+        </div>
+        <p className="mt-2 text-sm text-gray-200 whitespace-pre-wrap">{comment.text}</p>
+        {comment.replies?.length > 0 && (
+          <div className="mt-3 space-y-3">
+            {comment.replies.map((reply) => renderComment(reply, depth + 1))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -503,6 +561,46 @@ export default function LetterDetailPage() {
                 placeholder={'\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439...'}
                 rows={3}
               />
+            </div>
+
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
+                {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0438'}
+              </h3>
+
+              {letter.comments.length === 0 ? (
+                <p className="text-sm text-gray-400">
+                  {'\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432'}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {letter.comments.map((comment) => renderComment(comment))}
+                </div>
+              )}
+
+              <form onSubmit={handleAddComment} className="mt-4 space-y-3">
+                <textarea
+                  rows={3}
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500 resize-none"
+                  placeholder={'\u041d\u0430\u043f\u0438\u0448\u0438\u0442\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439...'}
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={commentSubmitting || !commentText.trim()}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50"
+                  >
+                    {commentSubmitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <MessageSquare className="w-4 h-4" />
+                    )}
+                    {'\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439'}
+                  </button>
+                </div>
+              </form>
             </div>
 
             {/* History */}

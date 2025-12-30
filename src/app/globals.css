@@ -391,6 +391,11 @@ textarea {
   transition: all 0.2s ease;
 }
 
+select option {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
 /* Focus styles */
 button:focus-visible,
 a:focus-visible,

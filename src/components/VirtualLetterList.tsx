@@ -101,6 +101,7 @@ export function VirtualLetterList({
                           ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/30'
                           : 'bg-white/10 text-slate-300 opacity-0 group-hover:opacity-100'
                       }`}
+                      aria-label={`Выбрать письмо ${letter.number}`}
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path

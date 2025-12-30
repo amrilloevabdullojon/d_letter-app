@@ -419,6 +419,7 @@ function LettersPageContent() {
                   setBulkValue('')
                 }}
                 className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white"
+                aria-label="Массовое действие"
               >
                 <option value="">Выберите действие</option>
                 <option value="status">Изменить статус</option>
@@ -433,6 +434,7 @@ function LettersPageContent() {
                   value={bulkValue}
                   onChange={(e) => setBulkValue(e.target.value)}
                   className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white"
+                  aria-label="Статус для массового действия"
                 >
                   <option value="">Выберите статус</option>
                   {STATUSES.filter((s) => s !== 'all').map((status) => (
@@ -448,6 +450,7 @@ function LettersPageContent() {
                   value={bulkValue}
                   onChange={(e) => setBulkValue(e.target.value)}
                   className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white"
+                  aria-label="Исполнитель для массового действия"
                 >
                   <option value="">Выберите ответственного</option>
                   <option value="">Снять ответственного</option>
@@ -490,6 +493,7 @@ function LettersPageContent() {
                 setBulkValue('')
               }}
               className="p-2 text-slate-300 hover:text-white transition hover:bg-white/10 rounded-lg"
+              aria-label="Скрыть массовые действия"
             >
               <X className="w-5 h-5" />
             </button>
@@ -533,11 +537,13 @@ function LettersPageContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-10 py-2 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-400 focus:outline-none focus:border-teal-400/80 focus:ring-1 focus:ring-teal-400/40"
+              aria-label="Поиск"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition"
+                aria-label="Очистить поиск"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -555,6 +561,7 @@ function LettersPageContent() {
                 setPage(1)
               }}
               className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-teal-400/80 focus:ring-1 focus:ring-teal-400/40"
+              aria-label="Фильтр по статусу"
             >
               <option value="all">Все статусы</option>
               {STATUSES.filter((s) => s !== 'all').map((status) => (
@@ -574,6 +581,7 @@ function LettersPageContent() {
                 setPage(1)
               }}
               className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-teal-400/80 focus:ring-1 focus:ring-teal-400/40"
+              aria-label="Фильтр по исполнителю"
             >
               <option value="">{'\u0412\u0441\u0435 \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0438'}</option>
               {users.map((user) => (
@@ -593,6 +601,7 @@ function LettersPageContent() {
                 setPage(1)
               }}
               className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-teal-400/80 focus:ring-1 focus:ring-teal-400/40"
+              aria-label="Фильтр по типу"
             >
               <option value="">{'\u0412\u0441\u0435 \u0442\u0438\u043f\u044b'}</option>
               {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
@@ -609,6 +618,7 @@ function LettersPageContent() {
               onClick={() => setViewMode('table')}
               className={`p-2 rounded-lg transition ${viewMode === 'table' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white'}`}
               title="Таблица"
+              aria-label="Табличный вид"
             >
               <List className="w-5 h-5" />
             </button>
@@ -616,6 +626,7 @@ function LettersPageContent() {
               onClick={() => setViewMode('cards')}
               className={`p-2 rounded-lg transition ${viewMode === 'cards' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white'}`}
               title="Карточки"
+              aria-label="Карточки"
             >
               <LayoutGrid className="w-5 h-5" />
             </button>
@@ -627,6 +638,7 @@ function LettersPageContent() {
               onClick={() => setShowShortcuts(!showShortcuts)}
               className={`p-2 rounded-lg transition ${showShortcuts ? 'bg-white/10 text-white' : 'bg-white/5 text-slate-300 hover:text-white'}`}
               title="Горячие клавиши"
+              aria-label="Горячие клавиши"
             >
               <Keyboard className="w-5 h-5" />
             </button>
@@ -680,6 +692,7 @@ function LettersPageContent() {
                             ? 'text-teal-300'
                             : 'text-slate-400 hover:text-white'
                         }`}
+                        aria-label="Выбрать все письма"
                       >
                         {selectedIds.size === letters.length && letters.length > 0 ? (
                           <CheckSquare className="w-5 h-5" />
@@ -763,6 +776,7 @@ function LettersPageContent() {
                                 ? 'text-teal-300'
                                 : 'text-slate-400 hover:text-white'
                             }`}
+                            aria-label={`Выбрать письмо ${letter.number}`}
                           >
                             {isSelected ? (
                               <CheckSquare className="w-5 h-5" />
@@ -834,6 +848,7 @@ function LettersPageContent() {
                             }}
                             className="p-1 text-slate-400 hover:text-white transition"
                             title="Быстрый просмотр"
+                            aria-label="Быстрый просмотр"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -858,6 +873,7 @@ function LettersPageContent() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className="p-2 bg-white/5 border border-white/10 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition"
+                aria-label="Предыдущая страница"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -870,6 +886,7 @@ function LettersPageContent() {
                 onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={page === pagination.totalPages}
                 className="p-2 bg-white/5 border border-white/10 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition"
+                aria-label="Следующая страница"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
