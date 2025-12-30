@@ -35,6 +35,7 @@ import {
   Star,
   Bell,
   MessageSquare,
+  Link2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -62,6 +63,12 @@ interface Letter {
   content: string | null
   comment: string | null
   contacts: string | null
+  applicantName: string | null
+  applicantEmail: string | null
+  applicantPhone: string | null
+  applicantTelegramChatId: string | null
+  applicantAccessToken: string | null
+  applicantAccessTokenExpiresAt: string | null
   priority: number
   jiraLink: string | null
   zordoc: string | null
@@ -114,12 +121,22 @@ export default function LetterDetailPage() {
   const [notifyingOwner, setNotifyingOwner] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [commentSubmitting, setCommentSubmitting] = useState(false)
+  const [portalLink, setPortalLink] = useState('')
+  const [portalLoading, setPortalLoading] = useState(false)
 
   useEffect(() => {
     if (session && params.id) {
       loadLetter()
     }
   }, [session, params.id])
+
+  useEffect(() => {
+    if (letter?.applicantAccessToken && typeof window !== 'undefined') {
+      setPortalLink(`${window.location.origin}/portal/${letter.applicantAccessToken}`)
+    } else {
+      setPortalLink('')
+    }
+  }, [letter?.applicantAccessToken])
 
   const loadLetter = async () => {
     try {
@@ -237,6 +254,39 @@ export default function LetterDetailPage() {
       toast.error('\u041e\u0448\u0438\u0431\u043a\u0430 \u043e\u0442\u043f\u0440\u0430\u0432\u043a\u0438 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u044f', { id: toastId })
     } finally {
       setNotifyingOwner(false)
+    }
+  }
+
+  const handleGeneratePortalLink = async () => {
+    if (!letter) return
+    setPortalLoading(true)
+    try {
+      const res = await fetch(`/api/letters/${letter.id}/portal`, { method: 'POST' })
+      const data = await res.json()
+
+      if (res.ok && data.link) {
+        setPortalLink(data.link)
+        await loadLetter()
+        toast.success(data.notified ? 'Ссылка отправлена заявителю' : 'Ссылка создана')
+      } else {
+        toast.error(data.error || 'Не удалось создать ссылку')
+      }
+    } catch (error) {
+      console.error('Failed to create portal link:', error)
+      toast.error('Ошибка создания ссылки')
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
+  const handleCopyPortalLink = async () => {
+    if (!portalLink) return
+    try {
+      await navigator.clipboard.writeText(portalLink)
+      toast.success('Ссылка скопирована')
+    } catch (error) {
+      console.error('Failed to copy link:', error)
+      toast.error('Не удалось скопировать ссылку')
     }
   }
 
@@ -718,6 +768,81 @@ export default function LetterDetailPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+
+
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">
+                {'Заявитель'}
+              </h3>
+
+              <EditableField
+                label={'Имя'}
+                value={letter.applicantName}
+                field="applicantName"
+                onSave={updateField}
+                placeholder={'Имя заявителя'}
+              />
+
+              <EditableField
+                label="Email"
+                value={letter.applicantEmail}
+                field="applicantEmail"
+                onSave={updateField}
+                placeholder="email@example.com"
+              />
+
+              <EditableField
+                label={'Телефон'}
+                value={letter.applicantPhone}
+                field="applicantPhone"
+                onSave={updateField}
+                placeholder="+998901234567"
+              />
+
+              <EditableField
+                label="Telegram chat id"
+                value={letter.applicantTelegramChatId}
+                field="applicantTelegramChatId"
+                onSave={updateField}
+                placeholder="123456789"
+              />
+
+              <div className="mt-4 rounded-lg border border-gray-700 bg-gray-900/40 p-4">
+                <div className="text-sm text-gray-400 mb-2">
+                  {'Ссылка для заявителя'}
+                </div>
+                {portalLink ? (
+                  <p className="text-sm text-emerald-300 break-all">{portalLink}</p>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">
+                    {'Ссылка еще не создана'}
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={handleGeneratePortalLink}
+                    disabled={portalLoading}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50 text-sm"
+                  >
+                    {portalLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Link2 className="w-4 h-4" />
+                    )}
+                    {'Создать/обновить ссылку'}
+                  </button>
+                  <button
+                    onClick={handleCopyPortalLink}
+                    disabled={!portalLink}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition disabled:opacity-50 text-sm"
+                  >
+                    <Copy className="w-4 h-4" />
+                    {'Скопировать'}
+                  </button>
+                </div>
               </div>
             </div>
 

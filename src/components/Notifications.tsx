@@ -17,8 +17,24 @@ interface Notification {
   daysLeft: number
 }
 
+
+interface UserNotification {
+  id: string
+  type: 'COMMENT' | 'STATUS' | 'ASSIGNMENT' | 'SYSTEM'
+  title: string
+  body: string | null
+  isRead: boolean
+  createdAt: string
+  letter?: {
+    id: string
+    number: string
+    org: string
+  } | null
+}
+
 export function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [userNotifications, setUserNotifications] = useState<UserNotification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -32,6 +48,11 @@ export function Notifications() {
   const loadNotifications = async () => {
     setLoading(true)
     try {
+      const userRes = await fetch('/api/notifications')
+      if (userRes.ok) {
+        const userData = await userRes.json()
+        setUserNotifications(userData.notifications || [])
+      }
       // Загрузить просроченные
       const overdueRes = await fetch('/api/letters?filter=overdue&limit=10')
       const overdueData = await overdueRes.json()
@@ -82,7 +103,36 @@ export function Notifications() {
 
   const overdueCount = notifications.filter((n) => n.type === 'overdue').length
   const urgentCount = notifications.filter((n) => n.type === 'urgent').length
-  const totalCount = notifications.length
+  const unreadCount = userNotifications.filter((n) => !n.isRead).length
+  const totalCount = notifications.length + unreadCount
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] }),
+      })
+      setUserNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      )
+    } catch (error) {
+      console.error('Failed to mark notification read:', error)
+    }
+  }
+
+  const markAllRead = async () => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      })
+      setUserNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+    } catch (error) {
+      console.error('Failed to mark all notifications read:', error)
+    }
+  }
 
   return (
     <div className="relative">
@@ -109,13 +159,64 @@ export function Notifications() {
           {/* Dropdown */}
           <div className="absolute right-0 top-full mt-2 w-96 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 max-h-[70vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <h3 className="text-white font-medium">Уведомления</h3>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1 text-gray-400 hover:text-white transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <h3 className="text-white font-medium">???????????</h3>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 transition"
+                  >
+                    ???????? ???
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 text-gray-400 hover:text-white transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-64 overflow-y-auto">
+              {userNotifications.length === 0 ? (
+                <div className="p-4 text-sm text-gray-500 border-b border-gray-700">
+                  D?D??, ??D?D?D'D_D?D?D?D?D,D1
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-700 border-b border-gray-700">
+                  {userNotifications.map((notif) => (
+                    <Link
+                      key={notif.id}
+                      href={notif.letter?.id ? `/letters/${notif.letter.id}` : '/letters'}
+                      onClick={() => {
+                        markNotificationRead(notif.id)
+                        setIsOpen(false)
+                      }}
+                      className={`flex items-start gap-3 px-4 py-3 transition ${
+                        notif.isRead ? 'bg-transparent' : 'bg-emerald-500/5'
+                      } hover:bg-gray-700/50`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white">{notif.title}</div>
+                        {notif.body && (
+                          <div className="text-xs text-gray-400 mt-1 line-clamp-2">
+                            {notif.body}
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-500 mt-1">
+                          {new Date(notif.createdAt).toLocaleString('ru-RU')}
+                        </div>
+                      </div>
+                      {notif.letter?.number && (
+                        <span className="text-xs text-emerald-400 font-mono">
+                          ?{notif.letter.number}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stats */}

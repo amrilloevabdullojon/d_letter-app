@@ -46,6 +46,12 @@ export async function POST(
         ijroDate: null,
         comment: original.comment,
         contacts: original.contacts,
+        applicantName: original.applicantName,
+        applicantEmail: original.applicantEmail,
+        applicantPhone: original.applicantPhone,
+        applicantTelegramChatId: original.applicantTelegramChatId,
+        applicantAccessToken: null,
+        applicantAccessTokenExpiresAt: null,
         closeDate: null,
         jiraLink: null, // Сбрасываем Jira
         priority: original.priority,
