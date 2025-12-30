@@ -315,6 +315,7 @@ export default function LetterDetailPage() {
 
   const renderComment = (comment: CommentItem, depth = 0) => {
     const author = comment.author.name || comment.author.email || 'Пользователь'
+    const replies = comment.replies ?? []
     return (
       <div
         key={comment.id}
@@ -327,9 +328,9 @@ export default function LetterDetailPage() {
           <span>{new Date(comment.createdAt).toLocaleString('ru-RU')}</span>
         </div>
         <p className="mt-2 text-sm text-gray-200 whitespace-pre-wrap">{comment.text}</p>
-        {comment.replies?.length > 0 && (
+        {replies.length > 0 && (
           <div className="mt-3 space-y-3">
-            {comment.replies.map((reply) => renderComment(reply, depth + 1))}
+            {replies.map((reply) => renderComment(reply, depth + 1))}
           </div>
         )}
       </div>
@@ -422,6 +423,7 @@ export default function LetterDetailPage() {
                   onChange={(e) => updateField('type', e.target.value)}
                   disabled={updating}
                   className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                  aria-label="Тип запроса"
                 >
                   <option value="">{'\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d'}</option>
                   {hasCustomType && <option value={typeValue}>{typeValue}</option>}

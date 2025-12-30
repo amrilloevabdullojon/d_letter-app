@@ -172,6 +172,7 @@ export function VirtualLetterTable({
             type="checkbox"
             className="rounded border-gray-600"
             onChange={() => {}}
+            aria-label="Выбрать все письма"
           />
         </div>
         <button
@@ -244,6 +245,7 @@ export function VirtualLetterTable({
                       onToggleSelect(letter.id)
                     }}
                     className="rounded border-gray-600"
+                    aria-label={`Выбрать письмо ${letter.number}`}
                   />
                 </div>
                 <div className="col-span-2 text-teal-300 font-mono truncate">
