@@ -20,6 +20,23 @@ const createLetterSchema = z.object({
   ownerId: z.string().optional(),
 })
 
+const resolveAutoOwnerId = async (org: string) => {
+  const normalizedOrg = org.trim()
+  if (!normalizedOrg) return null
+
+  const previous = await prisma.letter.findFirst({
+    where: {
+      org: { equals: normalizedOrg, mode: 'insensitive' },
+      ownerId: { not: null },
+      deletedAt: null,
+    },
+    orderBy: { createdAt: 'desc' },
+    select: { ownerId: true },
+  })
+
+  return previous?.ownerId || null
+}
+
 // GET /api/letters - получить все письма
 export async function GET(request: NextRequest) {
   try {
@@ -191,6 +208,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Рассчитать дедлайн (+7 рабочих дней если не указан)
+    const ownerId = data.ownerId || await resolveAutoOwnerId(data.org)
+
     const deadlineDate = data.deadlineDate || addWorkingDays(data.date, 7)
 
     // Создать письмо
@@ -205,7 +224,7 @@ export async function POST(request: NextRequest) {
         comment: data.comment,
         contacts: data.contacts,
         jiraLink: data.jiraLink,
-        ownerId: data.ownerId,
+        ownerId,
         status: 'NOT_REVIEWED',
         priority: 50,
       },
@@ -227,12 +246,17 @@ export async function POST(request: NextRequest) {
     })
 
     // Автоподписать владельца
-    if (letter.ownerId) {
-      await prisma.watcher.create({
-        data: {
+    const watcherIds = new Set<string>()
+    watcherIds.add(session.user.id)
+    if (letter.ownerId) watcherIds.add(letter.ownerId)
+
+    if (watcherIds.size > 0) {
+      await prisma.watcher.createMany({
+        data: Array.from(watcherIds).map((userId) => ({
           letterId: letter.id,
-          userId: letter.ownerId,
-        },
+          userId,
+        })),
+        skipDuplicates: true,
       })
     }
 
