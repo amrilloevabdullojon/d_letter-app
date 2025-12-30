@@ -175,6 +175,7 @@ h3,
 
 .panel-glass {
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .text-muted {
