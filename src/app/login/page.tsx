@@ -1,19 +1,21 @@
 'use client'
 
 import { signIn, useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { FileText } from 'lucide-react'
 
 export default function LoginPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const nextUrl = searchParams?.get('next') || '/'
 
   useEffect(() => {
     if (session) {
-      router.push('/')
+      router.push(nextUrl)
     }
-  }, [session, router])
+  }, [session, router, nextUrl])
 
   if (status === 'loading') {
     return (
@@ -35,7 +37,7 @@ export default function LoginPage() {
         </p>
 
         <button
-          onClick={() => signIn('google', { callbackUrl: '/' })}
+          onClick={() => signIn('google', { callbackUrl: nextUrl })}
           className="inline-flex items-center gap-3 px-6 py-3 bg-white hover:bg-gray-100 text-gray-800 font-medium rounded-lg transition"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
