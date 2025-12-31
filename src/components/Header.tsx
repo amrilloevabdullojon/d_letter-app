@@ -270,7 +270,7 @@ export function Header() {
 
       {/* Mobile menu */}
       <div
-        className={`fixed top-16 right-0 bottom-0 w-64 panel panel-glass border-l border-white/10 z-50 transform transition-transform duration-300 md:hidden ${
+        className={`fixed top-16 right-0 bottom-0 w-[85vw] max-w-[320px] panel panel-solid border-l border-white/10 z-50 transform transition-transform duration-300 md:hidden overflow-y-auto ${
           mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
