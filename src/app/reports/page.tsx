@@ -17,6 +17,7 @@ import {
   Timer,
   RefreshCw,
 } from 'lucide-react'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 interface Stats {
   summary: {
@@ -46,6 +47,7 @@ const STATUS_CHART_COLORS: Record<LetterStatus, string> = {
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession()
+  useAuthRedirect(authStatus)
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -81,7 +83,7 @@ export default function ReportsPage() {
     await loadStats(false)
     setRefreshing(false)
   }
-  if (authStatus === 'loading' || loading) {
+  if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />

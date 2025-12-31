@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 interface ProfileData {
   bio: string | null
@@ -149,6 +150,7 @@ const emptyProfile: ProfileData = {
 
 export default function ProfilePage() {
   const { data: session, status: authStatus, update: updateSession } = useSession()
+  useAuthRedirect(authStatus)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -294,7 +296,7 @@ export default function ProfilePage() {
     }
   }
 
-  if (authStatus === 'loading' || loading) {
+  if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
     return (
       <div className="min-h-screen app-shell flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />

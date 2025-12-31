@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 interface ProfileData {
   bio: string | null
@@ -124,6 +125,7 @@ const ROLE_BADGE_CLASSES: Record<UserSummary['role'], string> = {
 
 export default function UserProfilePage() {
   const { data: session, status: authStatus } = useSession()
+  useAuthRedirect(authStatus)
   const params = useParams<{ id: string }>()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<UserSummary | null>(null)
@@ -273,7 +275,7 @@ export default function UserProfilePage() {
     }
   }
 
-  if (authStatus === 'loading' || loading) {
+  if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
     return (
       <div className="min-h-screen app-shell flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />

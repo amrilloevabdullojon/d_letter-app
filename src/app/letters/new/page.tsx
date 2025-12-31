@@ -9,9 +9,11 @@ import Link from 'next/link'
 import { QuickLetterUpload } from '@/components/QuickLetterUpload'
 import { toast } from 'sonner'
 import { ALLOWED_FILE_EXTENSIONS, LETTER_TYPES, MAX_FILE_SIZE, MAX_FILE_SIZE_LABEL } from '@/lib/constants'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 export default function NewLetterPage() {
   const { data: session, status } = useSession()
+  useAuthRedirect(status)
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')

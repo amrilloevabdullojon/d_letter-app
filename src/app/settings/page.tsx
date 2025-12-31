@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { hasPermission } from '@/lib/permissions'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 interface User {
   id: string
@@ -210,6 +211,7 @@ const controlBase = 'rounded border-white/20 bg-white/5'
 
 export default function SettingsPage() {
   const { data: session, status: authStatus } = useSession()
+  useAuthRedirect(authStatus)
   const router = useRouter()
   const isSuperAdmin = session?.user.role === 'SUPERADMIN'
   const [users, setUsers] = useState<User[]>([])
@@ -1130,7 +1132,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (authStatus === 'loading' || loading) {
+  if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
     return (
       <div className="min-h-screen app-shell flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />

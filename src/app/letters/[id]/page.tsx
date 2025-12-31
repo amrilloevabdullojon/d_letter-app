@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 interface CommentItem {
   id: string
@@ -117,6 +118,7 @@ const STATUSES: LetterStatus[] = [
 
 export default function LetterDetailPage() {
   const { data: session, status: authStatus } = useSession()
+  useAuthRedirect(authStatus)
   const params = useParams()
   const router = useRouter()
 
@@ -149,10 +151,10 @@ export default function LetterDetailPage() {
   }, [params.id, router])
 
   useEffect(() => {
-    if (session && params.id) {
+    if (authStatus === 'authenticated' && params.id) {
       loadLetter()
     }
-  }, [session, params.id, loadLetter])
+  }, [authStatus, params.id, loadLetter])
 
   useEffect(() => {
     if (letter?.applicantAccessToken && typeof window !== 'undefined') {
@@ -349,7 +351,7 @@ export default function LetterDetailPage() {
     }
   }
 
-  if (authStatus === 'loading' || loading) {
+  if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
