@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 interface Letter {
   id: string
@@ -102,6 +103,7 @@ type SortField = 'created' | 'deadline' | 'date' | 'number' | 'org' | 'status' |
 
 function LettersPageContent() {
   const { data: session, status: authStatus } = useSession()
+  useAuthRedirect(authStatus)
   const searchParams = useSearchParams()
   const router = useRouter()
 
