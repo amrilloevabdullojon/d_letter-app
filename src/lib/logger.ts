@@ -74,6 +74,7 @@ const isDev = process.env.NODE_ENV === 'development'
  * }
  * ```
  */
+/* eslint-disable no-console */
 export const logger = {
   debug: (context: string, message: string, meta?: Record<string, unknown>) => {
     if (!isDev) return
@@ -97,3 +98,4 @@ export const logger = {
     console.error(formatLog(entry))
   },
 }
+/* eslint-enable no-console */
