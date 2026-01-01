@@ -26,22 +26,39 @@ interface SentryBreadcrumb {
   data?: Record<string, unknown>
 }
 
-// Check if Sentry is available
-const isSentryAvailable = (): boolean => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('@sentry/nextjs')
-    return true
-  } catch {
-    return false
-  }
+// Sentry is an optional dependency - these functions are no-ops if not installed
+// To enable: npm install @sentry/nextjs && set SENTRY_DSN env var
+
+interface SentryLike {
+  init: (options: Record<string, unknown>) => void
+  captureException: (error: Error) => void
+  captureMessage: (message: string, level?: string) => void
+  setUser: (user: SentryUser | null) => void
+  addBreadcrumb: (breadcrumb: SentryBreadcrumb) => void
+  setTag: (key: string, value: string) => void
+  startTransaction: (context: { name: string; op: string }) => unknown
+  withScope: (
+    callback: (scope: { setContext: (key: string, value: unknown) => void }) => void
+  ) => void
 }
 
-// Get Sentry module if available
-const getSentry = () => {
-  if (!isSentryAvailable()) return null
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require('@sentry/nextjs')
+let SentryModule: SentryLike | null = null
+let sentryLoadAttempted = false
+
+// Try to load Sentry dynamically
+const getSentry = (): SentryLike | null => {
+  if (sentryLoadAttempted) return SentryModule
+  sentryLoadAttempted = true
+
+  try {
+    // Dynamic import for optional dependency
+    // eslint-disable-next-line no-eval
+    SentryModule = eval('require')('@sentry/nextjs') as SentryLike
+  } catch {
+    SentryModule = null
+  }
+
+  return SentryModule
 }
 
 /**
@@ -69,7 +86,7 @@ export function captureException(error: Error, context?: SentryContext) {
 
   if (Sentry) {
     if (context) {
-      Sentry.withScope((scope: { setContext: (key: string, value: unknown) => void }) => {
+      Sentry.withScope((scope) => {
         scope.setContext('additional', context)
         Sentry.captureException(error)
       })
@@ -80,6 +97,7 @@ export function captureException(error: Error, context?: SentryContext) {
 
   // Always log to console in development
   if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
     console.error('[Sentry]', error, context)
   }
 }
@@ -96,7 +114,7 @@ export function captureMessage(
 
   if (Sentry) {
     if (context) {
-      Sentry.withScope((scope: { setContext: (key: string, value: unknown) => void }) => {
+      Sentry.withScope((scope) => {
         scope.setContext('additional', context)
         Sentry.captureMessage(message, level)
       })
@@ -106,6 +124,7 @@ export function captureMessage(
   }
 
   if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
     console.log(`[Sentry:${level}]`, message, context)
   }
 }
