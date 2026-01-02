@@ -6,6 +6,7 @@ import { VirtualLetterList } from '@/components/VirtualLetterList'
 import { StatusBadge } from '@/components/StatusBadge'
 import { CardsSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LetterPreview } from '@/components/LetterPreview'
+import { BulkCreateLetters } from '@/components/BulkCreateLetters'
 import { useKeyboard } from '@/hooks/useKeyboard'
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -39,6 +40,7 @@ import {
   FileText,
   Users,
   Star,
+  ListPlus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -124,6 +126,7 @@ function LettersPageContent() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
   const [isMobile, setIsMobile] = useState(false)
+  const [showBulkCreate, setShowBulkCreate] = useState(false)
 
   // Массовый выбор
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -198,7 +201,7 @@ function LettersPageContent() {
     onSelectAll: useCallback(() => {
       toggleSelectAll()
     }, [toggleSelectAll]),
-    enabled: !previewId,
+    enabled: !previewId && !showBulkCreate,
   })
 
   useEffect(() => {
@@ -209,6 +212,27 @@ function LettersPageContent() {
     media.addEventListener('change', update)
     return () => media.removeEventListener('change', update)
   }, [])
+
+  useEffect(() => {
+    if (!showBulkCreate) {
+      document.body.style.overflow = ''
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowBulkCreate(false)
+      }
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showBulkCreate])
 
   useEffect(() => {
     if (isMobile && viewMode !== 'cards') {
@@ -276,6 +300,11 @@ function LettersPageContent() {
       console.error('Failed to load users:', error)
     }
   }, [])
+
+  const handleBulkCreateSuccess = useCallback(() => {
+    setShowBulkCreate(false)
+    loadLetters()
+  }, [loadLetters])
 
   useEffect(() => {
     if (session) {
@@ -416,6 +445,14 @@ function LettersPageContent() {
               <Download className="w-5 h-5" />
               Экспорт
             </a>
+            <button
+              type="button"
+              onClick={() => setShowBulkCreate(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition btn-secondary w-full sm:w-auto"
+            >
+              <ListPlus className="w-5 h-5" />
+              ???????? ???????? ?????
+            </button>
             <Link
               href="/letters/new"
               className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition btn-primary w-full sm:w-auto"
@@ -926,6 +963,28 @@ function LettersPageContent() {
         letterId={previewId}
         onClose={() => setPreviewId(null)}
       />
+
+      {showBulkCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowBulkCreate(false)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Массовое создание писем"
+            className="relative z-10 max-h-[90vh] w-full max-w-6xl overflow-auto px-4 sm:px-6"
+          >
+            <BulkCreateLetters
+              onClose={() => setShowBulkCreate(false)}
+              onSuccess={handleBulkCreateSuccess}
+              pageHref="/letters/bulk"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
