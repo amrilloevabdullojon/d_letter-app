@@ -3,9 +3,16 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import { resolveProfileAssetUrl } from '@/lib/profile-assets'
+import { RATE_LIMIT_WINDOW_MINUTES, MAX_LOGIN_ATTEMPTS } from '@/lib/constants'
+import type { JWT } from 'next-auth/jwt'
+import type { Role } from '@prisma/client'
 
+/**
+ * NextAuth configuration with JWT strategy for better performance.
+ * JWT tokens cache user role and avatar, reducing database queries.
+ */
 export const authOptions: AuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
+  adapter: PrismaAdapter(prisma) as ReturnType<typeof PrismaAdapter>,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -13,6 +20,11 @@ export const authOptions: AuthOptions = {
       allowDangerousEmailAccountLinking: true,
     }),
   ],
+  // Use JWT strategy for better performance (no DB query on each request)
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   callbacks: {
     async signIn({ user }) {
       if (!user.email) {
@@ -21,7 +33,7 @@ export const authOptions: AuthOptions = {
 
       const email = user.email.toLowerCase()
       const now = new Date()
-      const rateWindowStart = new Date(now.getTime() - 15 * 60 * 1000)
+      const rateWindowStart = new Date(now.getTime() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000)
 
       const recentFailures = await prisma.loginAudit.count({
         where: {
@@ -31,7 +43,7 @@ export const authOptions: AuthOptions = {
         },
       })
 
-      if (recentFailures >= 5) {
+      if (recentFailures >= MAX_LOGIN_ATTEMPTS) {
         await prisma.loginAudit.create({
           data: {
             email,
@@ -86,24 +98,55 @@ export const authOptions: AuthOptions = {
 
       return isAllowed
     },
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id
-        // Получить роль пользователя
+
+    async jwt({ token, user, trigger }) {
+      // Initial sign in - fetch user data
+      if (user) {
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
+          select: {
+            id: true,
+            role: true,
+            profile: { select: { avatarUrl: true, updatedAt: true } },
+          },
+        })
+
+        token.id = user.id
+        token.role = dbUser?.role || 'EMPLOYEE'
+        token.avatarUrl = resolveProfileAssetUrl(
+          dbUser?.profile?.avatarUrl ?? null,
+          dbUser?.profile?.updatedAt ?? null
+        )
+      }
+
+      // Refresh token data on update trigger (e.g., after profile change)
+      if (trigger === 'update' && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
           select: {
             role: true,
             profile: { select: { avatarUrl: true, updatedAt: true } },
           },
         })
-        session.user.role = dbUser?.role || 'EMPLOYEE'
-        const avatarUrl = resolveProfileAssetUrl(
-          dbUser?.profile?.avatarUrl ?? null,
-          dbUser?.profile?.updatedAt ?? null
-        )
-        if (avatarUrl) {
-          session.user.image = avatarUrl
+
+        if (dbUser) {
+          token.role = dbUser.role
+          token.avatarUrl = resolveProfileAssetUrl(
+            dbUser.profile?.avatarUrl ?? null,
+            dbUser.profile?.updatedAt ?? null
+          )
+        }
+      }
+
+      return token
+    },
+
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.id as string
+        session.user.role = (token.role as Role) || 'EMPLOYEE'
+        if (token.avatarUrl) {
+          session.user.image = token.avatarUrl as string
         }
       }
       return session
@@ -112,4 +155,13 @@ export const authOptions: AuthOptions = {
   pages: {
     signIn: '/login',
   },
+}
+
+// Extend JWT type
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id?: string
+    role?: Role
+    avatarUrl?: string | null
+  }
 }

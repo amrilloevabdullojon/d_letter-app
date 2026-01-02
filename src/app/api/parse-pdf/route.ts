@@ -48,8 +48,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Отправляем PDF напрямую в Gemini AI
+    // eslint-disable-next-line no-console
     console.log('Sending PDF to Gemini AI...')
     const aiData = await extractLetterDataFromPdf(base64)
+    // eslint-disable-next-line no-console
     console.log('AI response:', JSON.stringify(aiData, null, 2))
 
     const normalizeNumber = (value: string | null): string | null => {
@@ -106,9 +108,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('PDF parse error:', error)
-    return NextResponse.json({
-      error: 'Ошибка при обработке PDF',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Ошибка при обработке PDF',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
