@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   Plus,
   Trash2,
@@ -20,6 +21,7 @@ import {
   Upload,
   Bot,
   Paperclip,
+  ArrowUpRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { LETTER_TYPES } from '@/lib/constants'
@@ -64,9 +66,10 @@ interface ParsedPdfData {
 interface BulkCreateLettersProps {
   onClose?: () => void
   onSuccess?: (letters: unknown[]) => void
+  pageHref?: string
 }
 
-export function BulkCreateLetters({ onClose, onSuccess }: BulkCreateLettersProps) {
+export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLettersProps) {
   const router = useRouter()
   const [rows, setRows] = useState<LetterRow[]>([createEmptyRow()])
   const [creating, setCreating] = useState(false)
@@ -464,6 +467,15 @@ export function BulkCreateLetters({ onClose, onSuccess }: BulkCreateLettersProps
               <Download className="h-4 w-4" />
               Excel
             </button>
+          )}
+          {pageHref && (
+            <Link
+              href={pageHref}
+              className="flex items-center gap-1 rounded-lg bg-gray-700 px-3 py-1.5 text-sm text-white transition hover:bg-gray-600"
+            >
+              <ArrowUpRight className="h-4 w-4" />
+              Открыть на странице
+            </Link>
           )}
           {onClose && (
             <button
