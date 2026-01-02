@@ -366,16 +366,9 @@ export default function LetterDetailPage() {
     const result = await addComment(optimisticComment)
     if (result) {
       setCommentText('')
-      toast.success('Комментарий добавлен')
-    }
-  }    } catch (error) {
-      console.error('Failed to add comment:', error)
-      toast.error('Ошибка добавления комментария')
-    } finally {
-      setCommentSubmitting(false)
+      toast.success('??????????? ????????')
     }
   }
-
   const toggleFavorite = async () => {
     if (!letter) return
 
