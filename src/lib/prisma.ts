@@ -4,13 +4,16 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// Getter для ленивого доступа к prisma (избегаем циклической зависимости)
+const getPrisma = () => prisma
+
 const prismaClientSingleton = () => {
   const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   })
 
   // Middleware для автоматического логирования изменений Letter
-  client.$use(letterChangeLogMiddleware)
+  client.$use(createLetterChangeLogMiddleware(client))
 
   return client
 }
@@ -20,92 +23,94 @@ export const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 /**
- * Middleware для автоматической записи изменений Letter в LetterChangeLog.
+ * Создаёт middleware для автоматической записи изменений Letter в LetterChangeLog.
  * Эти записи затем синхронизируются с Google Sheets фоновым процессом.
  */
-const letterChangeLogMiddleware: Prisma.Middleware = async (params, next) => {
-  // Только для модели Letter
-  if (params.model !== 'Letter') {
-    return next(params)
-  }
+function createLetterChangeLogMiddleware(client: PrismaClient): Prisma.Middleware {
+  return async (params, next) => {
+    // Только для модели Letter
+    if (params.model !== 'Letter') {
+      return next(params)
+    }
 
-  const action = params.action
+    const action = params.action
 
-  // CREATE
-  if (action === 'create') {
-    const result = await next(params)
+    // CREATE
+    if (action === 'create') {
+      const result = await next(params)
 
-    // Записываем создание в лог (асинхронно, не блокируем)
-    logLetterChange({
-      letterId: result.id,
-      action: 'CREATE',
-      userId: params.args.data?.creatorId || null,
-    }).catch(() => {
-      // Игнорируем ошибки логирования
-    })
+      // Записываем создание в лог (асинхронно, не блокируем)
+      logLetterChange(client, {
+        letterId: result.id,
+        action: 'CREATE',
+        userId: params.args.data?.creatorId || null,
+      }).catch(() => {
+        // Игнорируем ошибки логирования
+      })
 
-    return result
-  }
+      return result
+    }
 
-  // UPDATE (включая soft delete)
-  if (action === 'update') {
-    // Получаем старые данные перед обновлением
-    const oldData = await prisma.letter.findUnique({
-      where: params.args.where,
-      select: getLetterSyncFields(),
-    })
+    // UPDATE (включая soft delete)
+    if (action === 'update') {
+      // Получаем старые данные перед обновлением
+      const oldData = await client.letter.findUnique({
+        where: params.args.where,
+        select: getLetterSyncFields(),
+      })
 
-    const result = await next(params)
+      const result = await next(params)
 
-    if (oldData && result) {
-      // Проверяем soft delete (deletedAt изменился с null на дату)
-      const wasSoftDeleted = oldData.deletedAt === null && result.deletedAt !== null
+      if (oldData && result) {
+        // Проверяем soft delete (deletedAt изменился с null на дату)
+        const wasSoftDeleted = oldData.deletedAt === null && result.deletedAt !== null
 
-      if (wasSoftDeleted) {
-        // Логируем как DELETE
-        logLetterChange({
-          letterId: result.id,
-          action: 'DELETE',
-        }).catch(() => {})
-      } else {
-        // Определяем изменённые поля
-        const changes = detectChanges(oldData, result)
-
-        for (const change of changes) {
-          logLetterChange({
+        if (wasSoftDeleted) {
+          // Логируем как DELETE
+          logLetterChange(client, {
             letterId: result.id,
-            action: 'UPDATE',
-            field: change.field,
-            oldValue: change.oldValue,
-            newValue: change.newValue,
+            action: 'DELETE',
           }).catch(() => {})
+        } else {
+          // Определяем изменённые поля
+          const changes = detectChanges(oldData, result)
+
+          for (const change of changes) {
+            logLetterChange(client, {
+              letterId: result.id,
+              action: 'UPDATE',
+              field: change.field,
+              oldValue: change.oldValue,
+              newValue: change.newValue,
+            }).catch(() => {})
+          }
         }
       }
+
+      return result
     }
 
-    return result
-  }
+    // DELETE (hard delete)
+    if (action === 'delete') {
+      const toDelete = await client.letter.findUnique({
+        where: params.args.where,
+        select: { id: true },
+      })
 
-  // DELETE (hard delete)
-  if (action === 'delete') {
-    const toDelete = await prisma.letter.findUnique({
-      where: params.args.where,
-      select: { id: true },
-    })
+      const result = await next(params)
 
-    const result = await next(params)
+      if (toDelete) {
+        logLetterChange(client, {
+          letterId: toDelete.id,
+          action: 'DELETE',
+        }).catch(() => {})
+      }
 
-    if (toDelete) {
-      logLetterChange({
-        letterId: toDelete.id,
-        action: 'DELETE',
-      }).catch(() => {})
+      return result
     }
 
-    return result
+    return next(params)
   }
-
-  return next(params)
 }
 
 /**
@@ -199,16 +204,19 @@ function valueToString(value: unknown): string | null {
 /**
  * Записывает изменение в LetterChangeLog
  */
-async function logLetterChange(data: {
-  letterId: string
-  action: 'CREATE' | 'UPDATE' | 'DELETE'
-  field?: string
-  oldValue?: string | null
-  newValue?: string | null
-  userId?: string | null
-}) {
+async function logLetterChange(
+  client: PrismaClient,
+  data: {
+    letterId: string
+    action: 'CREATE' | 'UPDATE' | 'DELETE'
+    field?: string
+    oldValue?: string | null
+    newValue?: string | null
+    userId?: string | null
+  }
+) {
   try {
-    await prisma.letterChangeLog.create({
+    await client.letterChangeLog.create({
       data: {
         letterId: data.letterId,
         action: data.action,
@@ -232,7 +240,7 @@ async function logLetterChange(data: {
  * Получить несинхронизированные изменения (для sync worker)
  */
 export async function getPendingChanges(limit = 100) {
-  return prisma.letterChangeLog.findMany({
+  return getPrisma().letterChangeLog.findMany({
     where: {
       syncStatus: { in: ['PENDING', 'FAILED'] },
       retryCount: { lt: 5 }, // Максимум 5 попыток
@@ -246,7 +254,7 @@ export async function getPendingChanges(limit = 100) {
  * Отметить изменения как синхронизированные
  */
 export async function markChangesSynced(ids: string[]) {
-  return prisma.letterChangeLog.updateMany({
+  return getPrisma().letterChangeLog.updateMany({
     where: { id: { in: ids } },
     data: {
       syncStatus: 'SYNCED',
@@ -259,7 +267,7 @@ export async function markChangesSynced(ids: string[]) {
  * Отметить изменение как failed
  */
 export async function markChangeFailed(id: string, error: string) {
-  return prisma.letterChangeLog.update({
+  return getPrisma().letterChangeLog.update({
     where: { id },
     data: {
       syncStatus: 'FAILED',
@@ -273,14 +281,15 @@ export async function markChangeFailed(id: string, error: string) {
  * Получить статистику синхронизации
  */
 export async function getSyncStats() {
+  const db = getPrisma()
   const [pending, failed, synced, total] = await Promise.all([
-    prisma.letterChangeLog.count({ where: { syncStatus: 'PENDING' } }),
-    prisma.letterChangeLog.count({ where: { syncStatus: 'FAILED' } }),
-    prisma.letterChangeLog.count({ where: { syncStatus: 'SYNCED' } }),
-    prisma.letterChangeLog.count(),
+    db.letterChangeLog.count({ where: { syncStatus: 'PENDING' } }),
+    db.letterChangeLog.count({ where: { syncStatus: 'FAILED' } }),
+    db.letterChangeLog.count({ where: { syncStatus: 'SYNCED' } }),
+    db.letterChangeLog.count(),
   ])
 
-  const lastSynced = await prisma.letterChangeLog.findFirst({
+  const lastSynced = await db.letterChangeLog.findFirst({
     where: { syncStatus: 'SYNCED' },
     orderBy: { syncedAt: 'desc' },
     select: { syncedAt: true },
