@@ -171,7 +171,8 @@ export async function POST(request: NextRequest) {
     let savedFiles = 0
 
     if (!isSpam) {
-      for (const [index, file] of files.entries()) {
+      for (let index = 0; index < files.length; index++) {
+        const file = files[index]
         if (!file || !(file instanceof File)) continue
 
         if (file.size > MAX_FILE_SIZE) {

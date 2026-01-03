@@ -380,7 +380,7 @@ export default function SettingsPage() {
     } finally {
       setApprovalActionId(null)
     }
-  }, [loadApprovals, loadUsers])
+  }, [loadApprovals, loadUsers, toast])
 
   const buildLoginAuditUrl = useCallback((cursor?: string | null) => {
     const params = new URLSearchParams()
@@ -549,7 +549,7 @@ export default function SettingsPage() {
     } finally {
       setSavingId(null)
     }
-  }, [editData, editingId, loadApprovals])
+  }, [editData, editingId, loadApprovals, toast])
 
   const hasEditChanges =
     !!editingId &&
@@ -1098,7 +1098,7 @@ export default function SettingsPage() {
     } finally {
       setBulkLoading(false)
     }
-  }, [bulkAction, bulkValue, selectedIds, users, adminCount, superAdminCount, isSuperAdmin, loadUsers, loadApprovals, clearSelection])
+  }, [bulkAction, bulkValue, selectedIds, users, adminCount, superAdminCount, isSuperAdmin, loadUsers, loadApprovals, clearSelection, toast])
 
   const getStatusBadge = (status: SyncLog['status']) => {
     switch (status) {
