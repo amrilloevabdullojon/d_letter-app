@@ -104,7 +104,7 @@ export function Header() {
   const isActive = (path: string) => pathname === path
 
   const navLinkClass = (path: string) =>
-    `flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+    `flex items-center gap-2 px-3 py-2 rounded-lg transition whitespace-nowrap text-sm lg:text-base ${
       isActive(path)
         ? 'bg-teal-400/15 text-teal-200 border border-teal-400/20'
         : 'text-slate-200/80 hover:bg-white/5 hover:text-white'
@@ -170,12 +170,12 @@ export function Header() {
                     disabled={syncing}
                     aria-haspopup="menu"
                     aria-expanded={syncMenuOpen}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition whitespace-nowrap text-sm lg:text-base ${
                       syncing ? 'opacity-50' : 'text-slate-200/80 hover:bg-white/5 hover:text-white'
                     }`}
                   >
                     <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                    <span className="hidden lg:inline">
+                    <span className="hidden lg:inline whitespace-nowrap">
                       {syncing ? '\u0421\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u044f...' : 'Google Sheets'}
                     </span>
                     <ChevronDown className={`w-4 h-4 transition ${syncMenuOpen ? 'rotate-180' : ''}`} />

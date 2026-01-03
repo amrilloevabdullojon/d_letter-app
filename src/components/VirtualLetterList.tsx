@@ -193,7 +193,7 @@ export function VirtualLetterTable({
 
   return (
     <div className="panel panel-glass rounded-2xl overflow-hidden">
-      <div className="grid grid-cols-[40px_140px_minmax(240px,1fr)_120px_180px_140px_140px_160px_48px] gap-2 px-4 py-3 bg-white/5 text-sm text-slate-300/80 border-b border-white/10">
+      <div className="grid grid-cols-[40px_140px_minmax(240px,1fr)_120px_180px_140px_140px_160px] gap-2 px-4 py-3 pr-12 bg-white/5 text-sm text-slate-300/80 border-b border-white/10">
         <div className="flex items-center">
           <button
             onClick={onToggleSelectAll}
@@ -247,7 +247,6 @@ export function VirtualLetterTable({
         <div className="text-left text-sm font-medium text-slate-300/70">
           {'\u0418\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044c'}
         </div>
-        <div />
       </div>
 
       <div ref={parentRef} className="h-[calc(100vh-350px)] overflow-auto virtual-scroll">
@@ -261,7 +260,7 @@ export function VirtualLetterTable({
             return (
               <div
                 key={virtualRow.key}
-                className={`virtual-row grid grid-cols-[40px_140px_minmax(240px,1fr)_120px_180px_140px_140px_160px_48px] gap-2 px-4 py-3 border-b border-white/5 text-sm cursor-pointer app-row ${
+                className={`virtual-row group relative grid grid-cols-[40px_140px_minmax(240px,1fr)_120px_180px_140px_140px_160px] gap-2 px-4 py-3 pr-12 border-b border-white/5 text-sm cursor-pointer app-row ${
                   isSelected ? 'app-row-selected' : ''
                 } ${isFocused ? 'ring-2 ring-teal-400/40 ring-inset' : ''}`}
                 style={{
@@ -308,9 +307,12 @@ export function VirtualLetterTable({
                 <div>
                   <StatusBadge status={letter.status} size="sm" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   {letter.type && (
-                    <span className="text-xs px-2 py-1 rounded-full data-pill">
+                    <span
+                      className="inline-flex max-w-[140px] truncate text-xs px-2 py-1 rounded-full data-pill"
+                      title={letter.type}
+                    >
                       {letter.type}
                     </span>
                   )}
@@ -318,19 +320,17 @@ export function VirtualLetterTable({
                 <div className="text-slate-300/70 text-sm truncate">
                   {letter.owner?.name || letter.owner?.email?.split('@')[0] || '-'}
                 </div>
-                <div className="flex items-center justify-end">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onPreview(letter.id)
-                    }}
-                    className="p-1 text-slate-400 hover:text-white transition"
-                    title="\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440"
-                    aria-label="\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onPreview(letter.id)
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white transition bg-white/5 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                  title="\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440"
+                  aria-label="\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
               </div>
             )
           })}
