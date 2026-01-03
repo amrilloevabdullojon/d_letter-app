@@ -124,7 +124,7 @@ const ROLE_BADGE_CLASSES: Record<UserSummary['role'], string> = {
 }
 
 export default function UserProfilePage() {
-  const { error: toastError } = useToast()
+  const { success: toastSuccess, error: toastError } = useToast()
   const { data: session, status: authStatus } = useSession()
   useAuthRedirect(authStatus)
   const params = useParams<{ id: string }>()
@@ -244,11 +244,11 @@ export default function UserProfilePage() {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'Failed to assign letter')
       }
-      toast.success('\u041f\u0438\u0441\u044c\u043c\u043e \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043e')
+      toastSuccess('\u041f\u0438\u0441\u044c\u043c\u043e \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043e')
       setActionOpen(null)
     } catch (error) {
       console.error('Failed to assign letter:', error)
-      toast.error('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u043f\u0438\u0441\u044c\u043c\u043e')
+      toastError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u043f\u0438\u0441\u044c\u043c\u043e')
     } finally {
       setActionSubmitting(false)
     }
@@ -267,11 +267,11 @@ export default function UserProfilePage() {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'Failed to send comment')
       }
-      toast.success('\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d')
+      toastSuccess('\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d')
       setActionOpen(null)
     } catch (error) {
       console.error('Failed to send comment:', error)
-      toast.error('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439')
+      toastError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439')
     } finally {
       setActionSubmitting(false)
     }
