@@ -2,8 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { Header } from '@/components/Header'
-import { VirtualLetterList } from '@/components/VirtualLetterList'
-import { StatusBadge } from '@/components/StatusBadge'
+import { VirtualLetterList, VirtualLetterTable } from '@/components/VirtualLetterList'
 import { CardsSkeleton, TableSkeleton } from '@/components/Skeleton'
 import { LetterPreview } from '@/components/LetterPreview'
 import { BulkCreateLetters } from '@/components/BulkCreateLetters'
@@ -16,7 +15,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { LetterStatus } from '@prisma/client'
-import { STATUS_LABELS, formatDate, getDaysUntilDeadline, pluralizeDays, isDoneStatus } from '@/lib/utils'
+import { STATUS_LABELS } from '@/lib/utils'
 import { LETTER_TYPES } from '@/lib/constants'
 import {
   Search,
@@ -27,9 +26,6 @@ import {
   Loader2,
   LayoutGrid,
   List,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   AlertTriangle,
   Clock,
   CheckCircle,
@@ -40,7 +36,6 @@ import {
   UserPlus,
   X,
   Download,
-  Eye,
   Keyboard,
   FileText,
   Users,
@@ -417,29 +412,6 @@ function LettersPageContent() {
     runBulkAction()
   }, [bulkAction, confirmDialog, runBulkAction, selectedIds])
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortBy !== field) return <ArrowUpDown className="w-4 h-4 text-slate-400/70" />
-    return sortOrder === 'asc'
-      ? <ArrowUp className="w-4 h-4 text-teal-300" />
-      : <ArrowDown className="w-4 h-4 text-teal-300" />
-  }
-
-  const getDeadlineInfo = (letter: Letter) => {
-    const daysLeft = getDaysUntilDeadline(letter.deadlineDate)
-    const isDone = isDoneStatus(letter.status)
-
-    if (isDone) {
-      return { text: 'Выполнено', className: 'text-teal-300' }
-    }
-    if (daysLeft < 0) {
-      return { text: `Просрочено на ${Math.abs(daysLeft)} ${pluralizeDays(daysLeft)}`, className: 'text-red-400' }
-    }
-    if (daysLeft <= 2) {
-      return { text: `${daysLeft} ${pluralizeDays(daysLeft)}`, className: 'text-yellow-400' }
-    }
-    return { text: `${daysLeft} ${pluralizeDays(daysLeft)}`, className: 'text-slate-300/70' }
-  }
-
   if (authStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-transparent">
@@ -766,188 +738,18 @@ function LettersPageContent() {
             onToggleSelect={toggleSelect}
           />
         ) : (
-          /* Table View */
-          <div className="panel panel-glass rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-white/5 backdrop-blur border-b border-white/10">
-                    <th className="px-4 py-3 text-left w-10">
-                      <button
-                        onClick={toggleSelectAll}
-                        className={`p-1 rounded ${
-                          selectedIds.size === letters.length && letters.length > 0
-                            ? 'text-teal-300'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                        aria-label="Выбрать все письма"
-                      >
-                        {selectedIds.size === letters.length && letters.length > 0 ? (
-                          <CheckSquare className="w-5 h-5" />
-                        ) : (
-                          <Square className="w-5 h-5" />
-                        )}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left">
-                      <button
-                        onClick={() => handleSort('number')}
-                        className="flex items-center gap-1 text-sm font-medium text-slate-300/80 hover:text-white"
-                      >
-                        Номер
-                        <SortIcon field="number" />
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left">
-                      <button
-                        onClick={() => handleSort('org')}
-                        className="flex items-center gap-1 text-sm font-medium text-slate-300/80 hover:text-white"
-                      >
-                        Организация
-                        <SortIcon field="org" />
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left">
-                      <button
-                        onClick={() => handleSort('date')}
-                        className="flex items-center gap-1 text-sm font-medium text-slate-300/80 hover:text-white"
-                      >
-                        Дата
-                        <SortIcon field="date" />
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left">
-                      <button
-                        onClick={() => handleSort('deadline')}
-                        className="flex items-center gap-1 text-sm font-medium text-slate-300/80 hover:text-white"
-                      >
-                        Дедлайн
-                        <SortIcon field="deadline" />
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left">
-                      <button
-                        onClick={() => handleSort('status')}
-                        className="flex items-center gap-1 text-sm font-medium text-slate-300/80 hover:text-white"
-                      >
-                        Статус
-                        <SortIcon field="status" />
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-300/70">
-                      Тип
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-300/70">
-                      Ответственный
-                    </th>
-                    <th className="px-4 py-3 w-10"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 stagger-animation">
-                  {letters.map((letter, index) => {
-                    const deadlineInfo = getDeadlineInfo(letter)
-                    const isSelected = selectedIds.has(letter.id)
-                    const isFocused = index === focusedIndex
-                    return (
-                      <tr
-                        key={letter.id}
-                        className={`app-row cursor-pointer ${isSelected ? 'app-row-selected' : ''} ${isFocused ? 'ring-2 ring-teal-400/40 ring-inset' : ''}`}
-                      >
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleSelect(letter.id)
-                            }}
-                            className={`p-1 rounded ${
-                              isSelected
-                                ? 'text-teal-300'
-                                : 'text-slate-400 hover:text-white'
-                            }`}
-                            aria-label={`Выбрать письмо ${letter.number}`}
-                          >
-                            {isSelected ? (
-                              <CheckSquare className="w-5 h-5" />
-                            ) : (
-                              <Square className="w-5 h-5" />
-                            )}
-                          </button>
-                        </td>
-                        <td
-                          className="px-4 py-3"
-                          onClick={() => router.push(`/letters/${letter.id}`)}
-                        >
-                          <span className="font-mono text-teal-300">
-                            №{letter.number}
-                          </span>
-                        </td>
-                        <td
-                          className="px-4 py-3"
-                          onClick={() => router.push(`/letters/${letter.id}`)}
-                        >
-                          <div className="max-w-xs truncate text-white">
-                            {letter.org}
-                          </div>
-                        </td>
-                        <td
-                          className="px-4 py-3 text-slate-300/70 text-sm"
-                          onClick={() => router.push(`/letters/${letter.id}`)}
-                        >
-                          {formatDate(letter.date)}
-                        </td>
-                        <td
-                          className="px-4 py-3"
-                          onClick={() => router.push(`/letters/${letter.id}`)}
-                        >
-                          <div className="text-sm">
-                            <div className="text-slate-300/70">{formatDate(letter.deadlineDate)}</div>
-                            <div className={`text-xs ${deadlineInfo.className}`}>
-                              {deadlineInfo.text}
-                            </div>
-                          </div>
-                        </td>
-                        <td
-                          className="px-4 py-3"
-                          onClick={() => router.push(`/letters/${letter.id}`)}
-                        >
-                          <StatusBadge status={letter.status} size="sm" />
-                        </td>
-                        <td
-                          className="px-4 py-3"
-                          onClick={() => router.push(`/letters/${letter.id}`)}
-                        >
-                          {letter.type && (
-                            <span className="text-xs px-2 py-1 rounded-full data-pill">
-                              {letter.type}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className="px-4 py-3 text-slate-300/70 text-sm"
-                          onClick={() => router.push(`/letters/${letter.id}`)}
-                        >
-                          {letter.owner?.name || letter.owner?.email?.split('@')[0] || '-'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setPreviewId(letter.id)
-                            }}
-                            className="p-1 text-slate-400 hover:text-white transition"
-                            title="Быстрый просмотр"
-                            aria-label="Быстрый просмотр"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <VirtualLetterTable
+            letters={letters}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAll}
+            onSort={handleSort}
+            sortField={sortBy}
+            sortDirection={sortOrder}
+            focusedIndex={focusedIndex}
+            onRowClick={(id) => router.push(`/letters/${id}`)}
+            onPreview={(id) => setPreviewId(id)}
+          />
         )}
 
         {/* Pagination */}

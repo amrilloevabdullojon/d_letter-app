@@ -96,6 +96,26 @@ export function useFetch<T = unknown>(
   const abortControllerRef = useRef<AbortController | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const isMountedRef = useRef(true)
+  const fetchOptionsRef = useRef(fetchOptions)
+  const transformRef = useRef(transform)
+  const onSuccessRef = useRef(onSuccess)
+  const onErrorRef = useRef(onError)
+
+  useEffect(() => {
+    fetchOptionsRef.current = fetchOptions
+  }, [fetchOptions])
+
+  useEffect(() => {
+    transformRef.current = transform
+  }, [transform])
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess
+  }, [onSuccess])
+
+  useEffect(() => {
+    onErrorRef.current = onError
+  }, [onError])
 
   const fetchData = useCallback(async () => {
     if (!url || skip) return
@@ -108,7 +128,7 @@ export function useFetch<T = unknown>(
 
     try {
       const result = await fetchWithRetry<T>(url, {
-        ...fetchOptions,
+        ...fetchOptionsRef.current,
         signal: abortControllerRef.current.signal,
         maxRetries,
         timeout,
@@ -116,7 +136,7 @@ export function useFetch<T = unknown>(
 
       if (!isMountedRef.current) return
 
-      const data = transform ? transform(result) : result
+      const data = transformRef.current ? transformRef.current(result) : result
 
       setState({
         data,
@@ -126,7 +146,7 @@ export function useFetch<T = unknown>(
         isSuccess: true,
       })
 
-      onSuccess?.(data)
+      onSuccessRef.current?.(data)
     } catch (error) {
       if (!isMountedRef.current) return
 
@@ -148,9 +168,9 @@ export function useFetch<T = unknown>(
         isSuccess: false,
       }))
 
-      onError?.(fetchError)
+      onErrorRef.current?.(fetchError)
     }
-  }, [url, skip, fetchOptions, maxRetries, timeout, transform, onSuccess, onError])
+  }, [url, skip, maxRetries, timeout])
 
   // Initial fetch
   useEffect(() => {
