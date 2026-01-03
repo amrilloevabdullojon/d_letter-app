@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { Header } from '@/components/Header'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -144,34 +144,35 @@ export default function UserProfilePage() {
 
   const skills = useMemo(() => profile?.skills || [], [profile])
 
-  useEffect(() => {
+  const loadProfile = useCallback(async () => {
     if (authStatus !== 'authenticated') return
-    const loadProfile = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const res = await fetch(`/api/users/${params.id}/profile`)
-        if (res.status === 403) {
-          setError('\u041f\u0440\u043e\u0444\u0438\u043b\u044c \u0437\u0430\u043a\u0440\u044b\u0442')
-          return
-        }
-        if (!res.ok) {
-          throw new Error('Failed to load profile')
-        }
-        const data = await res.json()
-        setUser(data.user)
-        setProfile(data.profile)
-        setActivity(data.activity || null)
-      } catch (err) {
-        console.error('Failed to load profile:', err)
-        setError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c')
-        toast.error('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c')
-      } finally {
-        setLoading(false)
+    try {
+      setLoading(true)
+      setError(null)
+      const res = await fetch(`/api/users/${params.id}/profile`)
+      if (res.status === 403) {
+        setError('\u041f\u0440\u043e\u0444\u0438\u043b\u044c \u0437\u0430\u043a\u0440\u044b\u0442')
+        return
       }
+      if (!res.ok) {
+        throw new Error('Failed to load profile')
+      }
+      const data = await res.json()
+      setUser(data.user)
+      setProfile(data.profile)
+      setActivity(data.activity || null)
+    } catch (err) {
+      console.error('Failed to load profile:', err)
+      setError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c')
+      toast.error('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c')
+    } finally {
+      setLoading(false)
     }
-    loadProfile()
   }, [authStatus, params.id, toast])
+
+  useEffect(() => {
+    loadProfile()
+  }, [loadProfile])
 
   useEffect(() => {
     if (!actionOpen) return
