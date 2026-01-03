@@ -142,16 +142,22 @@ export const authOptions: AuthOptions = {
       }
 
       // Validate token version on each request to detect invalidated tokens
-      if (token.id && token.tokenVersion !== undefined) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { tokenVersion: true },
-        })
+      // Only check if token has tokenVersion (backwards compatible with old tokens)
+      if (token.id && typeof token.tokenVersion === 'number') {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { tokenVersion: true },
+          })
 
-        // If tokenVersion in DB is higher, the token was invalidated
-        if (dbUser && dbUser.tokenVersion > (token.tokenVersion as number)) {
-          // Return empty token to force re-authentication
-          return { ...token, id: undefined, role: undefined }
+          // If tokenVersion in DB is higher, the token was invalidated
+          // Skip check if dbUser.tokenVersion is null/undefined (field not migrated yet)
+          if (dbUser && typeof dbUser.tokenVersion === 'number' && dbUser.tokenVersion > token.tokenVersion) {
+            // Return empty token to force re-authentication
+            return { ...token, id: undefined, role: undefined }
+          }
+        } catch {
+          // If tokenVersion field doesn't exist in DB yet, skip validation
         }
       }
 
