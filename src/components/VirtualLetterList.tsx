@@ -1,9 +1,12 @@
-'use client'
+﻿'use client'
 
 import { useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { LetterCard } from './LetterCard'
+import { StatusBadge } from './StatusBadge'
 import type { LetterStatus } from '@prisma/client'
+import { ArrowDown, ArrowUp, ArrowUpDown, CheckSquare, Eye, Square } from 'lucide-react'
+import { formatDate, getDaysUntilDeadline, isDoneStatus } from '@/lib/utils'
 
 interface Letter {
   id: string
@@ -41,7 +44,7 @@ export function VirtualLetterList({
 }: VirtualLetterListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
 
-  // Расчёт количества колонок в зависимости от ширины
+  // ╨á╨░╤ü╤ç╤æ╤é ╨║╨╛╨╗╨╕╤ç╨╡╤ü╤é╨▓╨░ ╨║╨╛╨╗╨╛╨╜╨╛╨║ ╨▓ ╨╖╨░╨▓╨╕╤ü╨╕╨╝╨╛╤ü╤é╨╕ ╨╛╤é ╤ê╨╕╤Ç╨╕╨╜╤ï
   const getColumnCount = () => {
     if (typeof window === 'undefined') return 3
     if (window.innerWidth < 768) return 1
@@ -55,7 +58,7 @@ export function VirtualLetterList({
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 320, // Примерная высота карточки
+    estimateSize: () => 320, // ╨ƒ╤Ç╨╕╨╝╨╡╤Ç╨╜╨░╤Å ╨▓╤ï╤ü╨╛╤é╨░ ╨║╨░╤Ç╤é╨╛╤ç╨║╨╕
     overscan: 3,
   })
 
@@ -94,7 +97,7 @@ export function VirtualLetterList({
                           ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/30'
                           : 'bg-white/10 text-slate-300 opacity-0 group-hover:opacity-100'
                       }`}
-                      aria-label={`Выбрать письмо ${letter.number}`}
+                      aria-label={`╨Æ╤ï╨▒╤Ç╨░╤é╤î ╨┐╨╕╤ü╤î╨╝╨╛ ${letter.number}`}
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path
@@ -119,23 +122,31 @@ export function VirtualLetterList({
   )
 }
 
-// Виртуализованная таблица
+// ╨Æ╨╕╤Ç╤é╤â╨░╨╗╨╕╨╖╨╛╨▓╨░╨╜╨╜╨░╤Å ╤é╨░╨▒╨╗╨╕╤å╨░
 interface VirtualLetterTableProps {
   letters: Letter[]
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
+  onToggleSelectAll: () => void
   onSort: (field: string) => void
   sortField: string
   sortDirection: 'asc' | 'desc'
+  focusedIndex: number
+  onRowClick: (id: string) => void
+  onPreview: (id: string) => void
 }
 
 export function VirtualLetterTable({
   letters,
   selectedIds,
   onToggleSelect,
+  onToggleSelectAll,
   onSort,
   sortField,
   sortDirection,
+  focusedIndex,
+  onRowClick,
+  onPreview,
 }: VirtualLetterTableProps) {
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -146,113 +157,173 @@ export function VirtualLetterTable({
     overscan: 10,
   })
 
-  const SortIcon = ({ field }: { field: string }) => (
-    sortField === field ? (
-      sortDirection === 'asc' ? (
-        <span className="ml-1">↑</span>
-      ) : (
-        <span className="ml-1">↓</span>
-      )
-    ) : null
-  )
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field) return <ArrowUpDown className="w-4 h-4 text-slate-400/70" />
+    return sortDirection === 'asc'
+      ? <ArrowUp className="w-4 h-4 text-teal-300" />
+      : <ArrowDown className="w-4 h-4 text-teal-300" />
+  }
+
+  const formatDayLabel = (value: number) => (Math.abs(value) === 1 ? 'day' : 'days')
+
+  const getDeadlineInfo = (letter: Letter) => {
+    const daysLeft = getDaysUntilDeadline(letter.deadlineDate)
+    const isDone = isDoneStatus(letter.status)
+
+    if (isDone) {
+      return { text: 'Done', className: 'text-teal-300' }
+    }
+    if (daysLeft < 0) {
+      return {
+        text: `Overdue by ${Math.abs(daysLeft)} ${formatDayLabel(daysLeft)}`,
+        className: 'text-red-400',
+      }
+    }
+    if (daysLeft <= 2) {
+      return { text: `${daysLeft} ${formatDayLabel(daysLeft)}`, className: 'text-yellow-400' }
+    }
+    return { text: `${daysLeft} ${formatDayLabel(daysLeft)}`, className: 'text-slate-300/70' }
+  }
 
   return (
     <div className="panel panel-glass rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-white/5 text-sm text-slate-300/80 border-b border-white/10">
-        <div className="col-span-1">
-          <input
-            type="checkbox"
-            className="rounded border-gray-600"
-            onChange={() => {}}
-            aria-label="Выбрать все письма"
-          />
+      <div className="grid grid-cols-[40px_140px_minmax(240px,1fr)_120px_180px_140px_140px_160px_48px] gap-2 px-4 py-3 bg-white/5 text-sm text-slate-300/80 border-b border-white/10">
+        <div className="flex items-center">
+          <button
+            onClick={onToggleSelectAll}
+            className={`p-1 rounded ${
+              selectedIds.size === letters.length && letters.length > 0
+                ? 'text-teal-300'
+                : 'text-slate-400 hover:text-white'
+            }`}
+            aria-label="Select all letters"
+          >
+            {selectedIds.size === letters.length && letters.length > 0 ? (
+              <CheckSquare className="w-5 h-5" />
+            ) : (
+              <Square className="w-5 h-5" />
+            )}
+          </button>
         </div>
         <button
           onClick={() => onSort('number')}
-          className="col-span-2 text-left hover:text-white flex items-center"
+          className="text-left hover:text-white flex items-center"
         >
-          Номер <SortIcon field="number" />
+          Number <SortIcon field="number" />
         </button>
         <button
           onClick={() => onSort('org')}
-          className="col-span-3 text-left hover:text-white flex items-center"
+          className="text-left hover:text-white flex items-center"
         >
-          Организация <SortIcon field="org" />
+          Organization <SortIcon field="org" />
         </button>
         <button
-          onClick={() => onSort('status')}
-          className="col-span-2 text-left hover:text-white flex items-center"
+          onClick={() => onSort('date')}
+          className="text-left hover:text-white flex items-center"
         >
-          Статус <SortIcon field="status" />
+          Date <SortIcon field="date" />
         </button>
         <button
           onClick={() => onSort('deadline')}
-          className="col-span-2 text-left hover:text-white flex items-center"
+          className="text-left hover:text-white flex items-center"
         >
-          Дедлайн <SortIcon field="deadline" />
+          Deadline <SortIcon field="deadline" />
         </button>
         <button
-          onClick={() => onSort('priority')}
-          className="col-span-2 text-left hover:text-white flex items-center"
+          onClick={() => onSort('status')}
+          className="text-left hover:text-white flex items-center"
         >
-          Приоритет <SortIcon field="priority" />
+          Status <SortIcon field="status" />
         </button>
+        <div className="text-left text-sm font-medium text-slate-300/70">
+          Type
+        </div>
+        <div className="text-left text-sm font-medium text-slate-300/70">
+          Assignee
+        </div>
+        <div />
       </div>
 
-      {/* Virtual Rows */}
-      <div
-        ref={parentRef}
-        className="h-[calc(100vh-350px)] overflow-auto virtual-scroll"
-      >
-        <div
-          className="virtual-rows"
-          style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-        >
+      <div ref={parentRef} className="h-[calc(100vh-350px)] overflow-auto virtual-scroll">
+        <div className="virtual-rows" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const letter = letters[virtualRow.index]
+            const deadlineInfo = getDeadlineInfo(letter)
             const isSelected = selectedIds.has(letter.id)
+            const isFocused = virtualRow.index === focusedIndex
 
             return (
               <div
                 key={virtualRow.key}
-                className={`virtual-row grid grid-cols-12 gap-2 px-4 py-3 border-b border-white/5 text-sm cursor-pointer app-row ${
+                className={`virtual-row grid grid-cols-[40px_140px_minmax(240px,1fr)_120px_180px_140px_140px_160px_48px] gap-2 px-4 py-3 border-b border-white/5 text-sm cursor-pointer app-row ${
                   isSelected ? 'app-row-selected' : ''
-                }`}
+                } ${isFocused ? 'ring-2 ring-teal-400/40 ring-inset' : ''}`}
                 style={{
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
-                onClick={() => window.location.href = `/letters/${letter.id}`}
+                onClick={() => onRowClick(letter.id)}
               >
-                <div className="col-span-1 flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={(e) => {
+                <div className="flex items-center">
+                  <button
+                    onClick={(e) => {
                       e.stopPropagation()
                       onToggleSelect(letter.id)
                     }}
-                    className="rounded border-gray-600"
-                    aria-label={`Выбрать письмо ${letter.number}`}
-                  />
+                    className={`p-1 rounded ${
+                      isSelected ? 'text-teal-300' : 'text-slate-400 hover:text-white'
+                    }`}
+                    aria-label={`Select letter ${letter.number}`}
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="w-5 h-5" />
+                    ) : (
+                      <Square className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
-                <div className="col-span-2 text-teal-300 font-mono truncate">
-                  {letter.number}
+                <div className="text-teal-300 font-mono truncate">
+                  #{letter.number}
                 </div>
-                <div className="col-span-3 text-slate-200 truncate">
+                <div className="text-white truncate">
                   {letter.org}
                 </div>
-                <div className="col-span-2">
-                  <span className="text-xs px-2 py-1 rounded-full data-pill">
-                    {letter.status}
-                  </span>
+                <div className="text-slate-300/70 text-sm">
+                  {formatDate(letter.date)}
                 </div>
-                <div className="col-span-2 text-slate-300/70">
-                  {new Date(letter.deadlineDate).toLocaleDateString('ru-RU')}
+                <div>
+                  <div className="text-sm">
+                    <div className="text-slate-300/70">{formatDate(letter.deadlineDate)}</div>
+                    <div className={`text-xs ${deadlineInfo.className}`}>
+                      {deadlineInfo.text}
+                    </div>
+                  </div>
                 </div>
-                <div className="col-span-2 text-slate-300/70">
-                  {letter.priority}
+                <div>
+                  <StatusBadge status={letter.status} size="sm" />
+                </div>
+                <div>
+                  {letter.type && (
+                    <span className="text-xs px-2 py-1 rounded-full data-pill">
+                      {letter.type}
+                    </span>
+                  )}
+                </div>
+                <div className="text-slate-300/70 text-sm truncate">
+                  {letter.owner?.name || letter.owner?.email?.split('@')[0] || '-'}
+                </div>
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onPreview(letter.id)
+                    }}
+                    className="p-1 text-slate-400 hover:text-white transition"
+                    title="Quick preview"
+                    aria-label="Quick preview"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             )
