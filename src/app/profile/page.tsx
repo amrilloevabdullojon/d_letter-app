@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { Header } from '@/components/Header'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -171,7 +171,7 @@ export default function ProfilePage() {
     [skillsInput]
   )
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch('/api/profile')
@@ -190,13 +190,13 @@ export default function ProfilePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     if (authStatus === 'authenticated') {
       loadProfile()
     }
-  }, [authStatus])
+  }, [authStatus, loadProfile])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

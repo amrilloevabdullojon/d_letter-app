@@ -4,6 +4,7 @@ import { withValidation } from '@/lib/api-handler'
 import { requestQuerySchema, createRequestSchema } from '@/lib/schemas'
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit'
 import { sanitizeInput } from '@/lib/utils'
+import { getRequestContext } from '@/lib/request-context'
 import {
   MAX_FILE_SIZE,
   MAX_FILE_SIZE_LABEL,
@@ -51,9 +52,42 @@ const isFileTypeAllowed = (file: File) => {
 const buildRequestIpHash = (identifier: string) =>
   createHash('sha256').update(identifier).digest('hex')
 
-export const GET = withValidation(
+type RequestsListResponse = {
+  requests: Array<{
+    id: string
+    organization: string
+    contactName: string
+    contactEmail: string
+    contactPhone: string
+    contactTelegram: string
+    description: string
+    status: string
+    createdAt: Date
+    updatedAt: Date
+    source: string | null
+    ipHash: string | null
+    assignedTo: { id: string; name: string | null; email: string | null } | null
+    _count: { files: number }
+  }>
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+type RequestsListError = {
+  error: string
+  details?: string
+  requestId?: string
+}
+
+type RequestsListResult = RequestsListResponse | RequestsListError
+
+export const GET = withValidation<RequestsListResult>(
   async (_request, _session, { query }) => {
-    const requestId = randomUUID()
+    const requestId = getRequestContext()?.requestId ?? randomUUID()
     const startTime = Date.now()
     try {
       const { page, limit, status, search } = query
@@ -61,23 +95,23 @@ export const GET = withValidation(
       const limitValue = limit ?? PAGE_SIZE
       const where: Prisma.RequestWhereInput = {}
 
-    if (status) {
-      where.status = status
-    }
-
-    if (search) {
-      const value = search.trim()
-      if (value) {
-        where.OR = [
-          { organization: { contains: value, mode: 'insensitive' } },
-          { contactName: { contains: value, mode: 'insensitive' } },
-          { contactEmail: { contains: value, mode: 'insensitive' } },
-          { contactPhone: { contains: value, mode: 'insensitive' } },
-          { contactTelegram: { contains: value, mode: 'insensitive' } },
-          { description: { contains: value, mode: 'insensitive' } },
-        ]
+      if (status) {
+        where.status = status
       }
-    }
+
+      if (search) {
+        const value = search.trim()
+        if (value) {
+          where.OR = [
+            { organization: { contains: value, mode: 'insensitive' } },
+            { contactName: { contains: value, mode: 'insensitive' } },
+            { contactEmail: { contains: value, mode: 'insensitive' } },
+            { contactPhone: { contains: value, mode: 'insensitive' } },
+            { contactTelegram: { contains: value, mode: 'insensitive' } },
+            { description: { contains: value, mode: 'insensitive' } },
+          ]
+        }
+      }
 
       const findStart = Date.now()
       let findMs = 0
