@@ -77,7 +77,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   /**
    * Парсит PDF через API
    */
-  const parsePdfContent = async (f: File): Promise<{ data: ParsedPdfData; meta: ParseMeta } | null> => {
+  const parsePdfContent = useCallback(
+    async (f: File): Promise<{ data: ParsedPdfData; meta: ParseMeta } | null> => {
     try {
       const formData = new FormData()
       formData.append('file', f)
@@ -99,7 +100,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       console.error('Failed to parse PDF:', error)
       return null
     }
-  }
+  }, [])
 
   const handleFile = useCallback(async (f: File) => {
     setFile(f)
@@ -170,7 +171,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     }
 
     setParsing(false)
-  }, [])
+  }, [parsePdfContent, toast])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()

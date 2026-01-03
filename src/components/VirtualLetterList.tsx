@@ -29,6 +29,8 @@ interface Letter {
   }
 }
 
+type SortField = 'created' | 'deadline' | 'date' | 'number' | 'org' | 'status' | 'priority'
+
 interface VirtualLetterListProps {
   letters: Letter[]
   selectedIds: Set<string>
@@ -128,8 +130,8 @@ interface VirtualLetterTableProps {
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onToggleSelectAll: () => void
-  onSort: (field: string) => void
-  sortField: string
+  onSort: (field: SortField) => void
+  sortField: SortField
   sortDirection: 'asc' | 'desc'
   focusedIndex: number
   onRowClick: (id: string) => void
@@ -157,7 +159,7 @@ export function VirtualLetterTable({
     overscan: 10,
   })
 
-  const SortIcon = ({ field }: { field: string }) => {
+  const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="w-4 h-4 text-slate-400/70" />
     return sortDirection === 'asc'
       ? <ArrowUp className="w-4 h-4 text-teal-300" />
