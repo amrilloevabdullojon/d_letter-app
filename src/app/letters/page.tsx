@@ -311,6 +311,7 @@ function LettersPageContent() {
     quickFilter,
     ownerFilter,
     typeFilter,
+    toast,
   ])
 
   const loadUsers = useCallback(async () => {
@@ -393,7 +394,7 @@ function LettersPageContent() {
     } finally {
       setBulkLoading(false)
     }
-  }, [bulkAction, bulkValue, loadLetters, selectedIds])
+  }, [bulkAction, bulkValue, loadLetters, selectedIds, toast])
 
   const executeBulkAction = useCallback(() => {
     if (!bulkAction || selectedIds.size === 0) return
