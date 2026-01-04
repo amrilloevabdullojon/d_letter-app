@@ -105,25 +105,31 @@ async function applyOwnerValidation(
 ) {
   if (!values.length || lastRowNum < 2) return
 
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      requests: [
-        {
-          setDataValidation: {
-            range: {
-              sheetId,
-              startRowIndex: 1,
-              endRowIndex: lastRowNum,
-              startColumnIndex: COLUMNS.OWNER,
-              endColumnIndex: COLUMNS.OWNER + 1,
+  try {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            setDataValidation: {
+              range: {
+                sheetId,
+                startRowIndex: 1,
+                endRowIndex: lastRowNum,
+                startColumnIndex: COLUMNS.OWNER,
+                endColumnIndex: COLUMNS.OWNER + 1,
+              },
+              rule: buildOwnerValidationRule(values),
             },
-            rule: buildOwnerValidationRule(values),
           },
-        },
-      ],
-    },
-  })
+        ],
+      },
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/typed columns/i.test(message)) return
+    throw error
+  }
 }
 
 async function copyTemplateFormatting(
