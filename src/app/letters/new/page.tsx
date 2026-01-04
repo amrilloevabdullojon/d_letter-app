@@ -2,11 +2,22 @@
 
 import { useSession } from 'next-auth/react'
 import { Header } from '@/components/Header'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, Save, Sparkles, FileText } from 'lucide-react'
+import {
+  ArrowLeft,
+  Loader2,
+  Save,
+  Sparkles,
+  FileText,
+  Clock,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react'
 import Link from 'next/link'
 import { QuickLetterUpload } from '@/components/QuickLetterUpload'
+import { OrganizationAutocomplete } from '@/components/OrganizationAutocomplete'
 import { useToast } from '@/components/Toast'
 import {
   ALLOWED_FILE_EXTENSIONS,
@@ -34,6 +45,11 @@ export default function NewLetterPage() {
 
   const [mode, setMode] = useState<'quick' | 'manual'>('quick')
   const [attachment, setAttachment] = useState<File | null>(null)
+  const [draftSaved, setDraftSaved] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const DRAFT_KEY = 'letter-draft'
 
   const form = useForm<CreateLetterFormValues>({
     initialValues: {
@@ -84,6 +100,13 @@ export default function NewLetterPage() {
             }
           }
 
+          // Clear draft on success
+          try {
+            localStorage.removeItem(DRAFT_KEY)
+          } catch {
+            // Ignore
+          }
+
           router.push(`/letters/${data.letter.id}`)
         } else {
           setError(data.error || 'Ошибка при создании письма')
@@ -97,6 +120,66 @@ export default function NewLetterPage() {
   })
   const handleSubmit = form.handleSubmit
 
+  // Load draft on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(DRAFT_KEY)
+      if (stored) {
+        const draft = JSON.parse(stored)
+        if (draft.values && Date.now() - draft.savedAt < 24 * 60 * 60 * 1000) {
+          // 24 hours
+          Object.entries(draft.values).forEach(([key, value]) => {
+            if (value && key in form.values) {
+              form.setValue(key as keyof CreateLetterFormValues, value as string)
+            }
+          })
+          setDraftRestored(true)
+          setTimeout(() => setDraftRestored(false), 3000)
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save draft on form change
+  useEffect(() => {
+    const hasData = Object.entries(form.values).some(
+      ([key, value]) => key !== 'date' && value && value.trim() !== ''
+    )
+
+    if (hasData && mode === 'manual') {
+      try {
+        localStorage.setItem(
+          DRAFT_KEY,
+          JSON.stringify({
+            values: form.values,
+            savedAt: Date.now(),
+          })
+        )
+        setDraftSaved(true)
+        setTimeout(() => setDraftSaved(false), 2000)
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+  }, [form.values, mode])
+
+  // Clear draft on successful submission
+  const clearDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(DRAFT_KEY)
+    } catch {
+      // Ignore
+    }
+  }, [])
+
+  const handleClearDraft = () => {
+    clearDraft()
+    form.reset()
+    toast.success('Черновик очищен')
+  }
+
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
     if (file && file.size > MAX_FILE_SIZE) {
@@ -107,10 +190,51 @@ export default function NewLetterPage() {
     setAttachment(file)
   }
 
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.currentTarget === e.target) {
+      setIsDragging(false)
+    }
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragging(false)
+
+      const file = e.dataTransfer.files?.[0]
+      if (file) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`Файл слишком большой. Максимум ${MAX_FILE_SIZE_LABEL}.`)
+          return
+        }
+        setAttachment(file)
+      }
+    },
+    [toast]
+  )
+
+  const removeAttachment = useCallback(() => {
+    setAttachment(null)
+  }, [])
+
   if (status === 'loading') {
     return (
-      <div className="min-h-screen app-shell flex items-center justify-center bg-gray-900">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      <div className="app-shell flex min-h-screen items-center justify-center bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
   }
@@ -120,39 +244,39 @@ export default function NewLetterPage() {
   }
 
   return (
-    <div className="min-h-screen app-shell bg-gray-900">
+    <div className="app-shell min-h-screen bg-gray-900">
       <Header />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <Link
           href="/letters"
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition"
+          className="mb-6 inline-flex items-center gap-2 text-gray-400 transition hover:text-white"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="h-5 w-5" />
           Назад к списку
         </Link>
 
-        <div className="flex flex-col sm:flex-row gap-2 mb-6">
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row">
           <button
             onClick={() => setMode('quick')}
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition w-full sm:w-auto ${
+            className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition sm:w-auto ${
               mode === 'quick'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="h-4 w-4" />
             Быстрое создание
           </button>
           <button
             onClick={() => setMode('manual')}
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition w-full sm:w-auto ${
+            className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition sm:w-auto ${
               mode === 'manual'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="h-4 w-4" />
             Ручной ввод
           </button>
         </div>
@@ -160,19 +284,44 @@ export default function NewLetterPage() {
         {mode === 'quick' ? (
           <QuickLetterUpload />
         ) : (
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 sm:p-6">
-            <h1 className="text-2xl font-bold text-white mb-6">Новое письмо</h1>
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-4 sm:p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-white">Новое письмо</h1>
+              <div className="flex items-center gap-3">
+                {draftRestored && (
+                  <span className="animate-fadeIn inline-flex items-center gap-1.5 text-sm text-blue-400">
+                    <Clock className="h-4 w-4" />
+                    Черновик восстановлен
+                  </span>
+                )}
+                {draftSaved && !draftRestored && (
+                  <span className="animate-fadeIn inline-flex items-center gap-1.5 text-xs text-gray-500">
+                    <Clock className="h-3 w-3" />
+                    Сохранено
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleClearDraft}
+                  className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition hover:text-gray-300"
+                  title="Очистить черновик"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Очистить</span>
+                </button>
+              </div>
+            </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400">
+              <div className="mb-6 rounded-lg border border-red-500/50 bg-red-500/20 p-4 text-red-400">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="mb-2 block text-sm font-medium text-gray-300">
                     Номер письма *
                   </label>
                   <input
@@ -181,13 +330,13 @@ export default function NewLetterPage() {
                     value={form.values.number}
                     aria-label="Номер письма"
                     onChange={(e) => form.setValue('number', e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                     placeholder="Например: 01-15/1234"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="mb-2 block text-sm font-medium text-gray-300">
                     Дата письма *
                   </label>
                   <input
@@ -196,30 +345,28 @@ export default function NewLetterPage() {
                     value={form.values.date}
                     aria-label="Дата письма"
                     onChange={(e) => form.setValue('date', e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Дедлайн
-                  </label>
+                  <label className="mb-2 block text-sm font-medium text-gray-300">Дедлайн</label>
                   <input
                     type="date"
                     value={form.values.deadlineDate}
                     aria-label="Дедлайн"
                     onChange={(e) => form.setValue('deadlineDate', e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="mt-1 text-xs text-gray-500">
                     Если не указано, будет рассчитано автоматически (+7 рабочих дней)
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="mb-2 block text-sm font-medium text-gray-300">
                     Ссылка на Jira
                   </label>
                   <input
@@ -227,52 +374,88 @@ export default function NewLetterPage() {
                     value={form.values.jiraLink}
                     aria-label="Ссылка на Jira"
                     onChange={(e) => form.setValue('jiraLink', e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                     placeholder="https://jira.example.com/browse/..."
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="mb-2 block text-sm font-medium text-gray-300">
                   Организация *
                 </label>
-                <input
-                  type="text"
-                  required
+                <OrganizationAutocomplete
                   value={form.values.org}
-                  aria-label="Организация"
-                  onChange={(e) => form.setValue('org', e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                  onChange={(value) => form.setValue('org', value)}
                   placeholder="Название организации"
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="mb-2 block text-sm font-medium text-gray-300">
                   Файл (опционально)
                 </label>
-                <input
-                  type="file"
-                  aria-label="Файл"
-                  accept={ALLOWED_FILE_EXTENSIONS}
-                  onChange={handleAttachmentChange}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white file:mr-3 file:py-2 file:px-3 file:border-0 file:bg-gray-600 file:text-white file:rounded-md"
-                />
-                {attachment && (
-                  <p className="text-xs text-gray-400 mt-1">{attachment.name}</p>
-                )}
+                <div
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  className={`relative rounded-lg border-2 border-dashed p-6 text-center transition ${
+                    isDragging
+                      ? 'border-emerald-500 bg-emerald-500/10'
+                      : 'border-gray-600 hover:border-gray-500'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    aria-label="Файл"
+                    accept={ALLOWED_FILE_EXTENSIONS}
+                    onChange={handleAttachmentChange}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  />
+                  {attachment ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <FileText className="h-8 w-8 text-emerald-400" />
+                      <div className="text-left">
+                        <p className="font-medium text-white">{attachment.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {(attachment.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeAttachment}
+                        className="ml-2 rounded-lg p-1.5 text-gray-400 transition hover:bg-red-500/10 hover:text-red-400"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload
+                        className={`h-8 w-8 ${isDragging ? 'text-emerald-400' : 'text-gray-500'}`}
+                      />
+                      <p className="text-gray-400">
+                        {isDragging
+                          ? 'Отпустите файл'
+                          : 'Перетащите файл сюда или нажмите для выбора'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (макс. {MAX_FILE_SIZE_LABEL})
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Тип запроса
-                </label>
+                <label className="mb-2 block text-sm font-medium text-gray-300">Тип запроса</label>
                 <select
                   value={form.values.type}
                   aria-label="Тип запроса"
                   onChange={(e) => form.setValue('type', e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
                 >
                   <option value="">Выберите тип</option>
                   {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
@@ -284,90 +467,78 @@ export default function NewLetterPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Содержание
-                </label>
+                <label className="mb-2 block text-sm font-medium text-gray-300">Содержание</label>
                 <textarea
                   rows={4}
                   value={form.values.content}
                   aria-label="Содержание"
                   onChange={(e) => form.setValue('content', e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500 resize-none"
+                  className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                   placeholder="Краткое описание содержания письма"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Контакты
-                </label>
+                <label className="mb-2 block text-sm font-medium text-gray-300">Контакты</label>
                 <input
                   type="text"
                   value={form.values.contacts}
                   aria-label="Контакты"
                   onChange={(e) => form.setValue('contacts', e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                  className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                   placeholder="Телефон, email контактного лица"
                 />
               </div>
 
               <div className="rounded-lg border border-gray-700 bg-gray-800/40 p-4">
-                <h4 className="text-sm font-semibold text-white mb-4">
-                  Данные заявителя
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <h4 className="mb-4 text-sm font-semibold text-white">Данные заявителя</h4>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Имя
-                    </label>
+                    <label className="mb-2 block text-sm font-medium text-gray-300">Имя</label>
                     <input
                       type="text"
                       value={form.values.applicantName}
                       aria-label="Имя заявителя"
                       onChange={(e) => form.setValue('applicantName', e.target.value)}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                      className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                       placeholder="Имя заявителя"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <label className="mb-2 block text-sm font-medium text-gray-300">Email</label>
                     <input
                       type="email"
                       value={form.values.applicantEmail}
                       aria-label="Email заявителя"
                       onChange={(e) => form.setValue('applicantEmail', e.target.value)}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                      className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                       placeholder="email@example.com"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Телефон
-                    </label>
+                    <label className="mb-2 block text-sm font-medium text-gray-300">Телефон</label>
                     <input
                       type="tel"
                       value={form.values.applicantPhone}
                       aria-label="Телефон заявителя"
                       onChange={(e) => form.setValue('applicantPhone', e.target.value)}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                      className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                       placeholder="+998901234567"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="mb-2 block text-sm font-medium text-gray-300">
                       Telegram chat id
                     </label>
                     <input
                       type="text"
                       value={form.values.applicantTelegramChatId}
                       aria-label="Telegram chat id заявителя"
-                      onChange={(e) =>
-                        form.setValue('applicantTelegramChatId', e.target.value)
-                      }
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+                      onChange={(e) => form.setValue('applicantTelegramChatId', e.target.value)}
+                      className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                       placeholder="123456789"
                     />
                   </div>
@@ -375,35 +546,33 @@ export default function NewLetterPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Комментарий
-                </label>
+                <label className="mb-2 block text-sm font-medium text-gray-300">Комментарий</label>
                 <textarea
                   rows={2}
                   value={form.values.comment}
                   aria-label="Комментарий"
                   onChange={(e) => form.setValue('comment', e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500 resize-none"
+                  className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                   placeholder="Внутренний комментарий"
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <Link
                   href="/letters"
-                  className="px-4 py-2 text-gray-400 hover:text-white transition"
+                  className="px-4 py-2 text-gray-400 transition hover:text-white"
                 >
                   Отмена
                 </Link>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-6 py-2 text-white transition hover:bg-emerald-600 disabled:opacity-50"
                 >
                   {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <Save className="w-5 h-5" />
+                    <Save className="h-5 w-5" />
                   )}
                   {loading ? 'Сохранение...' : 'Создать письмо'}
                 </button>

@@ -7,6 +7,8 @@ import { EditableField } from '@/components/EditableField'
 import { FileUpload } from '@/components/FileUpload'
 import { TemplateSelector } from '@/components/TemplateSelector'
 import { ActivityFeed } from '@/components/ActivityFeed'
+import { SLAIndicator } from '@/components/SLAIndicator'
+import { RelatedLetters } from '@/components/RelatedLetters'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -152,7 +154,7 @@ export default function LetterDetailPage() {
       })
       const data = await res.json()
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to add comment")
+        throw new Error(data.error || 'Failed to add comment')
       }
       return data.comment as CommentItem
     },
@@ -290,25 +292,39 @@ export default function LetterDetailPage() {
   const handleNotifyOwner = async () => {
     if (!letter) return
     if (!letter.owner?.id) {
-      toast.error('\u041d\u0435\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a\u0430')
+      toast.error(
+        '\u041d\u0435\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a\u0430'
+      )
       return
     }
 
     setNotifyingOwner(true)
-    const toastId = toast.loading('\u041e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u0435\u043c \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435...')
+    const toastId = toast.loading(
+      '\u041e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u0435\u043c \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435...'
+    )
 
     try {
       const res = await fetch(`/api/letters/${letter.id}/notify`, { method: 'POST' })
       const data = await res.json()
 
       if (res.ok && data.success) {
-        toast.success('\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e', { id: toastId })
+        toast.success(
+          '\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e',
+          { id: toastId }
+        )
       } else {
-        toast.error(data.error || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435', { id: toastId })
+        toast.error(
+          data.error ||
+            '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435',
+          { id: toastId }
+        )
       }
     } catch (error) {
       console.error('Failed to notify owner:', error)
-      toast.error('\u041e\u0448\u0438\u0431\u043a\u0430 \u043e\u0442\u043f\u0440\u0430\u0432\u043a\u0438 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u044f', { id: toastId })
+      toast.error(
+        '\u041e\u0448\u0438\u0431\u043a\u0430 \u043e\u0442\u043f\u0440\u0430\u0432\u043a\u0438 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u044f',
+        { id: toastId }
+      )
     } finally {
       setNotifyingOwner(false)
     }
@@ -381,9 +397,7 @@ export default function LetterDetailPage() {
       })
 
       if (res.ok) {
-        setLetter((prev) =>
-          prev ? { ...prev, isFavorite: !prev.isFavorite } : null
-        )
+        setLetter((prev) => (prev ? { ...prev, isFavorite: !prev.isFavorite } : null))
       }
     } catch (error) {
       console.error('Failed to toggle favorite:', error)
@@ -394,8 +408,8 @@ export default function LetterDetailPage() {
 
   if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
     return (
-      <div className="min-h-screen app-shell flex items-center justify-center bg-gray-900">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      <div className="app-shell flex min-h-screen items-center justify-center bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
   }
@@ -428,7 +442,7 @@ export default function LetterDetailPage() {
           <span className="font-medium text-gray-200">{author}</span>
           <span>{new Date(comment.createdAt).toLocaleString('ru-RU')}</span>
         </div>
-        <p className="mt-2 text-sm text-gray-200 whitespace-pre-wrap">{comment.text}</p>
+        <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">{comment.text}</p>
         {replies.length > 0 && (
           <div className="mt-3 space-y-3">
             {replies.map((reply) => renderComment(reply, depth + 1))}
@@ -439,58 +453,58 @@ export default function LetterDetailPage() {
   }
 
   return (
-    <div className="min-h-screen app-shell bg-gray-900">
+    <div className="app-shell min-h-screen bg-gray-900">
       <Header />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {/* Back button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 print:hidden">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
           <Link
             href="/letters"
-            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition"
+            className="inline-flex items-center gap-2 text-gray-400 transition hover:text-white"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="h-5 w-5" />
             Назад к списку
           </Link>
 
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <button
               onClick={toggleFavorite}
               disabled={togglingFavorite}
-              className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition disabled:opacity-50 w-full sm:w-auto ${
+              className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition disabled:opacity-50 sm:w-auto ${
                 letter.isFavorite
                   ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-700 text-white hover:bg-gray-600'
               }`}
               title={letter.isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
             >
               {togglingFavorite ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Star className={`w-4 h-4 ${letter.isFavorite ? 'fill-current' : ''}`} />
+                <Star className={`h-4 w-4 ${letter.isFavorite ? 'fill-current' : ''}`} />
               )}
               {letter.isFavorite ? 'В избранном' : 'В избранное'}
             </button>
 
             <button
               onClick={handlePrint}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition w-full sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gray-700 px-4 py-2 text-white transition hover:bg-gray-600 sm:w-auto"
               title="Печать"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="h-4 w-4" />
               Печать
             </button>
 
             <button
               onClick={handleDuplicate}
               disabled={duplicating}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition disabled:opacity-50 w-full sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500/20 px-4 py-2 text-blue-400 transition hover:bg-blue-500/30 disabled:opacity-50 sm:w-auto"
               title="Дублировать письмо"
             >
               {duplicating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Copy className="w-4 h-4" />
+                <Copy className="h-4 w-4" />
               )}
               Дублировать
             </button>
@@ -498,32 +512,32 @@ export default function LetterDetailPage() {
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition disabled:opacity-50 w-full sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-500/20 px-4 py-2 text-red-400 transition hover:bg-red-500/30 disabled:opacity-50 sm:w-auto"
             >
               {deleting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="h-4 w-4" />
               )}
               Удалить
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Header Card */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
               <div className="mb-4">
-                <label className="text-sm font-medium text-gray-400 mb-2 block">
+                <label className="mb-2 block text-sm font-medium text-gray-400">
                   {'\u0422\u0438\u043f \u0437\u0430\u043f\u0440\u043e\u0441\u0430'}
                 </label>
                 <select
                   value={typeValue}
                   onChange={(e) => updateField('type', e.target.value)}
                   disabled={updating}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                  className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none disabled:opacity-50"
                   aria-label="Тип запроса"
                 >
                   <option value="">{'\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d'}</option>
@@ -535,14 +549,12 @@ export default function LetterDetailPage() {
                   ))}
                 </select>
               </div>
-              <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="font-mono text-lg text-emerald-400">
-                      №{letter.number}
-                    </span>
+                  <div className="mb-2 flex items-center gap-3">
+                    <span className="font-mono text-lg text-emerald-400">№{letter.number}</span>
                     {letter.type && (
-                      <span className="text-sm px-2 py-1 bg-gray-700 rounded text-gray-400">
+                      <span className="rounded bg-gray-700 px-2 py-1 text-sm text-gray-400">
                         {letter.type}
                       </span>
                     )}
@@ -555,11 +567,11 @@ export default function LetterDetailPage() {
               {/* Deadline warning */}
               {(isOverdue || isUrgent) && (
                 <div
-                  className={`flex items-center gap-2 p-3 rounded-lg mb-4 ${
+                  className={`mb-4 flex items-center gap-2 rounded-lg p-3 ${
                     isOverdue ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
                   }`}
                 >
-                  <AlertTriangle className="w-5 h-5" />
+                  <AlertTriangle className="h-5 w-5" />
                   {isOverdue
                     ? `Просрочено на ${Math.abs(daysLeft)} ${pluralizeDays(daysLeft)}`
                     : `До дедлайна осталось ${daysLeft} ${pluralizeDays(daysLeft)}`}
@@ -568,16 +580,16 @@ export default function LetterDetailPage() {
 
               {/* Done indicator */}
               {isDone && (
-                <div className="flex items-center gap-2 p-3 rounded-lg mb-4 bg-emerald-500/20 text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
+                <div className="mb-4 flex items-center gap-2 rounded-lg bg-emerald-500/20 p-3 text-emerald-400">
+                  <CheckCircle2 className="h-5 w-5" />
                   Выполнено
                 </div>
               )}
             </div>
 
             {/* Editable Fields Card */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Информация о письме</h3>
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+              <h3 className="mb-4 text-lg font-semibold text-white">Информация о письме</h3>
 
               <EditableField
                 label="Содержание"
@@ -618,14 +630,12 @@ export default function LetterDetailPage() {
 
               {/* Ответ с шаблонами */}
               <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2 flex items-center justify-between">
                   <label className="text-sm font-medium text-gray-300">Ответ</label>
                   <TemplateSelector
                     currentUserId={session.user.id}
                     onSelect={(content) => {
-                      const newAnswer = letter.answer
-                        ? `${letter.answer}\n\n${content}`
-                        : content
+                      const newAnswer = letter.answer ? `${letter.answer}\n\n${content}` : content
                       updateField('answer', newAnswer)
                     }}
                   />
@@ -648,11 +658,10 @@ export default function LetterDetailPage() {
                 onSave={updateField}
                 placeholder="Добавить статус отправки..."
               />
-
             </div>
 
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+              <h3 className="mb-4 text-lg font-semibold text-white">
                 {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439'}
               </h3>
               <EditableField
@@ -661,24 +670,26 @@ export default function LetterDetailPage() {
                 field="comment"
                 onSave={updateField}
                 type="textarea"
-                placeholder={'\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439...'}
+                placeholder={
+                  '\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439...'
+                }
                 rows={3}
               />
             </div>
 
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+              <h3 className="mb-4 text-lg font-semibold text-white">
                 {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0438'}
               </h3>
 
               {comments.length === 0 ? (
                 <p className="text-sm text-gray-400">
-                  {'\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432'}
+                  {
+                    '\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432'
+                  }
                 </p>
               ) : (
-                <div className="space-y-3">
-                  {comments.map((comment) => renderComment(comment))}
-                </div>
+                <div className="space-y-3">{comments.map((comment) => renderComment(comment))}</div>
               )}
 
               <form onSubmit={handleAddComment} className="mt-4 space-y-3">
@@ -686,41 +697,45 @@ export default function LetterDetailPage() {
                   rows={3}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500 resize-none"
-                  placeholder={'\u041d\u0430\u043f\u0438\u0448\u0438\u0442\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439...'}
+                  className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                  placeholder={
+                    '\u041d\u0430\u043f\u0438\u0448\u0438\u0442\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439...'
+                  }
                 />
                 <div className="flex justify-end">
                   <button
                     type="submit"
                     disabled={isCommentSubmitting || !commentText.trim()}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-white transition hover:bg-emerald-600 disabled:opacity-50"
                   >
                     {isCommentSubmitting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <MessageSquare className="w-4 h-4" />
+                      <MessageSquare className="h-4 w-4" />
                     )}
-                    {'\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439'}
+                    {
+                      '\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439'
+                    }
                   </button>
                 </div>
               </form>
             </div>
 
             {/* History */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
               <ActivityFeed letterId={letter.id} />
             </div>
           </div>
 
-{/* Sidebar */}
+          {/* Sidebar */}
           <div className="space-y-6">
             {/* Info Card */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Информация</h3>
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+              <h3 className="mb-4 text-lg font-semibold text-white">Информация</h3>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-gray-500" />
+                  <Calendar className="h-5 w-5 text-gray-500" />
                   <div>
                     <div className="text-xs text-gray-500">Дата письма</div>
                     <div className="text-white">{formatDate(letter.date)}</div>
@@ -728,17 +743,32 @@ export default function LetterDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-gray-500" />
+                  <Clock className="h-5 w-5 text-gray-500" />
                   <div>
                     <div className="text-xs text-gray-500">Дедлайн</div>
-                    <div className={isOverdue ? 'text-red-400' : isDone ? 'text-emerald-400' : 'text-white'}>
+                    <div
+                      className={
+                        isOverdue ? 'text-red-400' : isDone ? 'text-emerald-400' : 'text-white'
+                      }
+                    >
                       {formatDate(letter.deadlineDate)}
                     </div>
                   </div>
                 </div>
 
+                {/* SLA Indicator */}
+                <div className="border-t border-gray-700 pt-2">
+                  <SLAIndicator
+                    createdAt={letter.date}
+                    deadlineDate={letter.deadlineDate}
+                    status={letter.status}
+                    closedAt={letter.closeDate}
+                    size="md"
+                  />
+                </div>
+
                 <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-gray-500" />
+                  <User className="h-5 w-5 text-gray-500" />
                   <div>
                     <div className="text-xs text-gray-500">Исполнитель</div>
                     <div className="text-white">
@@ -750,20 +780,22 @@ export default function LetterDetailPage() {
                 <button
                   onClick={handleNotifyOwner}
                   disabled={notifyingOwner || !letter.owner?.id}
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-gray-700 px-3 py-2 text-white transition hover:bg-gray-600 disabled:opacity-50"
                 >
                   {notifyingOwner ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Bell className="w-4 h-4" />
+                    <Bell className="h-4 w-4" />
                   )}
-                  {'\u0423\u0432\u0435\u0434\u043e\u043c\u0438\u0442\u044c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044f'}
+                  {
+                    '\u0423\u0432\u0435\u0434\u043e\u043c\u0438\u0442\u044c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044f'
+                  }
                 </button>
 
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-gray-500" />
+                  <AlertTriangle className="h-5 w-5 text-gray-500" />
                   <div>
-                    <div className="text-xs text-gray-500 mb-1">Приоритет</div>
+                    <div className="mb-1 text-xs text-gray-500">Приоритет</div>
                     <div className={`font-medium ${priorityInfo.color}`}>
                       {priorityInfo.label} ({letter.priority})
                     </div>
@@ -772,7 +804,7 @@ export default function LetterDetailPage() {
 
                 {letter.ijroDate && (
                   <div className="flex items-center gap-3">
-                    <Send className="w-5 h-5 text-gray-500" />
+                    <Send className="h-5 w-5 text-gray-500" />
                     <div>
                       <div className="text-xs text-gray-500">Дата ответа в IJRO</div>
                       <div className="text-white">{formatDate(letter.ijroDate)}</div>
@@ -782,7 +814,7 @@ export default function LetterDetailPage() {
 
                 {letter.closeDate && (
                   <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     <div>
                       <div className="text-xs text-gray-500">Дата закрытия</div>
                       <div className="text-emerald-400">{formatDate(letter.closeDate)}</div>
@@ -792,12 +824,8 @@ export default function LetterDetailPage() {
               </div>
             </div>
 
-
-
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
-                {'Заявитель'}
-              </h3>
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+              <h3 className="mb-4 text-lg font-semibold text-white">{'Заявитель'}</h3>
 
               <EditableField
                 label={'Имя'}
@@ -832,35 +860,31 @@ export default function LetterDetailPage() {
               />
 
               <div className="mt-4 rounded-lg border border-gray-700 bg-gray-900/40 p-4">
-                <div className="text-sm text-gray-400 mb-2">
-                  {'Ссылка для заявителя'}
-                </div>
+                <div className="mb-2 text-sm text-gray-400">{'Ссылка для заявителя'}</div>
                 {portalLink ? (
-                  <p className="text-sm text-emerald-300 break-all">{portalLink}</p>
+                  <p className="break-all text-sm text-emerald-300">{portalLink}</p>
                 ) : (
-                  <p className="text-sm text-gray-500 italic">
-                    {'Ссылка еще не создана'}
-                  </p>
+                  <p className="text-sm italic text-gray-500">{'Ссылка еще не создана'}</p>
                 )}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={handleGeneratePortalLink}
                     disabled={portalLoading}
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50 text-sm"
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm text-white transition hover:bg-emerald-600 disabled:opacity-50"
                   >
                     {portalLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Link2 className="w-4 h-4" />
+                      <Link2 className="h-4 w-4" />
                     )}
                     {'Создать/обновить ссылку'}
                   </button>
                   <button
                     onClick={handleCopyPortalLink}
                     disabled={!portalLink}
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition disabled:opacity-50 text-sm"
+                    className="inline-flex items-center gap-2 rounded-lg bg-gray-700 px-3 py-2 text-sm text-white transition hover:bg-gray-600 disabled:opacity-50"
                   >
-                    <Copy className="w-4 h-4" />
+                    <Copy className="h-4 w-4" />
                     {'Скопировать'}
                   </button>
                 </div>
@@ -868,17 +892,17 @@ export default function LetterDetailPage() {
             </div>
 
             {/* Status Change */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Изменить статус</h3>
+            <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+              <h3 className="mb-4 text-lg font-semibold text-white">Изменить статус</h3>
               <div className="space-y-2">
                 {STATUSES.map((status) => (
                   <button
                     key={status}
                     onClick={() => updateField('status', status)}
                     disabled={updating || letter.status === status}
-                    className={`w-full text-left px-4 py-2 rounded-lg transition ${
+                    className={`w-full rounded-lg px-4 py-2 text-left transition ${
                       letter.status === status
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
+                        ? 'border border-emerald-500/50 bg-emerald-500/20 text-emerald-400'
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     } disabled:opacity-50`}
                   >
@@ -889,11 +913,10 @@ export default function LetterDetailPage() {
             </div>
 
             {/* Files */}
-            <FileUpload
-              letterId={letter.id}
-              files={letter.files}
-              onFilesChange={loadLetter}
-            />
+            <FileUpload letterId={letter.id} files={letter.files} onFilesChange={loadLetter} />
+
+            {/* Related Letters */}
+            <RelatedLetters currentLetterId={letter.id} organization={letter.org} />
           </div>
         </div>
       </main>
