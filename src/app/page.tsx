@@ -213,9 +213,24 @@ export default function HomePage() {
                   style={{ width: `${completionRate}%` }}
                 />
               </div>
-              <div className="mt-2 flex justify-between text-xs text-slate-500">
+              <div className="mt-3 flex justify-between text-xs text-slate-500">
                 <span>{stats?.completed || 0} выполнено</span>
                 <span>{stats?.active || 0} в работе</span>
+              </div>
+              {/* Детальная разбивка */}
+              <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Всего писем</span>
+                  <span className="font-medium text-white">{stats?.total || 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Просрочено</span>
+                  <span className="font-medium text-red-400">{stats?.overdue || 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Срочные</span>
+                  <span className="font-medium text-amber-400">{stats?.urgent || 0}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -226,19 +241,47 @@ export default function HomePage() {
               <h3 className="font-semibold text-white">По статусам</h3>
               <BarChart3 className="h-5 w-5 text-slate-400" />
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              {stats?.byStatus &&
-                Object.entries(stats.byStatus).map(([status, count]) => (
-                  <Link
-                    key={status}
-                    href={`/letters?status=${status}`}
-                    className="panel-soft panel-glass flex items-center justify-between rounded-xl p-3 transition hover:bg-white/10"
-                  >
-                    <StatusBadge status={status as LetterStatus} size="sm" />
-                    <span className="font-semibold text-white">{count}</span>
-                  </Link>
-                ))}
-            </div>
+            {stats?.byStatus && Object.keys(stats.byStatus).length > 0 ? (
+              <>
+                {/* Визуализация в виде горизонтальных баров */}
+                <div className="space-y-3">
+                  {[
+                    { key: 'NOT_REVIEWED', label: 'Не рассмотрено', color: 'bg-slate-400' },
+                    { key: 'ACCEPTED', label: 'Принято', color: 'bg-sky-400' },
+                    { key: 'IN_PROGRESS', label: 'В работе', color: 'bg-amber-400' },
+                    { key: 'CLARIFICATION', label: 'На уточнении', color: 'bg-cyan-400' },
+                    { key: 'READY', label: 'Готово', color: 'bg-emerald-400' },
+                    { key: 'DONE', label: 'Выполнено', color: 'bg-teal-400' },
+                  ].map(({ key, label, color }) => {
+                    const count = stats.byStatus[key] || 0
+                    const percent = stats.total ? Math.round((count / stats.total) * 100) : 0
+                    return (
+                      <Link key={key} href={`/letters?status=${key}`} className="group block">
+                        <div className="mb-1 flex items-center justify-between text-sm">
+                          <span className="text-slate-300 transition group-hover:text-white">
+                            {label}
+                          </span>
+                          <span className="text-slate-400">
+                            <span className="font-semibold text-white">{count}</span>
+                            <span className="ml-1 text-xs">({percent}%)</span>
+                          </span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className={`h-full rounded-full ${color} transition-all duration-500 group-hover:opacity-80`}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="flex h-32 items-center justify-center text-slate-500">
+                Нет данных по статусам
+              </div>
+            )}
           </div>
         </div>
 
