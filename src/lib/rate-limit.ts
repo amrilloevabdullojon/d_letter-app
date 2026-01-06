@@ -53,7 +53,7 @@ async function checkRateLimitMemory(
   identifier: string,
   limit: number,
   windowMs: number
-): RateLimitResult {
+): Promise<RateLimitResult> {
   startCleanup()
 
   const now = Date.now()
