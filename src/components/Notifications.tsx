@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
@@ -17,7 +17,6 @@ import { useSession } from 'next-auth/react'
 import { formatDate, getDaysUntilDeadline, pluralizeDays } from '@/lib/utils'
 import { hasPermission } from '@/lib/permissions'
 import { useFetch, useMutation } from '@/hooks/useFetch'
-import { useVirtualList } from '@/hooks/useVirtualList'
 import { useToast } from '@/components/Toast'
 
 interface NotificationLetter {
@@ -85,10 +84,24 @@ const getKindLabel = (kind: UnifiedKind) => {
     case 'DEADLINE_OVERDUE':
       return 'Просрочено'
     case 'DEADLINE_URGENT':
-      return 'Срочно'
+      return 'Скоро дедлайн'
     default:
       return ''
   }
+}
+
+const getSectionTitle = (dateValue: string) => {
+  const parsed = new Date(dateValue)
+  if (Number.isNaN(parsed.getTime())) return 'Недавно'
+
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dateStart = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
+  const diffDays = Math.floor((todayStart.getTime() - dateStart.getTime()) / 86400000)
+
+  if (diffDays === 0) return 'Сегодня'
+  if (diffDays === 1) return 'Вчера'
+  return formatDate(parsed)
 }
 
 export function Notifications() {
@@ -98,8 +111,6 @@ export function Notifications() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
   const [loadDeadlineNotifications, setLoadDeadlineNotifications] = useState(false)
   const [snoozedDeadlines, setSnoozedDeadlines] = useState<Record<string, string>>({})
-  const notificationRowHeight = 148
-  const notificationListHeight = 520
 
   const canManageLetters = hasPermission(session?.user.role, 'MANAGE_LETTERS')
   const currentUserId = session?.user.id
@@ -290,17 +301,26 @@ export function Notifications() {
     }
   }, [activeFilter, unifiedNotifications])
 
-  const {
-    containerRef: notificationsRef,
-    virtualItems: notificationVirtualItems,
-    totalSize: notificationsTotalSize,
-  } = useVirtualList({
-    items: filteredNotifications,
-    itemHeight: notificationRowHeight,
-    overscan: 4,
-    getKey: (item) => item.id,
-    containerHeight: notificationListHeight,
-  })
+  const notificationSections = useMemo(() => {
+    if (filteredNotifications.length === 0) return []
+    const sections: { id: string; title: string; items: UnifiedNotification[] }[] = []
+
+    filteredNotifications.forEach((item) => {
+      const sectionDate = isDeadlineKind(item.kind)
+        ? (item.letter?.deadlineDate ?? item.createdAt)
+        : item.createdAt
+      const title = getSectionTitle(sectionDate)
+      const last = sections[sections.length - 1]
+
+      if (!last || last.title !== title) {
+        sections.push({ id: `${title}-${sections.length}`, title, items: [item] })
+      } else {
+        last.items.push(item)
+      }
+    })
+
+    return sections
+  }, [filteredNotifications])
 
   const markNotificationRead = async (id: string) => {
     const previous = userNotifications
@@ -357,7 +377,7 @@ export function Notifications() {
     })
 
     if (!res.ok) {
-      toast.error('Не удалось назначить')
+      toast.error('Не удалось назначить владельца')
       return
     }
 
@@ -412,14 +432,15 @@ export function Notifications() {
     }
     const days = item.daysLeft ?? 0
     if (item.kind === 'DEADLINE_OVERDUE') {
-      return `Просрочено на ${Math.abs(days)} ${pluralizeDays(days)}`
+      const absDays = Math.abs(days)
+      return `Просрочено на ${absDays} ${pluralizeDays(absDays)}`
     }
     return `Дедлайн через ${days} ${pluralizeDays(days)}`
   }
 
   const renderNotificationMeta = (item: UnifiedNotification) => {
     if (isDeadlineKind(item.kind)) {
-      return <span>Срок: {formatDate(item.letter?.deadlineDate || '')}</span>
+      return <span>Дедлайн: {formatDate(item.letter?.deadlineDate || '')}</span>
     }
     return <span>{new Date(item.createdAt).toLocaleString('ru-RU')}</span>
   }
@@ -459,6 +480,8 @@ export function Notifications() {
     pruneSnoozes()
   }, [isOpen, pruneSnoozes])
 
+  const isLoading = userNotificationsQuery.isLoading && unifiedNotifications.length === 0
+
   return (
     <div className="relative">
       <button
@@ -486,7 +509,7 @@ export function Notifications() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
-          <div className="absolute right-0 top-full z-50 mt-2 flex h-[72vh] max-h-[78vh] min-h-[420px] w-[30rem] flex-col overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/95 shadow-2xl shadow-black/40 backdrop-blur">
+          <div className="absolute right-0 top-full z-50 mt-2 flex h-[72vh] max-h-[78vh] min-h-[420px] w-[30rem] flex-col overflow-hidden rounded-2xl border border-slate-700/70 bg-gradient-to-b from-slate-900/95 via-slate-900/95 to-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur">
             <div className="flex items-start justify-between border-b border-slate-700/70 px-4 py-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -509,7 +532,7 @@ export function Notifications() {
                     onClick={markAllRead}
                     className="rounded-md px-2 py-1 text-xs text-emerald-300 transition hover:bg-emerald-500/10 hover:text-emerald-200"
                   >
-                    Прочитать все
+                    Отметить все прочитанным
                   </button>
                 )}
                 {counts.deadlines > 0 && !hasActiveSnoozes && (
@@ -517,7 +540,7 @@ export function Notifications() {
                     onClick={snoozeAllDeadlines}
                     className="rounded-md px-2 py-1 text-xs text-slate-300 transition hover:bg-slate-800/80 hover:text-slate-100"
                   >
-                    Скрыть дедлайны
+                    Скрыть дедлайны до завтра
                   </button>
                 )}
                 {hasActiveSnoozes && (
@@ -565,129 +588,138 @@ export function Notifications() {
               ))}
             </div>
 
-            <div
-              ref={notificationsRef}
-              className="flex-1 overflow-y-auto px-1"
-              style={{ maxHeight: notificationListHeight }}
-            >
-              {filteredNotifications.length === 0 ? (
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {isLoading ? (
+                <div className="flex flex-col items-center gap-2 p-10 text-slate-500">
+                  <Bell className="h-6 w-6 text-slate-600" />
+                  <div className="text-sm">Загружаем уведомления...</div>
+                </div>
+              ) : filteredNotifications.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 p-10 text-slate-500">
                   <Bell className="h-6 w-6 text-slate-600" />
                   <div className="text-sm">Пока нет уведомлений</div>
-                  <div className="text-xs text-slate-600">Новые события появятся здесь.</div>
+                  <div className="text-xs text-slate-600">
+                    Новые события появятся здесь автоматически.
+                  </div>
                 </div>
               ) : (
-                <div className="relative" style={{ height: `${notificationsTotalSize}px` }}>
-                  {notificationVirtualItems.map((virtualItem) => {
-                    const notif = filteredNotifications[virtualItem.index]
-                    const iconConfig = renderNotificationIcon(notif)
-                    const Icon = iconConfig.icon
-                    const isUnread = !isDeadlineKind(notif.kind) && notif.isRead === false
-                    const linkTarget = notif.letter?.id ? `/letters/${notif.letter.id}` : '/letters'
+                <div className="space-y-6">
+                  {notificationSections.map((section) => (
+                    <div key={section.id} className="space-y-3">
+                      <div className="sticky top-0 z-10 -mx-4 border-b border-slate-800/70 bg-slate-900/90 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-slate-500 backdrop-blur">
+                        {section.title}
+                      </div>
+                      {section.items.map((notif) => {
+                        const iconConfig = renderNotificationIcon(notif)
+                        const Icon = iconConfig.icon
+                        const isUnread = !isDeadlineKind(notif.kind) && notif.isRead === false
+                        const linkTarget = notif.letter?.id
+                          ? `/letters/${notif.letter.id}`
+                          : '/letters'
+                        const cardTone = isDeadlineKind(notif.kind)
+                          ? notif.kind === 'DEADLINE_OVERDUE'
+                            ? 'border-red-500/35 bg-red-500/10'
+                            : 'border-yellow-500/35 bg-yellow-500/10'
+                          : isUnread
+                            ? 'border-emerald-500/35 bg-emerald-500/10'
+                            : 'border-slate-800/70 bg-slate-900/50'
 
-                    return (
-                      <Link
-                        key={notif.id}
-                        href={linkTarget}
-                        onClick={() => {
-                          if (!isDeadlineKind(notif.kind)) {
-                            markNotificationRead(notif.id)
-                          }
-                          setIsOpen(false)
-                        }}
-                        className={`absolute left-3 right-3 flex items-start gap-3 rounded-xl border px-4 py-3 transition ${
-                          isUnread
-                            ? 'border-emerald-500/30 bg-emerald-500/10'
-                            : 'border-slate-800/60 bg-slate-900/40'
-                        } hover:border-slate-600/70 hover:bg-slate-800/70`}
-                        style={{
-                          top: `${virtualItem.start}px`,
-                          height: `${virtualItem.size}px`,
-                        }}
-                      >
-                        <div
-                          className={`rounded-lg p-2 ring-1 ring-white/10 ${iconConfig.bg} ${iconConfig.color}`}
-                        >
-                          <Icon className={iconConfig.cls} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white">
-                              {renderNotificationTitle(notif)}
-                            </span>
-                            {isUnread && <span className="h-2 w-2 rounded-full bg-emerald-400" />}
-                          </div>
-                          {notif.body && (
-                            <div className="mt-1 line-clamp-2 text-xs text-slate-300">
-                              {notif.body}
+                        return (
+                          <Link
+                            key={notif.id}
+                            href={linkTarget}
+                            onClick={() => {
+                              if (!isDeadlineKind(notif.kind)) {
+                                markNotificationRead(notif.id)
+                              }
+                              setIsOpen(false)
+                            }}
+                            className={`group flex items-start gap-3 rounded-2xl border px-4 py-3 transition ${cardTone} hover:border-slate-600/70 hover:bg-slate-800/70`}
+                          >
+                            <div
+                              className={`rounded-lg p-2 ring-1 ring-white/10 ${iconConfig.bg} ${iconConfig.color}`}
+                            >
+                              <Icon className={iconConfig.cls} />
                             </div>
-                          )}
-                          {notif.letter?.org && (
-                            <div className="mt-1 truncate text-xs text-slate-400">
-                              {notif.letter.org}
-                            </div>
-                          )}
-                          <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                            <span>{getKindLabel(notif.kind)}</span>
-                            <span>•</span>
-                            {renderNotificationMeta(notif)}
-                            {notif.letter?.number && (
-                              <>
-                                <span>•</span>
-                                <span className="font-mono text-emerald-300">
-                                  №{notif.letter.number}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-white">
+                                  {renderNotificationTitle(notif)}
                                 </span>
-                              </>
-                            )}
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                            {!isDeadlineKind(notif.kind) && notif.isRead === false && (
-                              <button
-                                onClick={(event) => {
-                                  event.preventDefault()
-                                  event.stopPropagation()
-                                  markNotificationRead(notif.id)
-                                }}
-                                className="rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
-                              >
-                                Отметить прочитанным
-                              </button>
-                            )}
-                            {isDeadlineKind(notif.kind) && notif.letter?.id && (
-                              <button
-                                onClick={(event) => {
-                                  event.preventDefault()
-                                  event.stopPropagation()
-                                  if (notif.letter?.id) {
-                                    snoozeDeadline(notif.letter.id)
-                                  }
-                                }}
-                                className="rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
-                              >
-                                Скрыть до завтра
-                              </button>
-                            )}
-                            {canManageLetters &&
-                              currentUserId &&
-                              notif.letter?.id &&
-                              !notif.letter?.owner && (
-                                <button
-                                  onClick={(event) => {
-                                    event.preventDefault()
-                                    event.stopPropagation()
-                                    assignToMe(notif.letter!.id)
-                                  }}
-                                  className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-emerald-200 transition hover:bg-emerald-500/25"
-                                >
-                                  Назначить себя
-                                </button>
+                                {isUnread && (
+                                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                                )}
+                              </div>
+                              {notif.body && (
+                                <div className="mt-1 line-clamp-2 text-xs text-slate-300">
+                                  {notif.body}
+                                </div>
                               )}
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-500" />
-                      </Link>
-                    )
-                  })}
+                              {notif.letter?.org && (
+                                <div className="mt-1 truncate text-xs text-slate-400">
+                                  {notif.letter.org}
+                                </div>
+                              )}
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                <span>{getKindLabel(notif.kind)}</span>
+                                <span className="text-slate-600">•</span>
+                                {renderNotificationMeta(notif)}
+                                {notif.letter?.number && (
+                                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-200">
+                                    №{notif.letter.number}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                {!isDeadlineKind(notif.kind) && notif.isRead === false && (
+                                  <button
+                                    onClick={(event) => {
+                                      event.preventDefault()
+                                      event.stopPropagation()
+                                      markNotificationRead(notif.id)
+                                    }}
+                                    className="rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
+                                  >
+                                    Отметить прочитанным
+                                  </button>
+                                )}
+                                {isDeadlineKind(notif.kind) && notif.letter?.id && (
+                                  <button
+                                    onClick={(event) => {
+                                      event.preventDefault()
+                                      event.stopPropagation()
+                                      if (notif.letter?.id) {
+                                        snoozeDeadline(notif.letter.id)
+                                      }
+                                    }}
+                                    className="rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
+                                  >
+                                    Скрыть до завтра
+                                  </button>
+                                )}
+                                {canManageLetters &&
+                                  currentUserId &&
+                                  notif.letter?.id &&
+                                  !notif.letter?.owner && (
+                                    <button
+                                      onClick={(event) => {
+                                        event.preventDefault()
+                                        event.stopPropagation()
+                                        assignToMe(notif.letter!.id)
+                                      }}
+                                      className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-emerald-200 transition hover:bg-emerald-500/25"
+                                    >
+                                      Назначить меня
+                                    </button>
+                                  )}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-500 transition group-hover:text-slate-300" />
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
