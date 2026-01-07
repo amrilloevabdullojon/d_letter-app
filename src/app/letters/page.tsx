@@ -148,6 +148,10 @@ function LettersPageContent() {
   const { data: session, status: authStatus } = useSession()
   useAuthRedirect(authStatus)
   const toast = useToast()
+  const toastRef = useRef(toast)
+  useEffect(() => {
+    toastRef.current = toast
+  }, [toast])
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -523,7 +527,7 @@ function LettersPageContent() {
       } catch (error) {
         if (controller.signal.aborted) return
         console.error('Failed to load letters:', error)
-        toast.error('Не удалось загрузить список писем')
+        toastRef.current.error('Не удалось загрузить список писем')
       } finally {
         if (requestId === lettersRequestIdRef.current) {
           setLoading(false)
@@ -531,7 +535,7 @@ function LettersPageContent() {
         }
       }
     },
-    [page, limit, sortBy, sortOrder, statusFilter, quickFilter, ownerFilter, typeFilter, toast]
+    [page, limit, sortBy, sortOrder, statusFilter, quickFilter, ownerFilter, typeFilter]
   )
 
   const loadUsers = useCallback(async () => {
