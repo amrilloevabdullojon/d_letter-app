@@ -954,138 +954,140 @@ function LettersPageContent() {
         {/* Filters Row */}
         <div className="panel panel-soft panel-glass relative z-20 mb-6 flex flex-col gap-4 rounded-2xl p-4 lg:sticky lg:top-20 lg:z-30 lg:flex-row lg:flex-wrap lg:items-center">
           {/* Search */}
-          <div className="relative w-full min-w-0 lg:flex-[1_1_100%] lg:basis-full">
-            {isSearching ? (
-              <Loader2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-teal-400" />
-            ) : (
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-            )}
-            {isInitialLoading ? (
-              <div
-                className="animate-shimmer h-10 w-full rounded-xl bg-white/5"
-                aria-hidden="true"
-              />
-            ) : (
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Поиск по номеру, организации, содержанию, Jira и ответам..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onFocus={() => {
-                  setIsSearchFocused(true)
-                  if (searchSuggestions.length > 0 || recentSearches.length > 0) {
-                    setSuggestionsOpen(true)
-                  }
-                }}
-                onBlur={() => {
-                  setIsSearchFocused(false)
-                  window.setTimeout(() => setSuggestionsOpen(false), 150)
-                }}
-                className="h-10 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-10 text-white placeholder-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
-                aria-label="Поиск"
-              />
-            )}
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-white"
-                aria-label="Очистить поиск"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
+          <div className="w-full min-w-0 lg:flex-[1_1_100%] lg:basis-full">
+            <div className="relative">
+              {isSearching ? (
+                <Loader2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-teal-400" />
+              ) : (
+                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              )}
+              {isInitialLoading ? (
+                <div
+                  className="animate-shimmer h-10 w-full rounded-xl bg-white/5"
+                  aria-hidden="true"
+                />
+              ) : (
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Поиск по номеру, организации, содержанию, Jira и ответам..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onFocus={() => {
+                    setIsSearchFocused(true)
+                    if (searchSuggestions.length > 0 || recentSearches.length > 0) {
+                      setSuggestionsOpen(true)
+                    }
+                  }}
+                  onBlur={() => {
+                    setIsSearchFocused(false)
+                    window.setTimeout(() => setSuggestionsOpen(false), 150)
+                  }}
+                  className="h-10 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-10 text-white placeholder-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
+                  aria-label="Поиск"
+                />
+              )}
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-white"
+                  aria-label="Очистить поиск"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
 
-            {(suggestionsOpen ||
-              suggestionsLoading ||
-              (isSearchFocused && !search.trim() && recentSearches.length > 0)) && (
-              <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-slate-800/70 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur">
-                <div className="flex items-center justify-between border-b border-slate-800/70 px-3 py-2 text-xs text-slate-400">
-                  <span>{search.trim() ? 'Подсказки' : 'Последние поиски'}</span>
-                  {suggestionsLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                </div>
-                <div className="max-h-64 overflow-auto">
-                  {!search.trim() ? (
-                    recentSearches.length === 0 ? (
-                      <div className="px-3 py-4 text-xs text-slate-500">
-                        {'Пока нет истории поиска'}
-                      </div>
-                    ) : (
-                      <div className="space-y-1 px-3 py-2">
-                        {recentSearches.map((item) => (
+              {(suggestionsOpen ||
+                suggestionsLoading ||
+                (isSearchFocused && !search.trim() && recentSearches.length > 0)) && (
+                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-slate-800/70 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur">
+                  <div className="flex items-center justify-between border-b border-slate-800/70 px-3 py-2 text-xs text-slate-400">
+                    <span>{search.trim() ? 'Подсказки' : 'Последние поиски'}</span>
+                    {suggestionsLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  </div>
+                  <div className="max-h-64 overflow-auto">
+                    {!search.trim() ? (
+                      recentSearches.length === 0 ? (
+                        <div className="px-3 py-4 text-xs text-slate-500">
+                          {'Пока нет истории поиска'}
+                        </div>
+                      ) : (
+                        <div className="space-y-1 px-3 py-2">
+                          {recentSearches.map((item) => (
+                            <button
+                              key={item}
+                              type="button"
+                              onMouseDown={(event) => {
+                                event.preventDefault()
+                                setSearch(item)
+                                setSuggestionsOpen(false)
+                              }}
+                              className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm text-slate-200 transition hover:bg-slate-900/60"
+                            >
+                              <span className="truncate">{item}</span>
+                              <span className="text-[10px] text-slate-500">{'Поиск'}</span>
+                            </button>
+                          ))}
                           <button
-                            key={item}
                             type="button"
                             onMouseDown={(event) => {
                               event.preventDefault()
-                              setSearch(item)
+                              clearRecentSearches()
+                            }}
+                            className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-[11px] text-slate-500 transition hover:text-slate-200"
+                          >
+                            {'Очистить историю'}
+                          </button>
+                        </div>
+                      )
+                    ) : searchSuggestions.length === 0 ? (
+                      <div className="px-3 py-4 text-xs text-slate-500">
+                        <div>{'Ничего не найдено'}</div>
+                        <div className="mt-2 text-[11px] text-slate-600">
+                          {'Попробуйте: номер, организация, Jira'}
+                        </div>
+                      </div>
+                    ) : (
+                      searchSuggestions.map((item) => {
+                        const daysLeft = getWorkingDaysUntilDeadline(item.deadlineDate)
+                        const tone =
+                          daysLeft < 0
+                            ? 'text-red-400'
+                            : daysLeft <= 2
+                              ? 'text-yellow-400'
+                              : 'text-emerald-300'
+
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onMouseDown={(event) => {
+                              event.preventDefault()
+                              router.push(`/letters/${item.id}`)
                               setSuggestionsOpen(false)
                             }}
-                            className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm text-slate-200 transition hover:bg-slate-900/60"
+                            className="flex w-full flex-col gap-1 border-b border-slate-900/60 px-3 py-2 text-left text-sm transition hover:bg-slate-900/70"
                           >
-                            <span className="truncate">{item}</span>
-                            <span className="text-[10px] text-slate-500">{'Поиск'}</span>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-teal-300">№-{item.number}</span>
+                              <span className={`text-[11px] ${tone}`}>
+                                {daysLeft} раб. {pluralizeDays(daysLeft)}
+                              </span>
+                            </div>
+                            <div className="truncate text-xs text-slate-300">
+                              {renderHighlightedText(item.org, search)}
+                            </div>
+                            <div className="text-[11px] text-slate-500">
+                              {STATUS_LABELS[item.status]}
+                            </div>
                           </button>
-                        ))}
-                        <button
-                          type="button"
-                          onMouseDown={(event) => {
-                            event.preventDefault()
-                            clearRecentSearches()
-                          }}
-                          className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-[11px] text-slate-500 transition hover:text-slate-200"
-                        >
-                          {'Очистить историю'}
-                        </button>
-                      </div>
-                    )
-                  ) : searchSuggestions.length === 0 ? (
-                    <div className="px-3 py-4 text-xs text-slate-500">
-                      <div>{'Ничего не найдено'}</div>
-                      <div className="mt-2 text-[11px] text-slate-600">
-                        {'Попробуйте: номер, организация, Jira'}
-                      </div>
-                    </div>
-                  ) : (
-                    searchSuggestions.map((item) => {
-                      const daysLeft = getWorkingDaysUntilDeadline(item.deadlineDate)
-                      const tone =
-                        daysLeft < 0
-                          ? 'text-red-400'
-                          : daysLeft <= 2
-                            ? 'text-yellow-400'
-                            : 'text-emerald-300'
-
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onMouseDown={(event) => {
-                            event.preventDefault()
-                            router.push(`/letters/${item.id}`)
-                            setSuggestionsOpen(false)
-                          }}
-                          className="flex w-full flex-col gap-1 border-b border-slate-900/60 px-3 py-2 text-left text-sm transition hover:bg-slate-900/70"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-teal-300">№-{item.number}</span>
-                            <span className={`text-[11px] ${tone}`}>
-                              {daysLeft} раб. {pluralizeDays(daysLeft)}
-                            </span>
-                          </div>
-                          <div className="truncate text-xs text-slate-300">
-                            {renderHighlightedText(item.org, search)}
-                          </div>
-                          <div className="text-[11px] text-slate-500">
-                            {STATUS_LABELS[item.status]}
-                          </div>
-                        </button>
-                      )
-                    })
-                  )}
+                        )
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <p className="mt-2 hidden text-xs text-slate-500 md:block">
               Можно искать по номеру, организации, содержанию, Jira и ответам.
