@@ -96,7 +96,7 @@ export const GET = withValidation<LettersListResponse, unknown, LettersQueryInpu
       pagination: result.pagination,
     })
   },
-  { querySchema: lettersQuerySchema, rateLimit: 'search' }
+  { querySchema: lettersQuerySchema, rateLimit: { limit: 120, windowMs: 60 * 1000 } }
 )
 // POST /api/letters - создать новое письмо
 export async function POST(request: NextRequest) {

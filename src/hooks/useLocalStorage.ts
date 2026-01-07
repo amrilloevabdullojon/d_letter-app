@@ -128,6 +128,7 @@ export function useLocalStorage<T>(
     // Also listen for same-tab changes
     const handleLocalChange = (event: CustomEvent<{ key: string; value: T }>) => {
       if (event.detail.key === key) {
+        setStoredValue(event.detail.value)
         onStorageChange?.(event.detail.value)
       }
     }
