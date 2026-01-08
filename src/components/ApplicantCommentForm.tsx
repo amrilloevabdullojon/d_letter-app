@@ -19,8 +19,8 @@ export function ApplicantCommentForm({ token, language = 'ru' }: ApplicantCommen
     language === 'uz'
       ? {
           required: 'Izoh kiriting',
-          failed: 'Izohni yuborib bo\\u02bclmadi',
-          network: 'Tarmoq xatosi. Qayta urinib ko\\u02bcring.',
+          failed: 'Izohni yuborib bo\u02bclmadi',
+          network: 'Tarmoq xatosi. Qayta urinib ko\u02bcring.',
           placeholder: 'Savol yoki aniqlashtirishni yozing...',
           limit: '2000 belgigacha',
           sending: 'Yuborilmoqda...',
@@ -29,17 +29,17 @@ export function ApplicantCommentForm({ token, language = 'ru' }: ApplicantCommen
         }
       : {
           required:
-            '\\u0412\\u0432\\u0435\\u0434\\u0438\\u0442\\u0435 \\u043a\\u043e\\u043c\\u043c\\u0435\\u043d\\u0442\\u0430\\u0440\\u0438\\u0439',
+            '\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439',
           failed:
-            '\\u041d\\u0435 \\u0443\\u0434\\u0430\\u043b\\u043e\\u0441\\u044c \\u043e\\u0442\\u043f\\u0440\\u0430\\u0432\\u0438\\u0442\\u044c \\u043a\\u043e\\u043c\\u043c\\u0435\\u043d\\u0442\\u0430\\u0440\\u0438\\u0439',
+            '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439',
           network:
-            '\\u041e\\u0448\\u0438\\u0431\\u043a\\u0430 \\u0441\\u0435\\u0442\\u0438. \\u041f\\u043e\\u043f\\u0440\\u043e\\u0431\\u0443\\u0439\\u0442\\u0435 \\u0435\\u0449\\u0435 \\u0440\\u0430\\u0437.',
+            '\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u0435\u0442\u0438. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0435 \u0440\u0430\u0437.',
           placeholder:
-            '\\u041e\\u043f\\u0438\\u0448\\u0438\\u0442\\u0435 \\u0432\\u043e\\u043f\\u0440\\u043e\\u0441 \\u0438\\u043b\\u0438 \\u0443\\u0442\\u043e\\u0447\\u043d\\u0435\\u043d\\u0438\\u0435...',
-          limit: '\\u0414\\u043e 2000 \\u0441\\u0438\\u043c\\u0432\\u043e\\u043b\\u043e\\u0432',
-          sending: '\\u041e\\u0442\\u043f\\u0440\\u0430\\u0432\\u043a\\u0430...',
-          send: '\\u041e\\u0442\\u043f\\u0440\\u0430\\u0432\\u0438\\u0442\\u044c',
-          sent: '\\u041a\\u043e\\u043c\\u043c\\u0435\\u043d\\u0442\\u0430\\u0440\\u0438\\u0439 \\u043e\\u0442\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d',
+            '\u041e\u043f\u0438\u0448\u0438\u0442\u0435 \u0432\u043e\u043f\u0440\u043e\u0441 \u0438\u043b\u0438 \u0443\u0442\u043e\u0447\u043d\u0435\u043d\u0438\u0435...',
+          limit: '\u0414\u043e 2000 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432',
+          sending: '\u041e\u0442\u043f\u0440\u0430\u0432\u043a\u0430...',
+          send: '\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c',
+          sent: '\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d',
         }
 
   const scrollToComments = () => {
