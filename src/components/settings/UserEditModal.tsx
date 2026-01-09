@@ -109,10 +109,10 @@ export function UserEditModal({
       aria-modal="true"
       aria-labelledby="edit-modal-title"
     >
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="flex min-h-full items-start justify-center p-4 sm:items-center">
         <div
           ref={modalRef}
-          className="panel panel-glass relative w-full max-w-lg rounded-2xl"
+          className="panel panel-glass relative flex w-full max-w-lg flex-col rounded-2xl sm:max-h-[calc(100vh-2rem)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -149,7 +149,7 @@ export function UserEditModal({
           </div>
 
           {/* Form */}
-          <div className="space-y-4 p-6">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
             {/* Basic Info Section */}
             <section>
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-300">

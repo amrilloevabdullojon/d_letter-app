@@ -149,6 +149,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const updateData: Partial<{
       role: Role
       name: string | null
+      email: string | null
       telegramChatId: string | null
       canLogin: boolean
       notifyEmail: boolean
@@ -198,6 +199,20 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // Обработка остальных полей
     if (validatedData.name !== undefined) {
       updateData.name = validatedData.name || null
+    }
+
+    if (validatedData.email !== undefined) {
+      const nextEmail = validatedData.email.trim() || null
+      if (nextEmail && nextEmail !== currentUser.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: nextEmail },
+          select: { id: true },
+        })
+        if (existingUser && existingUser.id !== currentUser.id) {
+          return NextResponse.json({ error: 'Email is already in use' }, { status: 400 })
+        }
+      }
+      updateData.email = nextEmail
     }
 
     if (validatedData.telegramChatId !== undefined) {
@@ -286,6 +301,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       newValue: unknown
     }> = [
       { field: 'name', action: 'UPDATE', oldValue: currentUser.name, newValue: user.name },
+      { field: 'email', action: 'UPDATE', oldValue: currentUser.email, newValue: user.email },
       { field: 'role', action: 'ROLE', oldValue: currentUser.role, newValue: user.role },
       {
         field: 'canLogin',
