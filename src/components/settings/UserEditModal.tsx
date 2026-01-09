@@ -112,11 +112,11 @@ export function UserEditModal({
       <div className="flex min-h-full items-start justify-center p-4 sm:items-center">
         <div
           ref={modalRef}
-          className="panel panel-glass relative flex w-full max-w-lg flex-col rounded-2xl sm:max-h-[calc(100vh-2rem)]"
+          className="panel panel-glass relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between gap-4 border-b border-white/10 p-6">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 p-6">
             <div className="flex items-center gap-3">
               {user.image ? (
                 <Image
@@ -381,7 +381,7 @@ export function UserEditModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between border-t border-white/10 bg-slate-900/50 p-4">
+          <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-slate-900/50 p-4">
             <span className="text-xs text-gray-500">
               {saving
                 ? 'Сохранение...'
