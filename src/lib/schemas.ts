@@ -53,6 +53,20 @@ export const createLetterSchema = z.object({
   applicantTelegramChatId: z.string().max(50).optional(),
 })
 
+// QuickLetterUpload - упрощенная схема без transform для форм
+export const quickLetterUploadSchema = z.object({
+  number: z.string().min(1, 'Номер письма обязателен').max(50, 'Номер слишком длинный'),
+  org: z.string().min(1, 'Организация обязательна').max(500, 'Название слишком длинное'),
+  date: z.string().min(1, 'Дата обязательна'),
+  deadlineDate: z.string().optional(),
+  type: z.string().max(100).optional(),
+  content: z.string().max(10000).optional(),
+  applicantName: z.string().max(200).optional(),
+  applicantEmail: z.string().email('Некорректный email').optional().or(z.literal('')),
+  applicantPhone: z.string().max(50).optional(),
+  applicantTelegramChatId: z.string().max(50).optional(),
+})
+
 export const updateLetterSchema = z.object({
   field: z.string().min(1),
   value: z.union([z.string(), z.null()]),
@@ -214,6 +228,7 @@ export const syncSchema = z.object({
 // ==================== TYPES ====================
 
 export type CreateLetterInput = z.infer<typeof createLetterSchema>
+export type QuickLetterUploadInput = z.infer<typeof quickLetterUploadSchema>
 export type UpdateLetterInput = z.infer<typeof updateLetterSchema>
 export type LetterFiltersInput = z.infer<typeof letterFiltersSchema>
 export type BulkLetterInput = z.infer<typeof bulkLetterSchema>

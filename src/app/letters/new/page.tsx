@@ -4,6 +4,8 @@ import { useSession } from 'next-auth/react'
 import { Header } from '@/components/Header'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   ArrowLeft,
   Loader2,
@@ -26,13 +28,13 @@ import {
   MAX_FILE_SIZE_LABEL,
 } from '@/lib/constants'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
-import { useForm } from '@/hooks/useForm'
-import { createLetterSchema } from '@/lib/schemas'
-import { z, type ZodSchema } from 'zod'
+import { quickLetterUploadSchema, type QuickLetterUploadInput } from '@/lib/schemas'
 
-type CreateLetterFormValues = Omit<z.input<typeof createLetterSchema>, 'date' | 'deadlineDate'> & {
-  date: string
-  deadlineDate: string
+// Extend schema for this form with additional fields
+type CreateLetterFormValues = QuickLetterUploadInput & {
+  comment?: string
+  contacts?: string
+  jiraLink?: string
 }
 
 export default function NewLetterPage() {
@@ -51,8 +53,23 @@ export default function NewLetterPage() {
 
   const DRAFT_KEY = 'letter-draft'
 
-  const form = useForm<CreateLetterFormValues>({
-    initialValues: {
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isDirty, isValid },
+  } = useForm<CreateLetterFormValues>({
+    resolver: zodResolver(
+      quickLetterUploadSchema.extend({
+        comment: quickLetterUploadSchema.shape.content,
+        contacts: quickLetterUploadSchema.shape.content,
+        jiraLink: quickLetterUploadSchema.shape.content,
+      })
+    ),
+    mode: 'onChange',
+    defaultValues: {
       number: '',
       org: '',
       date: new Date().toISOString().split('T')[0],
@@ -67,61 +84,14 @@ export default function NewLetterPage() {
       applicantPhone: '',
       applicantTelegramChatId: '',
     },
-    schema: createLetterSchema as unknown as ZodSchema<CreateLetterFormValues>,
-    validateOnChange: false,
-    validateOnBlur: false,
-    onError: () => setError('Проверьте обязательные поля.'),
-    onSubmit: async (values) => {
-      setLoading(true)
-      setError('')
-
-      try {
-        const res = await fetch('/api/letters', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
-        })
-
-        const data = await res.json()
-
-        if (data.success) {
-          if (attachment) {
-            const formData = new FormData()
-            formData.append('file', attachment)
-            formData.append('letterId', data.letter.id)
-
-            const uploadRes = await fetch('/api/upload', {
-              method: 'POST',
-              body: formData,
-            })
-
-            if (!uploadRes.ok) {
-              toast.error('Письмо создано, но файл не загрузился.')
-            }
-          }
-
-          // Clear draft on success
-          try {
-            localStorage.removeItem(DRAFT_KEY)
-          } catch {
-            // Ignore
-          }
-
-          router.push(`/letters/${data.letter.id}`)
-        } else {
-          setError(data.error || 'Ошибка при создании письма')
-        }
-      } catch (err) {
-        setError('Ошибка соединения с сервером')
-      } finally {
-        setLoading(false)
-      }
-    },
   })
-  const handleSubmit = form.handleSubmit
+
+  const formValues = watch()
 
   // Load draft on mount
   useEffect(() => {
+    if (mode !== 'manual') return
+
     try {
       const stored = localStorage.getItem(DRAFT_KEY)
       if (stored) {
@@ -129,8 +99,8 @@ export default function NewLetterPage() {
         if (draft.values && Date.now() - draft.savedAt < 24 * 60 * 60 * 1000) {
           // 24 hours
           Object.entries(draft.values).forEach(([key, value]) => {
-            if (value && key in form.values) {
-              form.setValue(key as keyof CreateLetterFormValues, value as string)
+            if (value && key in formValues) {
+              setValue(key as keyof CreateLetterFormValues, value as string)
             }
           })
           setDraftRestored(true)
@@ -140,11 +110,12 @@ export default function NewLetterPage() {
     } catch {
       // Ignore localStorage errors
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode])
 
   // Save draft on form change
   useEffect(() => {
-    const hasData = Object.entries(form.values).some(
+    const hasData = Object.entries(formValues).some(
       ([key, value]) => key !== 'date' && value && value.trim() !== ''
     )
 
@@ -153,7 +124,7 @@ export default function NewLetterPage() {
         localStorage.setItem(
           DRAFT_KEY,
           JSON.stringify({
-            values: form.values,
+            values: formValues,
             savedAt: Date.now(),
           })
         )
@@ -163,20 +134,62 @@ export default function NewLetterPage() {
         // Ignore localStorage errors
       }
     }
-  }, [form.values, mode])
+  }, [formValues, mode])
 
-  // Clear draft on successful submission
-  const clearDraft = useCallback(() => {
+  const onSubmit = async (data: CreateLetterFormValues) => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/letters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        if (attachment) {
+          const formData = new FormData()
+          formData.append('file', attachment)
+          formData.append('letterId', result.letter.id)
+
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!uploadRes.ok) {
+            toast.error('Письмо создано, но файл не загрузился.')
+          }
+        }
+
+        // Clear draft on success
+        try {
+          localStorage.removeItem(DRAFT_KEY)
+        } catch {
+          // Ignore
+        }
+
+        router.push(`/letters/${result.letter.id}`)
+      } else {
+        setError(result.error || 'Ошибка при создании письма')
+      }
+    } catch {
+      setError('Ошибка соединения с сервером')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClearDraft = () => {
     try {
       localStorage.removeItem(DRAFT_KEY)
     } catch {
       // Ignore
     }
-  }, [])
-
-  const handleClearDraft = () => {
-    clearDraft()
-    form.reset()
+    reset()
     toast.success('Черновик очищен')
   }
 
@@ -318,7 +331,7 @@ export default function NewLetterPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-300">
@@ -326,13 +339,13 @@ export default function NewLetterPage() {
                   </label>
                   <input
                     type="text"
-                    required
-                    value={form.values.number}
-                    aria-label="Номер письма"
-                    onChange={(e) => form.setValue('number', e.target.value)}
-                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                    {...register('number')}
+                    className={`w-full rounded-lg border ${errors.number ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none`}
                     placeholder="Например: 01-15/1234"
                   />
+                  {errors.number && (
+                    <p className="mt-1 text-xs text-red-400">{errors.number.message}</p>
+                  )}
                 </div>
 
                 <div>
@@ -341,12 +354,12 @@ export default function NewLetterPage() {
                   </label>
                   <input
                     type="date"
-                    required
-                    value={form.values.date}
-                    aria-label="Дата письма"
-                    onChange={(e) => form.setValue('date', e.target.value)}
-                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    {...register('date')}
+                    className={`w-full rounded-lg border ${errors.date ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none`}
                   />
+                  {errors.date && (
+                    <p className="mt-1 text-xs text-red-400">{errors.date.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -355,9 +368,7 @@ export default function NewLetterPage() {
                   <label className="mb-2 block text-sm font-medium text-gray-300">Дедлайн</label>
                   <input
                     type="date"
-                    value={form.values.deadlineDate}
-                    aria-label="Дедлайн"
-                    onChange={(e) => form.setValue('deadlineDate', e.target.value)}
+                    {...register('deadlineDate')}
                     className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
                   <p className="mt-1 text-xs text-gray-500">
@@ -371,9 +382,7 @@ export default function NewLetterPage() {
                   </label>
                   <input
                     type="url"
-                    value={form.values.jiraLink}
-                    aria-label="Ссылка на Jira"
-                    onChange={(e) => form.setValue('jiraLink', e.target.value)}
+                    {...register('jiraLink')}
                     className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                     placeholder="https://jira.example.com/browse/..."
                   />
@@ -385,11 +394,12 @@ export default function NewLetterPage() {
                   Организация *
                 </label>
                 <OrganizationAutocomplete
-                  value={form.values.org}
-                  onChange={(value) => form.setValue('org', value)}
+                  value={watch('org')}
+                  onChange={(value) => setValue('org', value)}
                   placeholder="Название организации"
                   required
                 />
+                {errors.org && <p className="mt-1 text-xs text-red-400">{errors.org.message}</p>}
               </div>
 
               <div>
@@ -452,9 +462,7 @@ export default function NewLetterPage() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-300">Тип запроса</label>
                 <select
-                  value={form.values.type}
-                  aria-label="Тип запроса"
-                  onChange={(e) => form.setValue('type', e.target.value)}
+                  {...register('type')}
                   className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
                 >
                   <option value="">Выберите тип</option>
@@ -470,9 +478,7 @@ export default function NewLetterPage() {
                 <label className="mb-2 block text-sm font-medium text-gray-300">Содержание</label>
                 <textarea
                   rows={4}
-                  value={form.values.content}
-                  aria-label="Содержание"
-                  onChange={(e) => form.setValue('content', e.target.value)}
+                  {...register('content')}
                   className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                   placeholder="Краткое описание содержания письма"
                 />
@@ -482,9 +488,7 @@ export default function NewLetterPage() {
                 <label className="mb-2 block text-sm font-medium text-gray-300">Контакты</label>
                 <input
                   type="text"
-                  value={form.values.contacts}
-                  aria-label="Контакты"
-                  onChange={(e) => form.setValue('contacts', e.target.value)}
+                  {...register('contacts')}
                   className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                   placeholder="Телефон, email контактного лица"
                 />
@@ -497,9 +501,7 @@ export default function NewLetterPage() {
                     <label className="mb-2 block text-sm font-medium text-gray-300">Имя</label>
                     <input
                       type="text"
-                      value={form.values.applicantName}
-                      aria-label="Имя заявителя"
-                      onChange={(e) => form.setValue('applicantName', e.target.value)}
+                      {...register('applicantName')}
                       className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                       placeholder="Имя заявителя"
                     />
@@ -509,21 +511,20 @@ export default function NewLetterPage() {
                     <label className="mb-2 block text-sm font-medium text-gray-300">Email</label>
                     <input
                       type="email"
-                      value={form.values.applicantEmail}
-                      aria-label="Email заявителя"
-                      onChange={(e) => form.setValue('applicantEmail', e.target.value)}
-                      className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                      {...register('applicantEmail')}
+                      className={`w-full rounded-lg border ${errors.applicantEmail ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none`}
                       placeholder="email@example.com"
                     />
+                    {errors.applicantEmail && (
+                      <p className="mt-1 text-xs text-red-400">{errors.applicantEmail.message}</p>
+                    )}
                   </div>
 
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-300">Телефон</label>
                     <input
                       type="tel"
-                      value={form.values.applicantPhone}
-                      aria-label="Телефон заявителя"
-                      onChange={(e) => form.setValue('applicantPhone', e.target.value)}
+                      {...register('applicantPhone')}
                       className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                       placeholder="+998901234567"
                     />
@@ -535,9 +536,7 @@ export default function NewLetterPage() {
                     </label>
                     <input
                       type="text"
-                      value={form.values.applicantTelegramChatId}
-                      aria-label="Telegram chat id заявителя"
-                      onChange={(e) => form.setValue('applicantTelegramChatId', e.target.value)}
+                      {...register('applicantTelegramChatId')}
                       className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                       placeholder="123456789"
                     />
@@ -549,9 +548,7 @@ export default function NewLetterPage() {
                 <label className="mb-2 block text-sm font-medium text-gray-300">Комментарий</label>
                 <textarea
                   rows={2}
-                  value={form.values.comment}
-                  aria-label="Комментарий"
-                  onChange={(e) => form.setValue('comment', e.target.value)}
+                  {...register('comment')}
                   className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                   placeholder="Внутренний комментарий"
                 />
