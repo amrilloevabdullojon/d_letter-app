@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Upload,
   FileText,
@@ -28,6 +30,7 @@ import {
 } from '@/lib/parseLetterFilename'
 import { DEFAULT_DEADLINE_WORKING_DAYS, LETTER_TYPES } from '@/lib/constants'
 import { recommendLetterType } from '@/lib/recommendLetterType'
+import { quickLetterUploadSchema, type QuickLetterUploadInput } from '@/lib/schemas'
 
 interface ParsedPdfData {
   number: string | null
@@ -61,19 +64,36 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   const [parsing, setParsing] = useState(false)
   const [parseSource, setParseSource] = useState<'ai' | 'pdf' | 'filename' | null>(null)
 
-  // Редактируемые поля
-  const [number, setNumber] = useState('')
-  const [org, setOrg] = useState('')
-  const [date, setDate] = useState('')
-  const [deadlineDate, setDeadlineDate] = useState('')
-  const [content, setContent] = useState('')
+  // Дополнительные поля (не в схеме)
   const [contentRussian, setContentRussian] = useState('')
   const [region, setRegion] = useState('')
-  const [type, setType] = useState('')
-  const [applicantName, setApplicantName] = useState('')
-  const [applicantEmail, setApplicantEmail] = useState('')
-  const [applicantPhone, setApplicantPhone] = useState('')
-  const [applicantTelegramChatId, setApplicantTelegramChatId] = useState('')
+
+  // React Hook Form
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset: resetForm,
+    formState: { errors, isValid },
+  } = useForm<QuickLetterUploadInput>({
+    resolver: zodResolver(quickLetterUploadSchema),
+    mode: 'onChange',
+    defaultValues: {
+      number: '',
+      org: '',
+      date: '',
+      deadlineDate: '',
+      type: '',
+      content: '',
+      applicantName: '',
+      applicantEmail: '',
+      applicantPhone: '',
+      applicantTelegramChatId: '',
+    },
+  })
+
+  const watchDate = watch('date')
 
   /**
    * Парсит PDF через API
@@ -131,23 +151,24 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
             setParseSource('filename')
           }
 
-          if (data.number) setNumber(data.number)
-          if (data.organization) setOrg(data.organization)
+          if (data.number) setValue('number', data.number)
+          if (data.organization) setValue('org', data.organization)
           if (data.date) {
             const dateObj = new Date(data.date)
-            setDate(formatDateForInput(dateObj))
+            setValue('date', formatDateForInput(dateObj))
           }
           if (data.deadline) {
             const deadlineObj = new Date(data.deadline)
-            setDeadlineDate(formatDateForInput(deadlineObj))
+            setValue('deadlineDate', formatDateForInput(deadlineObj))
           } else if (data.date) {
             const dateObj = new Date(data.date)
             // +7 рабочих дней
-            setDeadlineDate(
+            setValue(
+              'deadlineDate',
               formatDateForInput(calculateDeadline(dateObj, DEFAULT_DEADLINE_WORKING_DAYS))
             )
           }
-          if (data.content) setContent(data.content)
+          if (data.content) setValue('content', data.content)
           if (data.contentRussian) setContentRussian(data.contentRussian)
           if (data.region || data.district) {
             setRegion([data.region, data.district].filter(Boolean).join(', '))
@@ -159,7 +180,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
             filename: f.name,
           })
           if (recommendedType) {
-            setType((prev) => prev || recommendedType)
+            setValue('type', recommendedType)
           }
 
           const sourceText = meta.extractedFrom?.ai
@@ -178,22 +199,23 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
 
       if (result.isValid) {
         setParseSource('filename')
-        setNumber(result.number)
-        setDate(formatDateForInput(result.date))
+        setValue('number', result.number)
+        setValue('date', formatDateForInput(result.date))
         // +7 рабочих дней
-        setDeadlineDate(
+        setValue(
+          'deadlineDate',
           formatDateForInput(calculateDeadline(result.date, DEFAULT_DEADLINE_WORKING_DAYS))
         )
-        setContent(result.content)
+        setValue('content', result.content)
         const guessedOrg = guessOrganization(result.content)
-        setOrg(guessedOrg)
+        setValue('org', guessedOrg)
         const recommendedType = recommendLetterType({
           content: result.content,
           organization: guessedOrg,
           filename: f.name,
         })
         if (recommendedType) {
-          setType((prev) => prev || recommendedType)
+          setValue('type', recommendedType)
         }
         toast.success('Данные распознаны из имени файла', { id: 'parsing' })
       } else {
@@ -202,7 +224,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
 
       setParsing(false)
     },
-    [parsePdfContent, toast]
+    [parsePdfContent, toast, setValue]
   )
 
   const handleDrop = useCallback(
@@ -227,12 +249,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     if (f) handleFile(f)
   }
 
-  const handleCreate = async () => {
-    if (!number || !org || !date) {
-      toast.error('Заполните обязательные поля: номер, организация, дата')
-      return
-    }
-
+  const onSubmit = async (data: QuickLetterUploadInput) => {
     setCreating(true)
     const toastId = toast.loading('Создание письма...')
 
@@ -242,16 +259,16 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          number,
-          org,
-          date,
-          deadlineDate: deadlineDate || undefined,
-          type: type || undefined,
-          content: content || undefined,
-          applicantName: applicantName || undefined,
-          applicantEmail: applicantEmail || undefined,
-          applicantPhone: applicantPhone || undefined,
-          applicantTelegramChatId: applicantTelegramChatId || undefined,
+          number: data.number,
+          org: data.org,
+          date: data.date,
+          deadlineDate: data.deadlineDate || undefined,
+          type: data.type || undefined,
+          content: data.content || undefined,
+          applicantName: data.applicantName || undefined,
+          applicantEmail: data.applicantEmail || undefined,
+          applicantPhone: data.applicantPhone || undefined,
+          applicantTelegramChatId: data.applicantTelegramChatId || undefined,
         }),
       })
 
@@ -301,18 +318,21 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   const reset = () => {
     setFile(null)
     setParseSource(null)
-    setNumber('')
-    setOrg('')
-    setDate('')
-    setDeadlineDate('')
-    setContent('')
     setContentRussian('')
     setRegion('')
-    setType('')
-    setApplicantName('')
-    setApplicantEmail('')
-    setApplicantPhone('')
-    setApplicantTelegramChatId('')
+    resetForm()
+  }
+
+  // Auto-calculate deadline when date changes
+  const handleDateChange = (newDate: string) => {
+    setValue('date', newDate)
+    if (newDate) {
+      const dateObj = new Date(newDate)
+      setValue(
+        'deadlineDate',
+        formatDateForInput(calculateDeadline(dateObj, DEFAULT_DEADLINE_WORKING_DAYS))
+      )
+    }
   }
 
   return (
@@ -362,7 +382,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
         </div>
       ) : (
         // Form
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* File info */}
           <div className="flex items-center gap-3 rounded-lg bg-gray-700/50 p-3">
             <FileText className="h-8 w-8 text-emerald-400" />
@@ -391,6 +411,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               <AlertTriangle className="h-5 w-5 text-yellow-400" />
             )}
             <button
+              type="button"
               onClick={reset}
               className="p-1 text-gray-400 hover:text-red-400"
               aria-label="Сбросить файл"
@@ -416,12 +437,13 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               </label>
               <input
                 type="text"
-                value={number}
-                aria-label="Номер письма"
-                onChange={(e) => setNumber(e.target.value)}
-                className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                {...register('number')}
+                className={`w-full rounded-lg border ${errors.number ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none`}
                 placeholder="7941"
               />
+              {errors.number && (
+                <p className="mt-1 text-xs text-red-400">{errors.number.message}</p>
+              )}
             </div>
 
             <div>
@@ -431,12 +453,11 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               </label>
               <input
                 type="text"
-                value={org}
-                aria-label="Организация"
-                onChange={(e) => setOrg(e.target.value)}
-                className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                {...register('org')}
+                className={`w-full rounded-lg border ${errors.org ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none`}
                 placeholder="3-son oilaviy poliklinika"
               />
+              {errors.org && <p className="mt-1 text-xs text-red-400">{errors.org.message}</p>}
             </div>
 
             <div>
@@ -446,20 +467,11 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               </label>
               <input
                 type="date"
-                value={date}
-                aria-label="Дата письма"
-                onChange={(e) => {
-                  setDate(e.target.value)
-                  if (e.target.value) {
-                    const newDate = new Date(e.target.value)
-                    // +7 рабочих дней
-                    setDeadlineDate(
-                      formatDateForInput(calculateDeadline(newDate, DEFAULT_DEADLINE_WORKING_DAYS))
-                    )
-                  }
-                }}
-                className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                {...register('date')}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className={`w-full rounded-lg border ${errors.date ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none`}
               />
+              {errors.date && <p className="mt-1 text-xs text-red-400">{errors.date.message}</p>}
             </div>
 
             <div>
@@ -469,9 +481,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               </label>
               <input
                 type="date"
-                value={deadlineDate}
-                aria-label="Дедлайн"
-                onChange={(e) => setDeadlineDate(e.target.value)}
+                {...register('deadlineDate')}
                 className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
               />
             </div>
@@ -480,17 +490,13 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
           <div>
             <label className="mb-1 flex items-center gap-2 text-sm text-gray-400">
               <FileText className="h-4 w-4" />
-              {'\u0422\u0438\u043f \u0437\u0430\u043f\u0440\u043e\u0441\u0430'}
+              Тип запроса
             </label>
             <select
-              value={type}
-              aria-label="Тип запроса"
-              onChange={(e) => setType(e.target.value)}
+              {...register('type')}
               className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
             >
-              <option value="">
-                {'\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0438\u043f'}
-              </option>
+              <option value="">Выберите тип</option>
               {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
@@ -498,6 +504,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               ))}
             </select>
           </div>
+
           {/* Additional fields from PDF */}
           {region && (
             <div className="grid grid-cols-2 gap-4">
@@ -509,7 +516,6 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
                 <input
                   type="text"
                   value={region}
-                  aria-label="Регион"
                   onChange={(e) => setRegion(e.target.value)}
                   className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                 />
@@ -520,54 +526,45 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
           <div>
             <label className="mb-1 flex items-center gap-2 text-sm text-gray-400">
               <FileText className="h-4 w-4" />
-              {
-                '\u041a\u0440\u0430\u0442\u043a\u043e\u0435 \u0441\u043e\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u0435'
-              }
+              Краткое содержание
             </label>
             <textarea
-              value={content}
-              aria-label="Краткое содержание"
-              onChange={(e) => setContent(e.target.value)}
+              {...register('content')}
               rows={2}
               className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-              placeholder={
-                '\u041e\u043f\u0438\u0448\u0438\u0442\u0435 \u0441\u043e\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u0435 \u043f\u0438\u0441\u044c\u043c\u0430...'
-              }
+              placeholder="Опишите содержание письма..."
             />
           </div>
 
           <div className="rounded-lg border border-gray-600/60 bg-gray-900/40 p-4">
-            <h4 className="mb-3 text-sm font-semibold text-white">{'Данные заявителя'}</h4>
+            <h4 className="mb-3 text-sm font-semibold text-white">Данные заявителя</h4>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="text-xs text-gray-400">{'Имя'}</label>
+                <label className="text-xs text-gray-400">Имя</label>
                 <input
                   type="text"
-                  value={applicantName}
-                  aria-label="Имя заявителя"
-                  onChange={(e) => setApplicantName(e.target.value)}
+                  {...register('applicantName')}
                   className="mt-1 w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                  placeholder={'Имя заявителя'}
+                  placeholder="Имя заявителя"
                 />
               </div>
               <div>
                 <label className="text-xs text-gray-400">Email</label>
                 <input
                   type="email"
-                  value={applicantEmail}
-                  aria-label="Email заявителя"
-                  onChange={(e) => setApplicantEmail(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  {...register('applicantEmail')}
+                  className={`mt-1 w-full rounded-lg border ${errors.applicantEmail ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none`}
                   placeholder="email@example.com"
                 />
+                {errors.applicantEmail && (
+                  <p className="mt-1 text-xs text-red-400">{errors.applicantEmail.message}</p>
+                )}
               </div>
               <div>
-                <label className="text-xs text-gray-400">{'Телефон'}</label>
+                <label className="text-xs text-gray-400">Телефон</label>
                 <input
                   type="tel"
-                  value={applicantPhone}
-                  aria-label="Телефон заявителя"
-                  onChange={(e) => setApplicantPhone(e.target.value)}
+                  {...register('applicantPhone')}
                   className="mt-1 w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   placeholder="+998901234567"
                 />
@@ -576,9 +573,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
                 <label className="text-xs text-gray-400">Telegram chat id</label>
                 <input
                   type="text"
-                  value={applicantTelegramChatId}
-                  aria-label="Telegram chat id заявителя"
-                  onChange={(e) => setApplicantTelegramChatId(e.target.value)}
+                  {...register('applicantTelegramChatId')}
                   className="mt-1 w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   placeholder="123456789"
                 />
@@ -602,8 +597,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button
-              onClick={handleCreate}
-              disabled={creating || parsing || !number || !org || !date}
+              type="submit"
+              disabled={creating || parsing || !isValid}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-600"
             >
               {creating ? (
@@ -619,6 +614,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               )}
             </button>
             <button
+              type="button"
               onClick={reset}
               disabled={creating}
               className="rounded-lg bg-gray-700 px-4 py-2.5 text-white transition hover:bg-gray-600"
@@ -626,7 +622,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
               Сбросить
             </button>
           </div>
-        </div>
+        </form>
       )}
     </div>
   )
