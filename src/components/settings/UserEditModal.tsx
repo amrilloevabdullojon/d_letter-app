@@ -1,7 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import Image from 'next/image'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import {
   X,
   Save,
@@ -14,7 +17,7 @@ import {
   User as UserIcon,
   Clock,
 } from 'lucide-react'
-import type { User, UserEditData, UserRole } from '@/lib/settings-types'
+import type { User } from '@/lib/settings-types'
 import {
   ROLE_OPTIONS,
   ROLE_BADGE_CLASSES,
@@ -22,16 +25,32 @@ import {
   fieldCompact,
 } from '@/lib/settings-types'
 
+// Zod валидация схема
+const userEditSchema = z.object({
+  name: z.string().min(1, 'Имя обязательно').max(100, 'Имя слишком длинное'),
+  email: z.string().email('Некорректный email').min(1, 'Email обязателен'),
+  role: z.enum(['SUPERADMIN', 'ADMIN', 'MANAGER', 'AUDITOR', 'EMPLOYEE', 'VIEWER']),
+  canLogin: z.boolean(),
+  telegramChatId: z.string(),
+  notifyEmail: z.boolean(),
+  notifyTelegram: z.boolean(),
+  notifySms: z.boolean(),
+  notifyInApp: z.boolean(),
+  digestFrequency: z.enum(['NONE', 'DAILY', 'WEEKLY']),
+  quietHoursStart: z.string(),
+  quietHoursEnd: z.string(),
+})
+
+type UserEditFormData = z.infer<typeof userEditSchema>
+
 interface UserEditModalProps {
   user: User
-  editData: UserEditData
-  editSnapshot: UserEditData | null
+  editData: UserEditFormData
   saving: boolean
   isSuperAdmin: boolean
   isLastAdmin: boolean
   isLastSuperAdmin: boolean
-  onEditDataChange: (data: UserEditData) => void
-  onSave: () => void
+  onSave: (data: UserEditFormData) => void
   onCancel: () => void
 }
 
@@ -41,28 +60,31 @@ const controlBase =
 export function UserEditModal({
   user,
   editData,
-  editSnapshot,
   saving,
   isSuperAdmin,
   isLastAdmin,
   isLastSuperAdmin,
-  onEditDataChange,
   onSave,
   onCancel,
 }: UserEditModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
-  const firstFocusRef = useRef<HTMLInputElement>(null)
 
   const roleChangeLocked = !isSuperAdmin || isLastAdmin || isLastSuperAdmin
   const accessChangeLocked = user.role === 'ADMIN' || user.role === 'SUPERADMIN'
 
-  const hasChanges = useCallback(() => {
-    if (!editSnapshot) return false
-    const keys = Object.keys(editData) as (keyof UserEditData)[]
-    return keys.some((key) => editData[key] !== editSnapshot[key])
-  }, [editData, editSnapshot])
+  // React Hook Form с Zod валидацией
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty, isValid },
+    watch,
+  } = useForm<UserEditFormData>({
+    resolver: zodResolver(userEditSchema),
+    defaultValues: editData,
+    mode: 'onChange',
+  })
 
-  const isDirty = hasChanges()
+  const selectedRole = watch('role')
 
   // Focus trap and escape handler
   useEffect(() => {
@@ -73,24 +95,20 @@ export function UserEditModal({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    firstFocusRef.current?.focus()
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [onCancel])
 
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) {
-        onCancel()
-      }
-    },
-    [onCancel]
-  )
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onCancel()
+    }
+  }
 
-  const updateField = <K extends keyof UserEditData>(field: K, value: UserEditData[K]) => {
-    onEditDataChange({ ...editData, [field]: value })
+  const onSubmit = (data: UserEditFormData) => {
+    onSave(data)
   }
 
   return (
@@ -141,7 +159,7 @@ export function UserEditModal({
           </div>
 
           {/* Form */}
-          <div className="space-y-4 p-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-6">
             {/* Basic Info Section */}
             <section>
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-300">
@@ -149,44 +167,54 @@ export function UserEditModal({
                 Основная информация
               </h3>
               <div className="space-y-3">
+                {/* Name */}
                 <div className="grid gap-1">
                   <label htmlFor="edit-name" className="text-xs text-gray-400">
                     Имя
                   </label>
                   <input
-                    ref={firstFocusRef}
+                    {...register('name')}
                     id="edit-name"
                     type="text"
-                    value={editData.name}
-                    onChange={(e) => updateField('name', e.target.value)}
-                    className={`${fieldCompact} w-full px-3 py-2`}
+                    className={`${fieldCompact} w-full px-3 py-2 ${
+                      errors.name ? 'border-red-500/50 ring-red-500/20' : ''
+                    }`}
                     placeholder="Имя пользователя"
+                    autoFocus
                   />
+                  {errors.name && (
+                    <p className="text-xs text-red-400">{errors.name.message}</p>
+                  )}
                 </div>
 
+                {/* Email */}
                 <div className="grid gap-1">
                   <label htmlFor="edit-email" className="text-xs text-gray-400">
                     Email
                   </label>
                   <input
+                    {...register('email')}
                     id="edit-email"
                     type="email"
-                    value={editData.email}
-                    onChange={(e) => updateField('email', e.target.value)}
-                    className={`${fieldCompact} w-full px-3 py-2`}
+                    className={`${fieldCompact} w-full px-3 py-2 ${
+                      errors.email ? 'border-red-500/50 ring-red-500/20' : ''
+                    }`}
                     placeholder="email@example.com"
                   />
+                  {errors.email && (
+                    <p className="text-xs text-red-400">{errors.email.message}</p>
+                  )}
                 </div>
 
+                {/* Role */}
                 <div className="grid gap-1">
                   <label htmlFor="edit-role" className="text-xs text-gray-400">
                     Роль
                   </label>
                   <div className="flex items-center gap-2">
                     <select
+                      {...register('role')}
                       id="edit-role"
-                      value={editData.role}
-                      onChange={(e) => updateField('role', e.target.value as UserRole)}
                       disabled={roleChangeLocked}
                       className={`${fieldCompact} flex-1 px-3 py-2 disabled:opacity-60`}
                     >
@@ -197,9 +225,9 @@ export function UserEditModal({
                       ))}
                     </select>
                     <span
-                      className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs ${ROLE_BADGE_CLASSES[editData.role]}`}
+                      className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs ${ROLE_BADGE_CLASSES[selectedRole]}`}
                     >
-                      {editData.role === 'SUPERADMIN' ? (
+                      {selectedRole === 'SUPERADMIN' ? (
                         <Crown className="h-3 w-3" />
                       ) : (
                         <Shield className="h-3 w-3" />
@@ -221,19 +249,21 @@ export function UserEditModal({
                   )}
                 </div>
 
+                {/* Can Login */}
                 <div className="grid gap-1">
                   <label htmlFor="edit-access" className="text-xs text-gray-400">
                     Доступ в систему
                   </label>
                   <select
+                    {...register('canLogin', {
+                      setValueAs: (v) => v === 'true',
+                    })}
                     id="edit-access"
-                    value={editData.canLogin ? 'open' : 'closed'}
-                    onChange={(e) => updateField('canLogin', e.target.value === 'open')}
                     disabled={accessChangeLocked}
                     className={`${fieldCompact} w-full px-3 py-2 disabled:opacity-60`}
                   >
-                    <option value="open">Открыт</option>
-                    <option value="closed">Закрыт</option>
+                    <option value="true">Открыт</option>
+                    <option value="false">Закрыт</option>
                   </select>
                   {accessChangeLocked && (
                     <p className="text-xs text-amber-400">
@@ -242,6 +272,7 @@ export function UserEditModal({
                   )}
                 </div>
 
+                {/* Telegram Chat ID */}
                 <div className="grid gap-1">
                   <label htmlFor="edit-telegram" className="text-xs text-gray-400">
                     Telegram Chat ID
@@ -249,10 +280,9 @@ export function UserEditModal({
                   <div className="relative">
                     <MessageSquare className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-400" />
                     <input
+                      {...register('telegramChatId')}
                       id="edit-telegram"
                       type="text"
-                      value={editData.telegramChatId}
-                      onChange={(e) => updateField('telegramChatId', e.target.value)}
                       className={`${fieldCompact} w-full py-2 pl-10 pr-3`}
                       placeholder="123456789"
                     />
@@ -271,9 +301,8 @@ export function UserEditModal({
                 <div className="grid grid-cols-2 gap-3">
                   <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-300">
                     <input
+                      {...register('notifyEmail')}
                       type="checkbox"
-                      checked={editData.notifyEmail}
-                      onChange={(e) => updateField('notifyEmail', e.target.checked)}
                       className={controlBase}
                     />
                     <Mail className="h-4 w-4 text-gray-500" />
@@ -281,47 +310,31 @@ export function UserEditModal({
                   </label>
                   <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-300">
                     <input
+                      {...register('notifyTelegram')}
                       type="checkbox"
-                      checked={editData.notifyTelegram}
-                      onChange={(e) => updateField('notifyTelegram', e.target.checked)}
                       className={controlBase}
                     />
                     <MessageSquare className="h-4 w-4 text-gray-500" />
                     Telegram
                   </label>
                   <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-300">
-                    <input
-                      type="checkbox"
-                      checked={editData.notifySms}
-                      onChange={(e) => updateField('notifySms', e.target.checked)}
-                      className={controlBase}
-                    />
+                    <input {...register('notifySms')} type="checkbox" className={controlBase} />
                     SMS
                   </label>
                   <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-300">
-                    <input
-                      type="checkbox"
-                      checked={editData.notifyInApp}
-                      onChange={(e) => updateField('notifyInApp', e.target.checked)}
-                      className={controlBase}
-                    />
+                    <input {...register('notifyInApp')} type="checkbox" className={controlBase} />
                     В системе
                   </label>
                 </div>
 
+                {/* Digest Frequency */}
                 <div className="grid gap-1">
                   <label htmlFor="edit-digest" className="text-xs text-gray-400">
                     Дайджест
                   </label>
                   <select
+                    {...register('digestFrequency')}
                     id="edit-digest"
-                    value={editData.digestFrequency}
-                    onChange={(e) =>
-                      updateField(
-                        'digestFrequency',
-                        e.target.value as UserEditData['digestFrequency']
-                      )
-                    }
                     className={`${fieldCompact} w-full px-3 py-2`}
                   >
                     {DIGEST_OPTIONS.map((option) => (
@@ -349,60 +362,69 @@ export function UserEditModal({
                     Начало
                   </label>
                   <input
+                    {...register('quietHoursStart')}
                     id="edit-quiet-start"
                     type="time"
-                    value={editData.quietHoursStart}
-                    onChange={(e) => updateField('quietHoursStart', e.target.value)}
-                    className={`${fieldCompact} w-full px-3 py-2`}
+                    className={`${fieldCompact} w-full px-3 py-2 ${
+                      errors.quietHoursStart ? 'border-red-500/50 ring-red-500/20' : ''
+                    }`}
                   />
+                  {errors.quietHoursStart && (
+                    <p className="text-xs text-red-400">{errors.quietHoursStart.message}</p>
+                  )}
                 </div>
                 <div className="grid gap-1">
                   <label htmlFor="edit-quiet-end" className="text-xs text-gray-400">
                     Конец
                   </label>
                   <input
+                    {...register('quietHoursEnd')}
                     id="edit-quiet-end"
                     type="time"
-                    value={editData.quietHoursEnd}
-                    onChange={(e) => updateField('quietHoursEnd', e.target.value)}
-                    className={`${fieldCompact} w-full px-3 py-2`}
+                    className={`${fieldCompact} w-full px-3 py-2 ${
+                      errors.quietHoursEnd ? 'border-red-500/50 ring-red-500/20' : ''
+                    }`}
                   />
+                  {errors.quietHoursEnd && (
+                    <p className="text-xs text-red-400">{errors.quietHoursEnd.message}</p>
+                  )}
                 </div>
               </div>
             </section>
-          </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between border-t border-white/10 bg-slate-900/50 p-4">
-            <span className="text-xs text-gray-500">
-              {saving
-                ? 'Сохранение...'
-                : isDirty
-                  ? 'Есть несохранённые изменения'
-                  : 'Нет изменений'}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onCancel}
-                disabled={saving}
-                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-gray-300 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={onSave}
-                disabled={!isDirty || saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm text-white transition hover:bg-teal-500 disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Сохранить
-              </button>
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-white/10 bg-slate-900/50 p-4 -mx-6 -mb-6 mt-6 rounded-b-2xl">
+              <span className="text-xs text-gray-500">
+                {saving
+                  ? 'Сохранение...'
+                  : isDirty
+                    ? 'Есть несохранённые изменения'
+                    : 'Нет изменений'}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  disabled={saving}
+                  className="rounded-lg border border-white/10 px-4 py-2 text-sm text-gray-300 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={!isDirty || !isValid || saving}
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm text-white transition hover:bg-teal-500 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Сохранить
+                </button>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>
