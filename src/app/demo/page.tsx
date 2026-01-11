@@ -1,5 +1,6 @@
 import { LetterFormExample } from '@/components/examples/LetterFormExample'
 import { LettersDataTableExample } from '@/components/examples/LettersDataTableExample'
+import { LettersTableExample } from '@/components/examples/LettersTableExample'
 import { ZustandExample } from '@/components/examples/ZustandExample'
 import { TRPCExample } from '@/components/examples/TRPCExample'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -101,7 +102,10 @@ export default function DemoPage() {
               Мощные таблицы с сортировкой, фильтрацией и пагинацией
             </p>
           </div>
-          <LettersDataTableExample />
+          <div className="space-y-6">
+            <LettersTableExample />
+            <LettersDataTableExample />
+          </div>
         </TabsContent>
 
         <TabsContent value="state" className="space-y-4 mt-6">

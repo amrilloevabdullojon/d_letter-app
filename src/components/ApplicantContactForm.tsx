@@ -1,7 +1,22 @@
-﻿'use client'
+'use client'
 
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Loader2, Bell } from 'lucide-react'
+import { useState } from 'react'
+
+const contactSchema = z
+  .object({
+    email: z.string().email('Неверный формат email').or(z.literal('')),
+    telegramChatId: z.string(),
+  })
+  .refine((data) => data.email.trim() || data.telegramChatId.trim(), {
+    message: 'Заполните email или Telegram ID',
+    path: ['email'],
+  })
+
+type ContactFormData = z.infer<typeof contactSchema>
 
 type ApplicantContactFormProps = {
   token: string
@@ -16,8 +31,6 @@ export function ApplicantContactForm({
   initialTelegram = '',
   language = 'ru',
 }: ApplicantContactFormProps) {
-  const [email, setEmail] = useState(initialEmail || '')
-  const [telegramChatId, setTelegramChatId] = useState(initialTelegram || '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -26,49 +39,56 @@ export function ApplicantContactForm({
     language === 'uz'
       ? {
           required: 'Email yoki Telegram ID kiriting',
-          failed: 'Kontaktni saqlab bo\u02bclmadi',
-          network: 'Tarmoq xatosi. Qayta urinib ko\u02bcring.',
+          failed: "Kontaktni saqlab bo'lmadi",
+          network: "Tarmoq xatosi. Qayta urinib ko'ring.",
           inactive: 'Obuna faol emas',
           update: 'Obunani yangilash',
-          subscribe: 'Obuna bo\u02bclish',
+          subscribe: "Obuna bo'lish",
           updated: 'Obuna yangilandi',
           emailLabel: 'Email',
           telegramLabel: 'Telegram ID',
         }
       : {
-          required:
-            '\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u0435 email \u0438\u043b\u0438 Telegram ID',
-          failed:
-            '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043a\u043e\u043d\u0442\u0430\u043a\u0442',
-          network:
-            '\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u0435\u0442\u0438. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0435 \u0440\u0430\u0437.',
-          inactive:
-            '\u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u043d\u0435 \u0430\u043a\u0442\u0438\u0432\u043d\u0430',
-          update:
-            '\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443',
-          subscribe: '\u041f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c\u0441\u044f',
-          updated:
-            '\u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0430',
+          required: 'Заполните email или Telegram ID',
+          failed: 'Не удалось сохранить контакт',
+          network: 'Ошибка сети. Попробуйте еще раз.',
+          inactive: 'Подписка не активна',
+          update: 'Обновить подписку',
+          subscribe: 'Подписаться',
+          updated: 'Подписка обновлена',
           emailLabel: 'Email',
           telegramLabel: 'Telegram ID',
         }
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isValid },
+  } = useForm<ContactFormData>({
+    resolver: zodResolver(contactSchema),
+    mode: 'onChange',
+    defaultValues: {
+      email: initialEmail || '',
+      telegramChatId: initialTelegram || '',
+    },
+  })
 
-    const payload = {
-      email: email.trim(),
-      telegramChatId: telegramChatId.trim(),
-    }
+  const emailValue = watch('email')
+  const telegramValue = watch('telegramChatId')
 
-    if (!payload.email && !payload.telegramChatId) {
-      setError(copy.required)
-      return
-    }
+  const hasEmail = !!emailValue?.trim()
+  const hasTelegram = !!telegramValue?.trim()
 
+  const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true)
     setError(null)
     setSuccess(null)
+
+    const payload = {
+      email: data.email.trim(),
+      telegramChatId: data.telegramChatId.trim(),
+    }
 
     try {
       const response = await fetch(`/api/portal/${token}/contact`, {
@@ -77,62 +97,69 @@ export function ApplicantContactForm({
         body: JSON.stringify(payload),
       })
 
-      const data = (await response.json()) as { error?: string; success?: boolean }
+      const responseData = (await response.json()) as { error?: string; success?: boolean }
 
       if (!response.ok) {
-        setError(data.error || copy.failed)
+        setError(responseData.error || copy.failed)
         return
       }
 
-      if (data.success) {
+      if (responseData.success) {
         setSuccess(copy.updated)
       }
-    } catch (err) {
+    } catch {
       setError(copy.network)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const hasEmail = !!email.trim()
-  const hasTelegram = !!telegramChatId.trim()
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
       <div className="text-muted flex flex-wrap gap-2 text-xs">
-        {hasEmail && <span className="app-pill text-xs">Email: {email}</span>}
-        {hasTelegram && <span className="app-pill text-xs">Telegram ID: {telegramChatId}</span>}
+        {hasEmail && <span className="app-pill text-xs">Email: {emailValue}</span>}
+        {hasTelegram && <span className="app-pill text-xs">Telegram ID: {telegramValue}</span>}
         {!hasEmail && !hasTelegram && <span className="app-pill text-xs">{copy.inactive}</span>}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-muted text-xs">{copy.emailLabel}</label>
           <input
+            {...register('email')}
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
             placeholder="email@example.com"
-            className="w-full rounded-xl border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+            className={`w-full rounded-xl border px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none ${
+              errors.email
+                ? 'border-red-500/50 bg-gray-900/60 focus:border-red-400'
+                : 'border-gray-800 bg-gray-900/60 focus:border-emerald-400'
+            }`}
             disabled={isSubmitting}
           />
+          {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
         </div>
         <div className="space-y-1">
           <label className="text-muted text-xs">{copy.telegramLabel}</label>
           <input
+            {...register('telegramChatId')}
             type="text"
-            value={telegramChatId}
-            onChange={(event) => setTelegramChatId(event.target.value)}
             placeholder="123456789"
-            className="w-full rounded-xl border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+            className={`w-full rounded-xl border px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none ${
+              errors.telegramChatId
+                ? 'border-red-500/50 bg-gray-900/60 focus:border-red-400'
+                : 'border-gray-800 bg-gray-900/60 focus:border-emerald-400'
+            }`}
             disabled={isSubmitting}
           />
+          {errors.telegramChatId && (
+            <p className="text-xs text-red-400">{errors.telegramChatId.message}</p>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
           className="btn-primary inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isValid}
         >
           {isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />

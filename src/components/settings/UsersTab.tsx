@@ -69,7 +69,6 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
     setEmailFilter,
     editingId,
     editData,
-    editSnapshot,
     savingId,
     setEditData,
     startEdit,
@@ -691,13 +690,14 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
         <UserEditModal
           user={editingUser}
           editData={editData}
-          editSnapshot={editSnapshot}
           saving={savingId === editingUser.id}
           isSuperAdmin={isSuperAdmin}
           isLastAdmin={editingUser.role === 'ADMIN' && adminCount <= 1}
           isLastSuperAdmin={editingUser.role === 'SUPERADMIN' && superAdminCount <= 1}
-          onEditDataChange={setEditData}
-          onSave={() => saveEdit(editingUser.id)}
+          onSave={(data) => {
+            setEditData(data)
+            saveEdit(editingUser.id)
+          }}
           onCancel={cancelEdit}
         />
       )}
