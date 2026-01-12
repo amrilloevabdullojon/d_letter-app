@@ -18,6 +18,7 @@ import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays } from '@/lib/ut
 import { hasPermission } from '@/lib/permissions'
 import { useFetch, useMutation } from '@/hooks/useFetch'
 import { useToast } from '@/components/Toast'
+import { hapticLight, hapticMedium } from '@/lib/haptic'
 
 interface NotificationLetter {
   id: string
@@ -466,10 +467,11 @@ export function Notifications() {
     },
   ]
 
-  const hasActiveSnoozes = useMemo(() => {
+  const checkHasActiveSnoozes = () => {
+    // eslint-disable-next-line react-hooks/purity
     const now = Date.now()
     return Object.values(snoozedDeadlines).some((until) => new Date(until).getTime() > now)
-  }, [snoozedDeadlines])
+  }
 
   const renderNotificationTitle = (item: UnifiedNotification) => {
     if (!isDeadlineKind(item.kind)) {
@@ -535,6 +537,7 @@ export function Notifications() {
     <div className="relative">
       <button
         onClick={() => {
+          hapticLight()
           setIsOpen((prev) => {
             const next = !prev
             if (next) {
@@ -543,7 +546,7 @@ export function Notifications() {
             return next
           })
         }}
-        className="relative p-2 text-slate-400 transition hover:text-white"
+        className="tap-highlight relative p-2 text-slate-400 transition hover:text-white"
         aria-label="Уведомления"
       >
         <Bell className="h-5 w-5" />
@@ -584,31 +587,43 @@ export function Notifications() {
               <div className="flex w-full flex-wrap items-center justify-start gap-2 text-left sm:w-auto sm:justify-end sm:text-right">
                 {counts.unread > 0 && (
                   <button
-                    onClick={markAllRead}
-                    className="rounded-md border border-emerald-500/20 px-2 py-1 text-xs text-emerald-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/15"
+                    onClick={() => {
+                      hapticMedium()
+                      markAllRead()
+                    }}
+                    className="tap-highlight rounded-md border border-emerald-500/20 px-2 py-1 text-xs text-emerald-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/15"
                   >
                     Отметить все прочитанным
                   </button>
                 )}
-                {counts.deadlines > 0 && !hasActiveSnoozes && (
+                {counts.deadlines > 0 && !checkHasActiveSnoozes() && (
                   <button
-                    onClick={snoozeAllDeadlines}
-                    className="rounded-md border border-slate-700/60 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500/70 hover:bg-slate-800/80 hover:text-slate-100"
+                    onClick={() => {
+                      hapticLight()
+                      snoozeAllDeadlines()
+                    }}
+                    className="tap-highlight rounded-md border border-slate-700/60 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500/70 hover:bg-slate-800/80 hover:text-slate-100"
                   >
                     Скрыть дедлайны до завтра
                   </button>
                 )}
-                {hasActiveSnoozes && (
+                {checkHasActiveSnoozes() && (
                   <button
-                    onClick={clearSnoozes}
-                    className="rounded-md border border-slate-700/60 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500/70 hover:bg-slate-800/80 hover:text-slate-100"
+                    onClick={() => {
+                      hapticLight()
+                      clearSnoozes()
+                    }}
+                    className="tap-highlight rounded-md border border-slate-700/60 px-2 py-1 text-xs text-slate-300 transition hover:border-slate-500/70 hover:bg-slate-800/80 hover:text-slate-100"
                   >
                     Показать дедлайны
                   </button>
                 )}
                 <button
-                  onClick={() => setIsOpen(false)}
-                  className="rounded-md p-1 text-slate-400 transition hover:bg-slate-800/70 hover:text-white"
+                  onClick={() => {
+                    hapticLight()
+                    setIsOpen(false)
+                  }}
+                  className="tap-highlight rounded-md p-1 text-slate-400 transition hover:bg-slate-800/70 hover:text-white"
                   aria-label="Закрыть уведомления"
                 >
                   <X className="h-4 w-4" />
@@ -620,8 +635,11 @@ export function Notifications() {
               {filterConfig.map((filter) => (
                 <button
                   key={filter.key}
-                  onClick={() => setActiveFilter(filter.key)}
-                  className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium transition ${
+                  onClick={() => {
+                    hapticLight()
+                    setActiveFilter(filter.key)
+                  }}
+                  className={`tap-highlight shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium transition ${
                     activeFilter === filter.key
                       ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 shadow-sm shadow-emerald-500/20'
                       : 'border-slate-700/60 text-slate-400 hover:border-slate-600/70 hover:text-slate-200'
@@ -695,12 +713,13 @@ export function Notifications() {
                             key={notif.id}
                             href={linkTarget}
                             onClick={() => {
+                              hapticLight()
                               if (!isDeadlineKind(notif.kind)) {
                                 markNotificationRead(notif.id)
                               }
                               setIsOpen(false)
                             }}
-                            className={`group relative flex items-start gap-3 overflow-hidden rounded-2xl border px-4 py-3 transition ${cardTone} hover:-translate-y-0.5 hover:border-slate-600/70 hover:bg-slate-800/70`}
+                            className={`tap-highlight group relative flex items-start gap-3 overflow-hidden rounded-2xl border px-4 py-3 transition ${cardTone} hover:-translate-y-0.5 hover:border-slate-600/70 hover:bg-slate-800/70`}
                           >
                             <span className={`absolute left-0 top-0 h-full w-1 ${accentTone}`} />
                             <div
@@ -741,9 +760,10 @@ export function Notifications() {
                                     onClick={(event) => {
                                       event.preventDefault()
                                       event.stopPropagation()
+                                      hapticLight()
                                       markNotificationRead(notif.id)
                                     }}
-                                    className="rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
+                                    className="tap-highlight rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
                                   >
                                     Отметить прочитанным
                                   </button>
@@ -753,11 +773,12 @@ export function Notifications() {
                                     onClick={(event) => {
                                       event.preventDefault()
                                       event.stopPropagation()
+                                      hapticLight()
                                       if (notif.letter?.id) {
                                         snoozeDeadline(notif.letter.id)
                                       }
                                     }}
-                                    className="rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
+                                    className="tap-highlight rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
                                   >
                                     Скрыть до завтра
                                   </button>
@@ -770,9 +791,10 @@ export function Notifications() {
                                       onClick={(event) => {
                                         event.preventDefault()
                                         event.stopPropagation()
+                                        hapticMedium()
                                         assignToMe(notif.letter!.id)
                                       }}
-                                      className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-emerald-200 transition hover:bg-emerald-500/25"
+                                      className="tap-highlight rounded-full bg-emerald-500/15 px-2.5 py-1 text-emerald-200 transition hover:bg-emerald-500/25"
                                     >
                                       Назначить меня
                                     </button>
@@ -787,12 +809,13 @@ export function Notifications() {
                   ))}
                   {canLoadMore && activeFilter !== 'deadlines' && (
                     <button
-                      onClick={() =>
+                      onClick={() => {
+                        hapticLight()
                         setNotificationsLimit((prev) =>
                           Math.min(prev + NOTIFICATIONS_INCREMENT, 200)
                         )
-                      }
-                      className="mx-auto block rounded-full border border-slate-700/70 px-4 py-2 text-xs text-slate-300 transition hover:border-slate-500/70 hover:bg-slate-800/70 hover:text-slate-100"
+                      }}
+                      className="tap-highlight mx-auto block rounded-full border border-slate-700/70 px-4 py-2 text-xs text-slate-300 transition hover:border-slate-500/70 hover:bg-slate-800/70 hover:text-slate-100"
                     >
                       {'Показать ещё'}
                     </button>
@@ -804,8 +827,11 @@ export function Notifications() {
             <div className="border-t border-slate-800/80">
               <Link
                 href="/settings"
-                onClick={() => setIsOpen(false)}
-                className="block px-4 py-3 text-center text-sm text-slate-400 transition hover:text-slate-200"
+                onClick={() => {
+                  hapticLight()
+                  setIsOpen(false)
+                }}
+                className="tap-highlight block px-4 py-3 text-center text-sm text-slate-400 transition hover:text-slate-200"
               >
                 Настройки уведомлений
               </Link>
