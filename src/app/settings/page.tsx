@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/Header'
-import { Loader2, Users, Shield, RefreshCw, History, Crown } from 'lucide-react'
+import { Loader2, Users, Shield, RefreshCw, History, Crown, Bell } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { hasPermission } from '@/lib/permissions'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
@@ -47,6 +47,19 @@ const SyncTab = dynamic(
 const LoginAuditTab = dynamic(
   () =>
     import('@/components/settings/LoginAuditTab').then((mod) => ({ default: mod.LoginAuditTab })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+      </div>
+    ),
+  }
+)
+const NotificationsTab = dynamic(
+  () =>
+    import('@/components/settings/NotificationsTab').then((mod) => ({
+      default: mod.NotificationsTab,
+    })),
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
@@ -181,6 +194,17 @@ export default function SettingsPage() {
             <History className="mr-2 inline-block h-4 w-4" />
             Аудит
           </button>
+          <button
+            onClick={() => handleTabChange('notifications')}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              activeTab === 'notifications'
+                ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
+                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Bell className="mr-2 inline-block h-4 w-4" />
+            Уведомления
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -202,6 +226,8 @@ export default function SettingsPage() {
         {activeTab === 'sync' && <SyncTab onSuccess={handleSuccess} onError={handleError} />}
 
         {activeTab === 'audit' && <LoginAuditTab onError={handleError} />}
+
+        {activeTab === 'notifications' && <NotificationsTab />}
       </main>
     </div>
   )
