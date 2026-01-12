@@ -18,7 +18,9 @@ const NAV_ITEMS = [
 
 export function MobileBottomNav({ isAdmin, hidden }: MobileBottomNavProps) {
   const pathname = usePathname()
-  const items = isAdmin ? [...NAV_ITEMS, { href: '/settings', label: 'Настройки', icon: Settings }] : NAV_ITEMS
+  const items = isAdmin
+    ? [...NAV_ITEMS, { href: '/settings', label: 'Настройки', icon: Settings }]
+    : NAV_ITEMS
 
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href))
 
@@ -39,7 +41,8 @@ export function MobileBottomNav({ isAdmin, hidden }: MobileBottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center gap-1 py-2 text-xs transition ${
+              aria-current={active ? 'page' : undefined}
+              className={`flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2.5 text-[11px] leading-tight transition ${
                 active ? 'text-teal-200' : 'text-slate-400 hover:text-white'
               }`}
             >

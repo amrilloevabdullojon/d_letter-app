@@ -3,32 +3,32 @@ import { prisma } from './prisma'
 import { STATUS_LABELS, STATUS_FROM_LABEL, formatDate, addWorkingDays } from './utils'
 import type { LetterStatus } from '@prisma/client'
 
-// ÐšÐ¾Ð»Ð¾Ð½ÐºÐ¸ Ð² Google Sheets (Ñ€ÐµÐ°Ð»ÑŒÐ½Ñ‹Ð¹ Ð¿Ð¾Ñ€ÑÐ´Ð¾Ðº Ð¸Ð· Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹)
+// Колонки в Google Sheets (реальный порядок из таблицы)
 const COLUMNS = {
-  NUM: 0, // A - ÐÐ¾Ð¼ÐµÑ€ Ð¿Ð¸ÑÑŒÐ¼Ð°
-  ORG: 1, // B - Ð£Ñ‡Ñ€ÐµÐ¶Ð´ÐµÐ½Ð¸Ðµ
-  DATE: 2, // C - Ð”Ð°Ñ‚Ð°
-  DEADLINE_DATE: 3, // D - Ð”Ð°Ñ‚Ð° Ð´ÐµÐ´Ð»Ð°Ð¹Ð½Ð°
-  STATUS: 4, // E - Ð¡Ñ‚Ð°Ñ‚ÑƒÑ Ð´ÐµÐ´Ð»Ð°Ð¹Ð½Ð°
-  FILE: 5, // F - Ð¤Ð°Ð¹Ð»
-  TYPE: 6, // G - Ð¢Ð¸Ð¿ Ð·Ð°Ð¿Ñ€Ð¾ÑÐ°
-  CONTENT: 7, // H - Ð¡Ð¾Ð´ÐµÑ€Ð¶Ð°Ð½Ð¸Ðµ
-  JIRA_LINK: 8, // I - Ð¡ÑÑ‹Ð»ÐºÐ° Ð½Ð° Jira
-  ZORDOC: 9, // J - ÐšÐ¾Ð¼ÐµÐ½Ñ‚Ð°Ñ€Ð¸Ð¸ ZorDoc
-  ANSWER: 10, // K - ÐžÑ‚Ð²ÐµÑ‚
-  SEND_STATUS: 11, // L - Ð¡Ñ‚Ð°Ñ‚ÑƒÑ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ¸ Uzinfocom
-  IJRO_DATE: 12, // M - Ð”Ð°Ñ‚Ð° Ð¾Ñ‚Ð²ÐµÑ‚Ð½Ð¾Ð³Ð¾ Ð¿Ð¸ÑÑŒÐ¼Ð° Ð² IJRO
-  COMMENT: 13, // N - ÐšÐ¾Ð¼Ð¼ÐµÐ½Ñ‚Ð°Ñ€Ð¸Ð¸ Uzinfocom
-  OWNER: 14, // O - ÐžÑ‚Ð²ÐµÑ‚ÑÑ‚Ð²ÐµÐ½Ð½Ñ‹Ð¹
-  CONTACTS: 15, // P - ÐšÐ¾Ð½Ñ‚Ð°ÐºÑ‚Ñ‹
-  CLOSE_DATE: 16, // Q - Ð”Ð°Ñ‚Ð° Ð·Ð°ÐºÑ€Ñ‹Ñ‚Ð¸Ñ
+  NUM: 0, // A - Номер письма
+  ORG: 1, // B - Учреждение
+  DATE: 2, // C - Дата
+  DEADLINE_DATE: 3, // D - Дата дедлайна
+  STATUS: 4, // E - Статус дедлайна
+  FILE: 5, // F - Файл
+  TYPE: 6, // G - Тип запроса
+  CONTENT: 7, // H - Содержание
+  JIRA_LINK: 8, // I - Ссылка на Jira
+  ZORDOC: 9, // J - Коментарии ZorDoc
+  ANSWER: 10, // K - Ответ
+  SEND_STATUS: 11, // L - Статус отправки Uzinfocom
+  IJRO_DATE: 12, // M - Дата ответного письма в IJRO
+  COMMENT: 13, // N - Комментарии Uzinfocom
+  OWNER: 14, // O - Ответственный
+  CONTACTS: 15, // P - Контакты
+  CLOSE_DATE: 16, // Q - Дата закрытия
   SHEET_ID: 17, // R - ID
   SHEET_UPDATED_AT: 18, // S - UPDATED_AT
   SHEET_DELETED_AT: 19, // T - DELETED_AT
   SHEET_CONFLICT: 20, // U - CONFLICT
 }
 
-// ÐŸÐ¾Ð»ÑƒÑ‡Ð¸Ñ‚ÑŒ ÐºÐ»Ð¸ÐµÐ½Ñ‚ Google Sheets
+// Получить клиент Google Sheets
 const TOTAL_COLUMNS = 21
 const TEMPLATE_ROW_INDEX = 1
 const FORMULA_SEPARATOR = process.env.GOOGLE_SHEET_FORMULA_SEPARATOR || ';'
@@ -189,13 +189,13 @@ async function copyTemplateFormatting(
   })
 }
 
-// ÐŸÐ°Ñ€ÑÐ¸Ñ‚ÑŒ Ð´Ð°Ñ‚Ñƒ Ð¸Ð· ÑÑ‚Ñ€Ð¾ÐºÐ¸ Google Sheets
+// Парсить дату из строки Google Sheets
 function parseSheetDate(value: string | null | undefined): Date | null {
   if (!value || String(value).trim() === '') return null
 
   const strValue = String(value).trim()
 
-  // Ð¤Ð¾Ñ€Ð¼Ð°Ñ‚ Ð”Ð”.ÐœÐœ.Ð“Ð“Ð“Ð“
+  // Формат ДД.ММ.ГГГГ
   const parts = strValue.split('.')
   if (parts.length === 3 && parts[0].length <= 2 && parts[1].length <= 2 && parts[2].length === 4) {
     const date = new Date(+parts[2], +parts[1] - 1, +parts[0])
@@ -214,19 +214,19 @@ function parseSheetDate(value: string | null | undefined): Date | null {
     if (!isNaN(date.getTime())) return date
   }
 
-  // Ð¤Ð¾Ñ€Ð¼Ð°Ñ‚ Ð“Ð“Ð“Ð“-ÐœÐœ-Ð”Ð”
+  // Формат ГГГГ-ММ-ДД
   const isoParts = strValue.split('-')
   if (isoParts.length === 3 && isoParts[0].length === 4) {
     const date = new Date(+isoParts[0], +isoParts[1] - 1, +isoParts[2])
     if (!isNaN(date.getTime())) return date
   }
 
-  // ÐŸÐ¾Ð¿Ñ€Ð¾Ð±Ð¾Ð²Ð°Ñ‚ÑŒ ÑÑ‚Ð°Ð½Ð´Ð°Ñ€Ñ‚Ð½Ñ‹Ð¹ Ð¿Ð°Ñ€ÑÐ¸Ð½Ð³
+  // Попробовать стандартный парсинг
   const d = new Date(strValue)
   return isNaN(d.getTime()) ? null : d
 }
 
-// Ð¤Ð¾Ñ€Ð¼Ð°Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð´Ð°Ñ‚Ñƒ Ð´Ð»Ñ Google Sheets
+// Форматировать дату для Google Sheets
 function formatSheetDate(date: Date | null): string {
   if (!date) return ''
   return formatDate(date)
@@ -238,7 +238,7 @@ function formatSheetDateTime(date: Date | null): string {
   return date.toISOString()
 }
 
-// ===== Ð¡Ð˜ÐÐ¥Ð ÐžÐÐ˜Ð—ÐÐ¦Ð˜Ð¯ Ð’ GOOGLE SHEETS =====
+// ===== СИНХРОНИЗАЦИЯ В GOOGLE SHEETS =====
 
 export async function syncToGoogleSheets() {
   const sheets = await getSheetsClient()
@@ -301,7 +301,7 @@ export async function syncToGoogleSheets() {
     const existingRows = response.data.values || []
     const existingRowCount = existingRows.length
     const maxRowNum = existingRowCount + 1
-    let nextRowNum = existingRowCount + 2
+    const nextRowNum = existingRowCount + 2
 
     const updates: { range: string; values: (string | number)[][] }[] = []
     const newRows: (string | number)[][] = []
@@ -429,7 +429,7 @@ export async function syncToGoogleSheets() {
     throw error
   }
 }
-// ===== Ð˜ÐœÐŸÐžÐ Ð¢ Ð˜Ð— GOOGLE SHEETS =====
+// ===== ИМПОРТ ИЗ GOOGLE SHEETS =====
 
 export async function importFromGoogleSheets() {
   const sheets = await getSheetsClient()
@@ -640,7 +640,7 @@ export async function importFromGoogleSheets() {
       const sheetUpdatedAt = parseSheetDate(row[COLUMNS.SHEET_UPDATED_AT])
       const sheetDeletedAt = parseSheetDate(row[COLUMNS.SHEET_DELETED_AT])
 
-      let existing: any = null
+      let existing: Awaited<ReturnType<typeof prisma.letter.findFirst>> = null
       if (sheetIdRaw) {
         existing = await prisma.letter.findUnique({
           where: { id: sheetIdRaw },

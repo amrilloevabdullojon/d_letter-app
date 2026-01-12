@@ -106,7 +106,7 @@ export function Header() {
       } else {
         toast.error(`\u041e\u0448\u0438\u0431\u043a\u0430: ${data.error}`, { id: toastId })
       }
-    } catch (error) {
+    } catch {
       toast.error(
         '\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u0438',
         { id: toastId }
@@ -324,21 +324,33 @@ export function Header() {
       {/* Mobile menu */}
       <div
         id="mobile-menu"
-        className={`mobile-menu fixed bottom-0 right-0 top-14 z-[120] w-[85vw] max-w-[320px] transform overflow-y-auto transition-transform duration-300 sm:top-16 md:hidden ${
-          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`mobile-menu fixed inset-x-0 bottom-0 z-[120] max-h-[85vh] transform overflow-y-auto rounded-t-2xl border-t border-white/10 transition-transform duration-300 sm:inset-y-0 sm:left-auto sm:right-0 sm:top-16 sm:max-h-none sm:w-[85vw] sm:max-w-[320px] sm:translate-y-0 sm:rounded-none sm:border-t-0 md:hidden ${
+          mobileMenuOpen ? 'translate-y-0 sm:translate-x-0' : 'translate-y-full sm:translate-x-full'
         }`}
       >
-        <nav className="flex flex-col gap-1 p-4">
-          <Link
-            href="/request"
-            className={`flex items-center gap-3 rounded-lg px-4 py-3 transition ${
-              isActive('/request')
-                ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
-                : 'text-slate-200/80 hover:bg-white/5'
-            }`}
-          >
-            {'Подать заявку'}
-          </Link>
+        <div className="sticky top-0 z-10 flex items-center justify-center border-b border-white/10 bg-slate-900/70 px-4 py-3 sm:hidden">
+          <div className="h-1 w-10 rounded-full bg-white/20" />
+        </div>
+        <nav
+          className="flex flex-col gap-2 p-4"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href="/letters/new"
+              className="flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
+            >
+              <FileText className="h-5 w-5 text-blue-400" />
+              <span className="leading-tight">{'Новое письмо'}</span>
+            </Link>
+            <Link
+              href="/request"
+              className="flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
+            >
+              <Inbox className="h-5 w-5 text-emerald-400" />
+              <span className="leading-tight">{'Подать заявку'}</span>
+            </Link>
+          </div>
           {/* User info */}
           {session?.user && (
             <div className="mb-4 flex items-center gap-3 rounded-lg bg-white/10 p-3">
@@ -427,7 +439,7 @@ export function Header() {
                 disabled={syncing}
                 className="flex items-center gap-3 rounded-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 disabled:opacity-50"
               >
-                <span className="text-lg">*</span>
+                <RefreshCw className="h-5 w-5" />
                 {'\u0418\u043c\u043f\u043e\u0440\u0442 \u0438\u0437 Sheets'}
               </button>
 
@@ -436,7 +448,7 @@ export function Header() {
                 disabled={syncing}
                 className="flex items-center gap-3 rounded-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 disabled:opacity-50"
               >
-                <span className="text-lg">*</span>
+                <RefreshCw className="h-5 w-5" />
                 {'\u042d\u043a\u0441\u043f\u043e\u0440\u0442 \u0432 Sheets'}
               </button>
 

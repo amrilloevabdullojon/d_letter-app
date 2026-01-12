@@ -21,28 +21,28 @@ export default function LoginClient() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center app-shell">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500" />
+      <div className="app-shell flex min-h-screen items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-emerald-500" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center app-shell px-4 py-10">
-      <div className="w-full max-w-md panel panel-glass rounded-2xl p-6 sm:p-8 text-center">
-        <div className="relative w-20 h-20 rounded-2xl overflow-hidden mx-auto mb-6 shadow-lg shadow-teal-500/30">
+    <div className="app-shell flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="panel panel-glass w-full max-w-md rounded-2xl p-6 text-center sm:p-8">
+        <div className="relative mx-auto mb-6 h-20 w-20 overflow-hidden rounded-2xl shadow-lg shadow-teal-500/30">
           <Image src="/logo-mark.svg" alt="DMED" fill className="object-contain" priority />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">DMED Letters</h1>
-        <p className="text-slate-300/80 mb-8">
-          {'\В\о\й\д\и\т\е, \ч\т\о\б\ы \р\а\б\о\т\а\т\ь \с \п\и\с\ь\м\а\м\и, \о\т\ч\ё\т\а\м\и \и \к\о\н\т\р\о\л\е\м \и\с\п\о\л\н\е\н\и\я.'}
+        <h1 className="mb-2 text-3xl font-bold text-white">DMED Letters</h1>
+        <p className="mb-8 text-slate-300/80">
+          {'Войдите, чтобы работать с письмами, отчётами и контролем исполнения.'}
         </p>
 
         <button
           onClick={() => signIn('google', { callbackUrl: nextUrl })}
-          className="inline-flex items-center justify-center gap-3 px-6 py-3 btn-primary rounded-lg w-full"
+          className="btn-primary inline-flex w-full items-center justify-center gap-3 rounded-lg px-6 py-3"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+          <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -60,11 +60,11 @@ export default function LoginClient() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          {'\В\о\й\т\и \ч\е\р\е\з Google'}
+          {'Войти через Google'}
         </button>
 
         <p className="mt-6 text-xs text-slate-400/80">
-          {'\И\с\п\о\л\ь\з\у\й\т\е \р\а\б\о\ч\и\й \а\к\к\а\у\н\т DMED. \Н\у\ж\е\н \д\о\с\т\у\п? \О\б\р\а\т\и\т\е\с\ь \к \а\д\м\и\н\и\с\т\р\а\т\о\р\у.'}
+          {'Используйте рабочий аккаунт DMED. Нужен доступ? Обратитесь к администратору.'}
         </p>
       </div>
     </div>
