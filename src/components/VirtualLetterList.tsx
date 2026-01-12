@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useRef } from 'react'
+import { useRef, useMemo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { LetterCard } from './LetterCard'
 import { StatusBadge } from './StatusBadge'
@@ -46,16 +46,18 @@ export function VirtualLetterList({
 }: VirtualLetterListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
 
-  // Calculate column count based on width
-  const getColumnCount = () => {
+  // Calculate column count based on width (memoized to prevent recalculation on every render)
+  const columnCount = useMemo(() => {
     if (typeof window === 'undefined') return 3
     if (window.innerWidth < 768) return 1
     if (window.innerWidth < 1024) return 2
     return 3
-  }
+  }, [])
 
-  const columnCount = getColumnCount()
-  const rowCount = Math.ceil(letters.length / columnCount)
+  const rowCount = useMemo(
+    () => Math.ceil(letters.length / columnCount),
+    [letters.length, columnCount]
+  )
 
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
@@ -162,7 +164,7 @@ export function VirtualLetterTable({
     )
   }
 
-  const getDeadlineInfo = (letter: Letter) => {
+  const getDeadlineInfo = useCallback((letter: Letter) => {
     const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
     const isDone = isDoneStatus(letter.status)
 
@@ -186,7 +188,7 @@ export function VirtualLetterTable({
       text: `\u041e\u0441\u0442\u0430\u043b\u043e\u0441\u044c ${daysLeft} \u0440\u0430\u0431. ${pluralizeDays(daysLeft)}`,
       className: 'text-slate-300/70',
     }
-  }
+  }, [])
 
   return (
     <div className="panel panel-glass overflow-hidden rounded-2xl">
