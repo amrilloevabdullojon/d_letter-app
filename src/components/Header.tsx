@@ -26,6 +26,7 @@ import { useToast } from '@/components/Toast'
 import { GlobalSearch, SearchButton } from './GlobalSearch'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
+import { useSwipeRef } from '@/hooks/useSwipe'
 
 export function Header() {
   const { data: session } = useSession()
@@ -49,7 +50,7 @@ export function Header() {
     setMobileMenuOpen(false)
   }, [pathname])
 
-  // Закрыть меню при клике вне
+  // Закрыть меню при клике вне и блокировка скролла
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden'
@@ -60,6 +61,22 @@ export function Header() {
       document.body.style.overflow = ''
     }
   }, [mobileMenuOpen])
+
+  // Свайп вниз для закрытия меню
+  const swipeRef = useSwipeRef<HTMLDivElement>(
+    {
+      onSwipeDown: () => {
+        if (mobileMenuOpen) {
+          hapticLight()
+          setMobileMenuOpen(false)
+        }
+      },
+    },
+    {
+      minSwipeDistance: 50,
+      maxSwipeTime: 300,
+    }
+  )
 
   const handleSync = async (direction: 'to_sheets' | 'from_sheets') => {
     if (syncing) return
@@ -342,8 +359,12 @@ export function Header() {
       {/* Mobile menu overlay */}
       {mobileMenuOpen && (
         <div
-          className="mobile-overlay fixed inset-0 z-[110] md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
+          className="mobile-overlay fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => {
+            hapticLight()
+            setMobileMenuOpen(false)
+          }}
+          style={{ touchAction: 'none' }}
         />
       )}
 
@@ -354,7 +375,10 @@ export function Header() {
           mobileMenuOpen ? 'translate-y-0 sm:translate-x-0' : 'translate-y-full sm:translate-x-full'
         }`}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-center border-b border-white/10 bg-slate-900/70 px-4 py-3 sm:hidden">
+        <div
+          ref={swipeRef}
+          className="sticky top-0 z-10 flex items-center justify-center border-b border-white/10 bg-slate-900/70 px-4 py-3 sm:hidden"
+        >
           <div className="h-1 w-10 rounded-full bg-white/20" />
         </div>
         <nav
