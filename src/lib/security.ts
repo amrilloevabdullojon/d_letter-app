@@ -9,12 +9,12 @@ export const securityHeaders = {
   // Content Security Policy
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires unsafe-eval in dev
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com", // Next.js requires unsafe-eval in dev
     "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",
-    "connect-src 'self' https://accounts.google.com https://*.googleapis.com wss:",
-    "frame-src 'self' https://accounts.google.com",
+    "connect-src 'self' https://accounts.google.com https://*.googleapis.com https://challenges.cloudflare.com wss:",
+    "frame-src 'self' https://accounts.google.com https://challenges.cloudflare.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

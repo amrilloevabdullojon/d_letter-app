@@ -107,6 +107,7 @@ export default function RequestPage() {
   const [submittedId, setSubmittedId] = useState('')
   const [honeypot, setHoneypot] = useState('')
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileReady, setTurnstileReady] = useState(false)
   const [step, setStep] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
@@ -185,39 +186,31 @@ export default function RequestPage() {
   }, [turnstileSiteKey])
 
   useEffect(() => {
+    if (!turnstileSiteKey) return
+    if (typeof window !== 'undefined' && window.turnstile?.render) {
+      setTurnstileReady(true)
+    }
+  }, [turnstileSiteKey])
+
+  useEffect(() => {
     if (step !== 4) {
       turnstileWidgetId.current = null
     }
   }, [step])
 
   useEffect(() => {
-    if (step !== 4 || !turnstileSiteKey) return
+    if (step !== 4 || !turnstileSiteKey || !turnstileReady) return
     if (!turnstileRef.current || turnstileWidgetId.current) return
+    if (!window.turnstile?.render) return
 
-    const renderWidget = () => {
-      if (!window.turnstile?.render || !turnstileRef.current) return false
-      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
-        sitekey: turnstileSiteKey,
-        callback: (token: string) => setTurnstileToken(token),
-        'expired-callback': () => setTurnstileToken(''),
-        'error-callback': () => setTurnstileToken(''),
-        theme: 'dark',
-      })
-      return true
-    }
-
-    if (renderWidget()) return
-
-    let attempts = 0
-    const timer = setInterval(() => {
-      attempts += 1
-      if (renderWidget() || attempts > 20) {
-        clearInterval(timer)
-      }
-    }, 200)
-
-    return () => clearInterval(timer)
-  }, [step, turnstileSiteKey])
+    turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+      sitekey: turnstileSiteKey,
+      callback: (token: string) => setTurnstileToken(token),
+      'expired-callback': () => setTurnstileToken(''),
+      'error-callback': () => setTurnstileToken(''),
+      theme: 'dark',
+    })
+  }, [step, turnstileSiteKey, turnstileReady])
 
   // Phone formatting helper
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -467,6 +460,8 @@ export default function RequestPage() {
           async
           defer
           strategy="afterInteractive"
+          onLoad={() => setTurnstileReady(true)}
+          onError={() => setTurnstileReady(false)}
         />
       )}
       <Header />

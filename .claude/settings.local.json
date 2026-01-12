@@ -24,7 +24,9 @@
       "Bash(git commit:*)",
       "Bash(npx next build)",
       "Bash(git add:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(python:*)",
+      "Bash(git reset:*)"
     ]
   }
 }
