@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import type { LetterStatus } from '@prisma/client'
 import {
   STATUS_LABELS,
@@ -69,7 +70,7 @@ function getPriorityColor(priority: number): string {
   return 'from-gray-500 to-gray-600'
 }
 
-export function LetterCard({ letter, onToggleFavorite }: LetterCardProps) {
+export const LetterCard = memo(function LetterCard({ letter, onToggleFavorite }: LetterCardProps) {
   const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
   const isDone = isDoneStatus(letter.status)
   const isOverdue = !isDone && daysLeft < 0
@@ -253,4 +254,4 @@ export function LetterCard({ letter, onToggleFavorite }: LetterCardProps) {
       </div>
     </Link>
   )
-}
+})
