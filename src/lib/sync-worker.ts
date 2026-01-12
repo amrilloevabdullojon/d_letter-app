@@ -4,7 +4,7 @@ import { STATUS_LABELS, formatDate } from './utils'
 import type { Letter, LetterChangeLog } from '@prisma/client'
 import { logger } from '@/lib/logger.server'
 
-// ÐšÐ¾Ð»Ð¾Ð½ÐºÐ¸ Ð² Google Sheets
+// Колонки в Google Sheets
 const COLUMNS = {
   NUM: 0,
   ORG: 1,
@@ -34,7 +34,7 @@ const TEMPLATE_ROW_INDEX = 1
 const FORMULA_SEPARATOR = process.env.GOOGLE_SHEET_FORMULA_SEPARATOR || ';'
 
 /**
- * ÐŸÐ¾Ð»ÑƒÑ‡Ð¸Ñ‚ÑŒ ÐºÐ»Ð¸ÐµÐ½Ñ‚ Google Sheets
+ * Получить клиент Google Sheets
  */
 async function getSheetsClient() {
   const auth = new google.auth.GoogleAuth({
@@ -193,7 +193,7 @@ async function copyTemplateFormatting(
 }
 
 /**
- * Ð¤Ð¾Ñ€Ð¼Ð°Ñ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð´Ð°Ñ‚Ñƒ Ð´Ð»Ñ Google Sheets
+ * Форматировать дату для Google Sheets
  */
 function formatSheetDate(date: Date | null): string {
   if (!date) return ''
@@ -201,12 +201,12 @@ function formatSheetDate(date: Date | null): string {
 }
 
 /**
- * ÐŸÐ¾ÑÑ‚Ñ€Ð¾Ð¸Ñ‚ÑŒ ÑÑ‚Ñ€Ð¾ÐºÑƒ Ð´Ð°Ð½Ð½Ñ‹Ñ… Ð´Ð»Ñ Google Sheets Ð¸Ð· Letter
+ * Построить строку данных для Google Sheets из Letter
  */
 async function buildRowFromLetter(letter: Letter): Promise<string[]> {
   const row: string[] = new Array(TOTAL_COLUMNS).fill('')
 
-  // ÐŸÐ¾Ð»ÑƒÑ‡Ð°ÐµÐ¼ Ñ„Ð°Ð¹Ð»Ñ‹ Ð¸ Ð²Ð»Ð°Ð´ÐµÐ»ÑŒÑ†Ð°
+  // Получаем файлы и владельца
   const [files, owner] = await Promise.all([
     prisma.file.findMany({
       where: { letterId: letter.id },
@@ -246,7 +246,7 @@ async function buildRowFromLetter(letter: Letter): Promise<string[]> {
 }
 
 /**
- * Ð ÐµÐ·ÑƒÐ»ÑŒÑ‚Ð°Ñ‚ Ð¾Ð±Ñ€Ð°Ð±Ð¾Ñ‚ÐºÐ¸ batch
+ * Результат обработки batch
  */
 interface SyncResult {
   processed: number
@@ -256,7 +256,7 @@ interface SyncResult {
 }
 
 /**
- * ÐžÐ±Ñ€Ð°Ð±Ð¾Ñ‚Ð°Ñ‚ÑŒ pending Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ Ð¸ ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ð¸Ð·Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ñ Google Sheets
+ * Обработать pending изменения и синхронизировать с Google Sheets
  */
 export async function processPendingChanges(batchSize = 50): Promise<SyncResult> {
   const result: SyncResult = {
@@ -266,20 +266,20 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
     errors: [],
   }
 
-  // ÐŸÑ€Ð¾Ð²ÐµÑ€ÑÐµÐ¼ Ð½Ð°Ð»Ð¸Ñ‡Ð¸Ðµ credentials
+  // Проверяем наличие credentials
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
     return { ...result, errors: ['Google credentials not configured'] }
   }
 
   const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID
-  const sheetName = process.env.GOOGLE_SHEET_NAME || 'ÐÐ¾ÑÐ±Ñ€ÑŒ_2025'
+  const sheetName = process.env.GOOGLE_SHEET_NAME || 'Ноябрь_2025'
 
   if (!spreadsheetId) {
     return { ...result, errors: ['GOOGLE_SPREADSHEET_ID not configured'] }
   }
 
   try {
-    // ÐŸÐ¾Ð»ÑƒÑ‡Ð°ÐµÐ¼ pending Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ
+    // Получаем pending изменения
     const pendingChanges = await getPendingChanges(batchSize)
 
     if (pendingChanges.length === 0) {
@@ -288,16 +288,16 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
 
     result.processed = pendingChanges.length
 
-    // Ð“Ñ€ÑƒÐ¿Ð¿Ð¸Ñ€ÑƒÐµÐ¼ Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ Ð¿Ð¾ letterId (Ð±ÐµÑ€Ñ‘Ð¼ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐµ Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ðµ Ð´Ð»Ñ ÐºÐ°Ð¶Ð´Ð¾Ð³Ð¾ Ð¿Ð¸ÑÑŒÐ¼Ð°)
+    // Группируем изменения по letterId (берём последнее изменение для каждого письма)
     const letterChanges = groupChangesByLetter(pendingChanges)
 
     const sheets = await getSheetsClient()
     const sheetId = await getSheetId(sheets, spreadsheetId, sheetName)
 
-    // ÐŸÐ¾Ð»ÑƒÑ‡Ð°ÐµÐ¼ Ñ‚ÐµÐºÑƒÑ‰Ð¸Ðµ Ð´Ð°Ð½Ð½Ñ‹Ðµ Ð¸Ð· Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹ Ð´Ð»Ñ Ð¾Ð¿Ñ€ÐµÐ´ÐµÐ»ÐµÐ½Ð¸Ñ Ð½Ð¾Ð¼ÐµÑ€Ð¾Ð² ÑÑ‚Ñ€Ð¾Ðº
+    // Получаем текущие данные из таблицы для определения номеров строк
     const existingRows = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetName}!R2:R`, // ÐšÐ¾Ð»Ð¾Ð½ÐºÐ° Ñ ID
+      range: `${sheetName}!R2:R`, // Колонка с ID
     })
 
     const idToRowMap = new Map<string, number>()
@@ -305,11 +305,11 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
     const existingRowCount = existingIds.length
     existingIds.forEach((row, index) => {
       if (row[0]) {
-        idToRowMap.set(row[0], index + 2) // +2 Ð¿Ð¾Ñ‚Ð¾Ð¼Ñƒ Ñ‡Ñ‚Ð¾ Ð½Ð°Ñ‡Ð¸Ð½Ð°ÐµÐ¼ Ñ ÑÑ‚Ñ€Ð¾ÐºÐ¸ 2
+        idToRowMap.set(row[0], index + 2) // +2 потому что начинаем с строки 2
       }
     })
 
-    // ÐžÐ±Ñ€Ð°Ð±Ð°Ñ‚Ñ‹Ð²Ð°ÐµÐ¼ ÐºÐ°Ð¶Ð´Ð¾Ðµ Ð¿Ð¸ÑÑŒÐ¼Ð¾
+    // Обрабатываем каждое письмо
     const updateRequests: {
       range: string
       values: string[][]
@@ -324,13 +324,13 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
     const letterEntries = Array.from(letterChanges.entries())
     for (const [letterId, changes] of letterEntries) {
       try {
-        // ÐŸÐ¾Ð»ÑƒÑ‡Ð°ÐµÐ¼ Ð°ÐºÑ‚ÑƒÐ°Ð»ÑŒÐ½Ñ‹Ðµ Ð´Ð°Ð½Ð½Ñ‹Ðµ Ð¿Ð¸ÑÑŒÐ¼Ð°
+        // Получаем актуальные данные письма
         const letter = await prisma.letter.findUnique({
           where: { id: letterId },
         })
 
         if (!letter) {
-          // ÐŸÐ¸ÑÑŒÐ¼Ð¾ ÑƒÐ´Ð°Ð»ÐµÐ½Ð¾ Ð¸Ð· Ð‘Ð” â€” Ð¿Ñ€Ð¾Ð¿ÑƒÑÐºÐ°ÐµÐ¼
+          // Письмо удалено из БД â€” пропускаем
           syncedIds.push(...changes.map((c) => c.id))
           continue
         }
@@ -339,7 +339,7 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
         const existingRowNum = idToRowMap.get(letterId) || letter.sheetRowNum
 
         if (existingRowNum) {
-          // ÐžÐ±Ð½Ð¾Ð²Ð»ÑÐµÐ¼ ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÑŽÑ‰ÑƒÑŽ ÑÑ‚Ñ€Ð¾ÐºÑƒ
+          // Обновляем существующую строку
           updateRequests.push({
             range: `${sheetName}!A${existingRowNum}:C${existingRowNum}`,
             values: [rowData.slice(0, COLUMNS.DEADLINE_DATE)],
@@ -350,9 +350,9 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
           })
           updatedLetterIds.push(letter.id)
         } else {
-          // Ð”Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ Ð½Ð¾Ð²ÑƒÑŽ ÑÑ‚Ñ€Ð¾ÐºÑƒ
+          // Добавляем новую строку
           appendRows.push(rowData)
-          letterIdsToUpdate.push({ letterId, sheetRowNum: -1 }) // Ð‘ÑƒÐ´ÐµÑ‚ Ð¾Ð±Ð½Ð¾Ð²Ð»ÐµÐ½Ð¾ Ð¿Ð¾ÑÐ»Ðµ append
+          letterIdsToUpdate.push({ letterId, sheetRowNum: -1 }) // Будет обновлено после append
         }
 
         syncedIds.push(...changes.map((c) => c.id))
@@ -362,14 +362,14 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
         result.errors.push(`Letter ${letterId}: ${errorMsg}`)
         result.failed++
 
-        // ÐžÑ‚Ð¼ÐµÑ‡Ð°ÐµÐ¼ Ð²ÑÐµ Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ ÑÑ‚Ð¾Ð³Ð¾ Ð¿Ð¸ÑÑŒÐ¼Ð° ÐºÐ°Ðº failed
+        // Отмечаем все изменения этого письма как failed
         for (const change of changes) {
           await markChangeFailed(change.id, errorMsg)
         }
       }
     }
 
-    // Ð’Ñ‹Ð¿Ð¾Ð»Ð½ÑÐµÐ¼ batch update Ð´Ð»Ñ ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÑŽÑ‰Ð¸Ñ… ÑÑ‚Ñ€Ð¾Ðº
+    // Выполняем batch update для существующих строк
     if (updateRequests.length > 0) {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId,
@@ -380,7 +380,7 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
       })
     }
 
-    // Ð”Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ Ð½Ð¾Ð²Ñ‹Ðµ ÑÑ‚Ñ€Ð¾ÐºÐ¸
+    // Добавляем новые строки
     if (appendRows.length > 0) {
       const appendResult = await sheets.spreadsheets.values.append({
         spreadsheetId,
@@ -392,7 +392,7 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
         },
       })
 
-      // ÐžÐ¿Ñ€ÐµÐ´ÐµÐ»ÑÐµÐ¼ Ð½Ð¾Ð¼ÐµÑ€Ð° ÑÑ‚Ñ€Ð¾Ðº Ð´Ð»Ñ Ð½Ð¾Ð²Ñ‹Ñ… Ð·Ð°Ð¿Ð¸ÑÐµÐ¹
+      // Определяем номера строк для новых записей
       const updatedRange = appendResult.data.updates?.updatedRange
       if (updatedRange) {
         const match = updatedRange.match(/!A(\d+):/)
@@ -439,7 +439,7 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
       await applyOwnerValidation(sheets, spreadsheetId, sheetId, lastRowNum, ownerOptions)
     }
 
-    // ÐžÐ±Ð½Ð¾Ð²Ð»ÑÐµÐ¼ lastSyncedAt Ð´Ð»Ñ Ð¾Ð±Ð½Ð¾Ð²Ð»Ñ‘Ð½Ð½Ñ‹Ñ… Ð¿Ð¸ÑÐµÐ¼
+    // Обновляем lastSyncedAt для обновлённых писем
     if (updatedLetterIds.length > 0) {
       await prisma.letter.updateMany({
         where: { id: { in: updatedLetterIds } },
@@ -447,7 +447,7 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
       })
     }
 
-    // ÐžÑ‚Ð¼ÐµÑ‡Ð°ÐµÐ¼ Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ ÐºÐ°Ðº ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ð¸Ð·Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð½Ñ‹Ðµ
+    // Отмечаем изменения как синхронизированные
     if (syncedIds.length > 0) {
       await markChangesSynced(syncedIds)
     }
@@ -460,7 +460,7 @@ export async function processPendingChanges(batchSize = 50): Promise<SyncResult>
 }
 
 /**
- * Ð“Ñ€ÑƒÐ¿Ð¿Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ñ Ð¿Ð¾ letterId
+ * Группировать изменения по letterId
  */
 function groupChangesByLetter(changes: LetterChangeLog[]): Map<string, LetterChangeLog[]> {
   const map = new Map<string, LetterChangeLog[]>()
@@ -475,14 +475,14 @@ function groupChangesByLetter(changes: LetterChangeLog[]): Map<string, LetterCha
 }
 
 /**
- * Ð—Ð°Ð¿ÑƒÑÑ‚Ð¸Ñ‚ÑŒ sync worker ÐºÐ°Ðº Ñ„Ð¾Ð½Ð¾Ð²Ñ‹Ð¹ Ð¿Ñ€Ð¾Ñ†ÐµÑÑ
- * Ð˜ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ÑÑ Ð´Ð»Ñ Ð¿ÐµÑ€Ð¸Ð¾Ð´Ð¸Ñ‡ÐµÑÐºÐ¾Ð¹ ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ð¸Ð·Ð°Ñ†Ð¸Ð¸
+ * Запустить sync worker как фоновый процесс
+ * Используется для периодической синхронизации
  */
 let syncInterval: NodeJS.Timeout | null = null
 
 export function startSyncWorker(intervalMs = 30000) {
   if (syncInterval) {
-    return // Ð£Ð¶Ðµ Ð·Ð°Ð¿ÑƒÑ‰ÐµÐ½
+    return // Уже запущен
   }
 
   // eslint-disable-next-line no-console
@@ -498,7 +498,6 @@ export function startSyncWorker(intervalMs = 30000) {
         )
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
       logger.error('SyncWorker', error)
     }
   }, intervalMs)
@@ -514,7 +513,7 @@ export function stopSyncWorker() {
 }
 
 /**
- * ÐŸÑ€Ð¾Ð²ÐµÑ€Ð¸Ñ‚ÑŒ, Ð·Ð°Ð¿ÑƒÑ‰ÐµÐ½ Ð»Ð¸ worker
+ * Проверить, запущен ли worker
  */
 export function isSyncWorkerRunning() {
   return syncInterval !== null

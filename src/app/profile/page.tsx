@@ -322,7 +322,7 @@ export default function ProfilePage() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
-              {'\Ð\Ñ\Ð¾\Ñ\Ð¸\Ð»\Ñ'}
+              {'Профиль'}
             </h1>
             <p className="mt-2 text-sm text-muted">
               {'Обновите данные и настройте видимость для коллег.'}
@@ -334,7 +334,7 @@ export default function ProfilePage() {
             className="btn-primary hidden items-center justify-center gap-2 rounded-lg px-4 py-2 text-white disabled:opacity-60 sm:inline-flex"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {'\Ð¡\Ð¾\Ñ\Ñ\Ð°\Ð½\Ð¸\Ñ\Ñ'}
+            {'Сохранить'}
           </button>
         </div>
 
@@ -379,24 +379,24 @@ export default function ProfilePage() {
               <div className="panel-soft panel-glass rounded-xl p-2 text-center">
                 <FileText className="mx-auto mb-1 h-4 w-4 text-emerald-300" />
                 <div className="text-white">{user._count.letters}</div>
-                <div className="text-gray-500">{'\Ð\Ð¸\Ñ\Ñ\Ð¼\Ð°'}</div>
+                <div className="text-gray-500">{'Письма'}</div>
               </div>
               <div className="panel-soft panel-glass rounded-xl p-2 text-center">
                 <MessageSquare className="mx-auto mb-1 h-4 w-4 text-blue-300" />
                 <div className="text-white">{user._count.comments}</div>
-                <div className="text-gray-500">{'\Ð\Ð¾\Ð¼\Ð¼\Ðµ\Ð½\Ñ\Ñ'}</div>
+                <div className="text-gray-500">{'Комменты'}</div>
               </div>
               <div className="panel-soft panel-glass rounded-xl p-2 text-center">
                 <Clock className="mx-auto mb-1 h-4 w-4 text-amber-300" />
                 <div className="text-white">{user._count.sessions}</div>
-                <div className="text-gray-500">{'\Ð¡\Ðµ\Ñ\Ñ\Ð¸\Ð¸'}</div>
+                <div className="text-gray-500">{'Сессии'}</div>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Upload className="h-3.5 w-3.5 text-emerald-400" />
-                {'\Ð\Ñ\Ð¾\Ñ\Ð¼\Ð»\Ðµ\Ð½\Ð¸\Ðµ'}
+                {'Оформление'}
               </div>
               <div className="h-20 overflow-hidden rounded-xl border border-white/10 bg-white/10">
                 {coverUrl ? (
@@ -410,7 +410,7 @@ export default function ProfilePage() {
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
-                    {'\Ð\Ðµ\Ñ \Ð¾\Ð±\Ð»\Ð¾\Ð¶\Ðº\Ð¸'}
+                    {'Нет обложки'}
                   </div>
                 )}
               </div>
@@ -421,7 +421,7 @@ export default function ProfilePage() {
                   ) : (
                     <Upload className="h-3.5 w-3.5" />
                   )}
-                  {'\Ð\Ð²\Ð°\Ñ\Ð°\Ñ'}
+                  {'Аватар'}
                   <input
                     type="file"
                     accept="image/*"
@@ -439,7 +439,7 @@ export default function ProfilePage() {
                   ) : (
                     <Upload className="h-3.5 w-3.5" />
                   )}
-                  {'\Ð\Ð±\Ð»\Ð¾\Ð¶\Ðº\Ð°'}
+                  {'Обложка'}
                   <input
                     type="file"
                     accept="image/*"
@@ -456,20 +456,20 @@ export default function ProfilePage() {
 
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <Clock className="h-4 w-4" />
-              {'\Ð\Ð¾\Ñ\Ð»\Ðµ\Ð´\Ð½\Ð¸\Ð¹ \Ð²\Ñ\Ð¾\Ð´:'} {formatDate(user.lastLoginAt)}
+              {'Последний вход:'} {formatDate(user.lastLoginAt)}
             </div>
           </div>
 
           <div className="panel panel-glass space-y-6 rounded-2xl p-6 lg:col-span-2">
             <div className="flex items-center gap-2 text-sm text-gray-300">
               <UserCircle className="h-4 w-4 text-emerald-400" />
-              {'\Ð\Ñ\Ð½\Ð¾\Ð²\Ð½\Ð¾\Ðµ'}
+              {'Основное'}
             </div>
             <textarea
               value={profile.bio || ''}
               onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
               className={`${fieldBase} min-h-[120px] w-full px-3 py-2`}
-              placeholder={'\Ð\Ð¾\Ñ\Ð¾\Ñ\Ðº\Ð¾ \Ð¾ \Ñ\Ðµ\Ð±\Ðµ'}
+              placeholder={'Коротко о себе'}
               aria-label="Bio"
             />
 
@@ -477,46 +477,46 @@ export default function ProfilePage() {
               <div>
                 <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
                   <Briefcase className="h-4 w-4 text-emerald-400" />
-                  {'\Ð\Ð¾\Ð»\Ð¶\Ð½\Ð¾\Ñ\Ñ\Ñ'}
+                  {'Должность'}
                 </div>
                 <input
                   value={profile.position || ''}
                   onChange={(e) => setProfile({ ...profile, position: e.target.value })}
                   className={`${fieldBase} w-full px-3 py-2`}
-                  placeholder={'\Ð\Ð¾\Ð»\Ð¶\Ð½\Ð¾\Ñ\Ñ\Ñ'}
+                  placeholder={'Должность'}
                   aria-label="Position"
                 />
               </div>
               <div>
                 <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
                   <Building2 className="h-4 w-4 text-emerald-400" />
-                  {'\Ð\Ñ\Ð´\Ðµ\Ð»'}
+                  {'Отдел'}
                 </div>
                 <input
                   value={profile.department || ''}
                   onChange={(e) => setProfile({ ...profile, department: e.target.value })}
                   className={`${fieldBase} w-full px-3 py-2`}
-                  placeholder={'\Ð\Ñ\Ð´\Ðµ\Ð»'}
+                  placeholder={'Отдел'}
                   aria-label="Department"
                 />
               </div>
               <div>
                 <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
                   <MapPin className="h-4 w-4 text-emerald-400" />
-                  {'\Ð\Ð¾\Ðº\Ð°\Ñ\Ð¸\Ñ'}
+                  {'Локация'}
                 </div>
                 <input
                   value={profile.location || ''}
                   onChange={(e) => setProfile({ ...profile, location: e.target.value })}
                   className={`${fieldBase} w-full px-3 py-2`}
-                  placeholder={'\Ð\Ð¾\Ñ\Ð¾\Ð´, \Ñ\Ñ\Ñ\Ð°\Ð½\Ð°'}
+                  placeholder={'Город, страна'}
                   aria-label="Location"
                 />
               </div>
               <div>
                 <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
                   <Globe2 className="h-4 w-4 text-emerald-400" />
-                  {'\Ð§\Ð°\Ñ\Ð¾\Ð²\Ð¾\Ð¹ \Ð¿\Ð¾\Ñ\Ñ'}
+                  {'Часовой пояс'}
                 </div>
                 <input
                   value={profile.timezone || ''}
@@ -529,7 +529,7 @@ export default function ProfilePage() {
               <div>
                 <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
                   <Phone className="h-4 w-4 text-emerald-400" />
-                  {'\Ð¢\Ðµ\Ð»\Ðµ\Ñ\Ð¾\Ð½'}
+                  {'Телефон'}
                 </div>
                 <input
                   value={profile.phone || ''}
@@ -542,7 +542,7 @@ export default function ProfilePage() {
               <div>
                 <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
                   <Mail className="h-4 w-4 text-emerald-400" />
-                  {'\Ð\Ñ\Ðº\Ñ\Ñ\Ñ\Ñ\Ð¹ email'}
+                  {'Открытый email'}
                 </div>
                 <input
                   value={user.email || ''}
@@ -556,15 +556,13 @@ export default function ProfilePage() {
             <div>
               <div className="mb-2 flex items-center gap-2 text-xs text-gray-400">
                 <ListChecks className="h-4 w-4 text-emerald-400" />
-                {'\Ð\Ð°\Ð²\Ñ\Ðº\Ð¸'}
+                {'Навыки'}
               </div>
               <input
                 value={skillsInput}
                 onChange={(e) => setSkillsInput(e.target.value)}
                 className={`${fieldBase} w-full px-3 py-2`}
-                placeholder={
-                  '\Ð\Ñ\Ð¿\Ð¾\Ð»\Ñ\Ð·\Ñ\Ð¹\Ñ\Ðµ \Ð·\Ð°\Ð¿\Ñ\Ñ\Ñ\Ðµ \Ð´\Ð»\Ñ \Ñ\Ð°\Ð·\Ð´\Ðµ\Ð»\Ðµ\Ð½\Ð¸\Ñ'
-                }
+                placeholder={'Используйте запятые для разделения'}
                 aria-label="Skills"
               />
               {parsedSkills.length > 0 && (
@@ -584,11 +582,11 @@ export default function ProfilePage() {
             <div className="panel-soft panel-glass rounded-2xl p-4">
               <div className="mb-4 flex items-center gap-2 text-sm text-gray-300">
                 <Eye className="h-4 w-4 text-emerald-400" />
-                {'\Ð\Ð¸\Ð´\Ð¸\Ð¼\Ð¾\Ñ\Ñ\Ñ \Ð¿\Ñ\Ð¾\Ñ\Ð¸\Ð»\Ñ'}
+                {'Видимость профиля'}
               </div>
               <div className="grid gap-4 lg:grid-cols-3">
                 <div className="space-y-3">
-                  <label className="block text-xs text-gray-400">{'\Ð£\Ñ\Ð¾\Ð²\Ðµ\Ð½\Ñ'}</label>
+                  <label className="block text-xs text-gray-400">{'Уровень'}</label>
                   <select
                     value={profile.visibility}
                     onChange={(e) =>
@@ -600,10 +598,8 @@ export default function ProfilePage() {
                     className={`${fieldCompact} w-full px-3 py-2`}
                     aria-label="Profile visibility"
                   >
-                    <option value="INTERNAL">
-                      {'\Ð\Ð¸\Ð´\Ð½\Ð¾ \Ð²\Ð½\Ñ\Ñ\Ñ\Ð¸ \Ñ\Ð¸\Ñ\Ñ\Ðµ\Ð¼\Ñ'}
-                    </option>
-                    <option value="PRIVATE">{'\Ð¢\Ð¾\Ð»\Ñ\Ðº\Ð¾ \Ñ'}</option>
+                    <option value="INTERNAL">{'Видно внутри системы'}</option>
+                    <option value="PRIVATE">{'Только я'}</option>
                   </select>
                   <label className="inline-flex items-center gap-2 text-xs text-gray-300">
                     <input
@@ -616,12 +612,10 @@ export default function ProfilePage() {
                       aria-label="Public profile link"
                     />
                     <Link2 className="h-3.5 w-3.5" />
-                    {'\Ð\Ñ\Ð±\Ð»\Ð¸\Ñ\Ð½\Ð°\Ñ \Ñ\Ñ\Ñ\Ð»\Ðº\Ð°'}
+                    {'Публичная ссылка'}
                   </label>
                   <p className="text-[11px] text-gray-500">
-                    {
-                      '\Ð¡\Ñ\Ñ\Ð»\Ðº\Ñ \Ð¼\Ð¾\Ð¶\Ð½\Ð¾ \Ñ\Ð°\Ñ\Ð¿\Ñ\Ð¾\Ñ\Ñ\Ñ\Ð°\Ð½\Ñ\Ñ\Ñ \Ð²\Ð½\Ðµ \Ñ\Ð¸\Ñ\Ñ\Ðµ\Ð¼\Ñ.'
-                    }
+                    {'Ссылку можно распространять вне системы.'}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-2 text-xs text-gray-300 sm:grid-cols-2 lg:col-span-2">
@@ -633,7 +627,7 @@ export default function ProfilePage() {
                       className={controlBase}
                       aria-label="Public bio"
                     />
-                    {'\Ð \Ñ\Ðµ\Ð±\Ðµ'}
+                    {'О себе'}
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -643,7 +637,7 @@ export default function ProfilePage() {
                       className={controlBase}
                       aria-label="Public position"
                     />
-                    {'\Ð\Ð¾\Ð»\Ð¶\Ð½\Ð¾\Ñ\Ñ\Ñ'}
+                    {'Должность'}
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -655,7 +649,7 @@ export default function ProfilePage() {
                       className={controlBase}
                       aria-label="Public department"
                     />
-                    {'\Ð\Ñ\Ð´\Ðµ\Ð»'}
+                    {'Отдел'}
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -665,7 +659,7 @@ export default function ProfilePage() {
                       className={controlBase}
                       aria-label="Public location"
                     />
-                    {'\Ð\Ð¾\Ðº\Ð°\Ñ\Ð¸\Ñ'}
+                    {'Локация'}
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -675,7 +669,7 @@ export default function ProfilePage() {
                       className={controlBase}
                       aria-label="Public timezone"
                     />
-                    {'\Ð§\Ð°\Ñ\Ð¾\Ð²\Ð¾\Ð¹ \Ð¿\Ð¾\Ñ\Ñ'}
+                    {'Часовой пояс'}
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -685,7 +679,7 @@ export default function ProfilePage() {
                       className={controlBase}
                       aria-label="Public skills"
                     />
-                    {'\Ð\Ð°\Ð²\Ñ\Ðº\Ð¸'}
+                    {'Навыки'}
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -697,7 +691,7 @@ export default function ProfilePage() {
                       className={controlBase}
                       aria-label="Public last login"
                     />
-                    {'\Ð\Ð¾\Ñ\Ð»\Ðµ\Ð´\Ð½\Ð¸\Ð¹ \Ð²\Ñ\Ð¾\Ð´'}
+                    {'Последний вход'}
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -708,7 +702,7 @@ export default function ProfilePage() {
                       disabled={!user.email}
                       aria-label="Public email"
                     />
-                    {'\Ð\Ð¾\Ðº\Ð°\Ð·\Ñ\Ð²\Ð°\Ñ\Ñ email'}
+                    {'Показывать email'}
                   </label>
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -718,7 +712,7 @@ export default function ProfilePage() {
                       className={controlBase}
                       aria-label="Public phone"
                     />
-                    {'\Ð\Ð¾\Ðº\Ð°\Ð·\Ñ\Ð²\Ð°\Ñ\Ñ \Ñ\Ðµ\Ð»\Ðµ\Ñ\Ð¾\Ð½'}
+                    {'Показывать телефон'}
                   </label>
                 </div>
               </div>
@@ -726,7 +720,7 @@ export default function ProfilePage() {
                 <div className="panel-soft panel-glass mt-4 rounded-xl p-3">
                   <div className="mb-2 flex items-center gap-2 text-xs text-gray-400">
                     <Link2 className="h-3.5 w-3.5 text-emerald-400" />
-                    {'\Ð¡\Ñ\Ñ\Ð»\Ðº\Ð° \Ð´\Ð»\Ñ \Ð¿\Ñ\Ð¾\Ñ\Ð¼\Ð¾\Ñ\Ñ\Ð°'}
+                    {'Ссылка для просмотра'}
                   </div>
                   {publicProfileUrl ? (
                     <div className="flex flex-wrap items-center gap-2">
@@ -743,14 +737,14 @@ export default function ProfilePage() {
                         className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 transition hover:bg-white/10"
                       >
                         <Copy className="h-3 w-3" />
-                        {'\Ð\Ð¾\Ð¿\Ð¸\Ñ\Ð¾\Ð²\Ð°\Ñ\Ñ'}
+                        {'Копировать'}
                       </button>
                       <button
                         onClick={handleRotateToken}
                         className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 transition hover:bg-white/10"
                       >
                         <RefreshCw className="h-3 w-3" />
-                        {'\Ð\Ð±\Ð½\Ð¾\Ð²\Ð¸\Ñ\Ñ'}
+                        {'Обновить'}
                       </button>
                       <a
                         href={publicProfileUrl}
@@ -759,22 +753,18 @@ export default function ProfilePage() {
                         className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 transition hover:bg-white/10"
                       >
                         <ExternalLink className="h-3 w-3" />
-                        {'\Ð\Ñ\Ðº\Ñ\Ñ\Ñ\Ñ'}
+                        {'Открыть'}
                       </a>
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-500">
-                      {'\Ð\Ð¾\Ñ\Ñ\Ñ\Ð¿\Ð½\Ð¾ \Ð¿\Ð¾\Ñ\Ð»\Ðµ \Ñ\Ð¾\Ñ\Ñ\Ð°\Ð½\Ðµ\Ð½\Ð¸\Ñ.'}
-                    </div>
+                    <div className="text-xs text-gray-500">{'Доступно после сохранения.'}</div>
                   )}
                 </div>
               )}
               {profile.visibility === 'PRIVATE' && (
                 <div className="mt-3 flex items-center gap-2 text-xs text-amber-400">
                   <EyeOff className="h-4 w-4" />
-                  {
-                    '\Ð\Ñ\Ð¾\Ñ\Ð¸\Ð»\Ñ \Ð²\Ð¸\Ð´\Ðµ\Ð½ \Ñ\Ð¾\Ð»\Ñ\Ðº\Ð¾ \Ð²\Ð°\Ð¼ \Ð¸ \Ð°\Ð´\Ð¼\Ð¸\Ð½\Ð°\Ð¼.'
-                  }
+                  {'Профиль виден только вам и админам.'}
                 </div>
               )}
             </div>
@@ -782,12 +772,12 @@ export default function ProfilePage() {
             <div className="panel-soft panel-glass rounded-2xl p-4">
               <div className="mb-4 flex items-center gap-2 text-sm text-gray-300">
                 <Clock className="h-4 w-4 text-emerald-400" />
-                {'\Ð\Ðº\Ñ\Ð¸\Ð²\Ð½\Ð¾\Ñ\Ñ\Ñ'}
+                {'Активность'}
               </div>
               {activity ? (
                 <div className="grid gap-4 text-xs md:grid-cols-3">
                   <div className="space-y-2">
-                    <div className="text-gray-400">{'\Ð\Ð¸\Ñ\Ñ\Ð¼\Ð°'}</div>
+                    <div className="text-gray-400">{'Письма'}</div>
                     {activity.letters.length > 0 ? (
                       activity.letters.map((item) => (
                         <Link
@@ -800,11 +790,11 @@ export default function ProfilePage() {
                         </Link>
                       ))
                     ) : (
-                      <div className="text-gray-500">{'\Ð\Ðµ\Ñ \Ð¿\Ð¸\Ñ\Ðµ\Ð¼'}</div>
+                      <div className="text-gray-500">{'Нет писем'}</div>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <div className="text-gray-400">{'\Ð\Ð¾\Ð¼\Ð¼\Ðµ\Ð½\Ñ\Ð°\Ñ\Ð¸\Ð¸'}</div>
+                    <div className="text-gray-400">{'Комментарии'}</div>
                     {activity.comments.length > 0 ? (
                       activity.comments.map((item) => (
                         <Link
@@ -817,13 +807,11 @@ export default function ProfilePage() {
                         </Link>
                       ))
                     ) : (
-                      <div className="text-gray-500">
-                        {'\Ð\Ðµ\Ñ \Ðº\Ð¾\Ð¼\Ð¼\Ðµ\Ð½\Ñ\Ð°\Ñ\Ð¸\Ðµ\Ð²'}
-                      </div>
+                      <div className="text-gray-500">{'Нет комментариев'}</div>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <div className="text-gray-400">{'\Ð\Ð°\Ð·\Ð½\Ð°\Ñ\Ðµ\Ð½\Ð¸\Ñ'}</div>
+                    <div className="text-gray-400">{'Назначения'}</div>
                     {activity.assignments.length > 0 ? (
                       activity.assignments.map((item) => (
                         <Link
@@ -836,12 +824,12 @@ export default function ProfilePage() {
                         </Link>
                       ))
                     ) : (
-                      <div className="text-gray-500">{'\Ð\Ðµ\Ñ \Ð½\Ð°\Ð·\Ð½\Ð°\Ñ\Ðµ\Ð½\Ð¸\Ð¹'}</div>
+                      <div className="text-gray-500">{'Нет назначений'}</div>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="text-xs text-gray-500">{'\Ð\Ð°\Ð³\Ñ\Ñ\Ð·\Ðº\Ð°...'}</div>
+                <div className="text-xs text-gray-500">{'Загрузка...'}</div>
               )}
             </div>
           </div>
