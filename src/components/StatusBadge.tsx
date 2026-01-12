@@ -6,20 +6,31 @@ import { Circle, CircleDot, Clock, HelpCircle, CheckCircle, CheckCircle2 } from 
 
 interface StatusBadgeProps {
   status: LetterStatus
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  /**
+   * When true, uses mobile-optimized sizing: larger touch targets and better readability
+   * @default false
+   */
+  mobileOptimized?: boolean
 }
 
-export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
+export function StatusBadge({ status, size = 'md', mobileOptimized = false }: StatusBadgeProps) {
   const sizeClasses = {
+    xs: 'text-[10px] px-1.5 py-0.5 gap-1',
     sm: 'text-xs px-2 py-0.5 gap-1.5',
-    md: 'text-sm px-2.5 py-1 gap-2',
-    lg: 'text-sm px-3 py-1.5 gap-2.5',
+    md: mobileOptimized
+      ? 'text-sm px-3 py-1.5 gap-2 md:px-2.5 md:py-1'
+      : 'text-sm px-2.5 py-1 gap-2',
+    lg: mobileOptimized
+      ? 'text-base px-4 py-2 gap-2.5 md:text-sm md:px-3 md:py-1.5'
+      : 'text-sm px-3 py-1.5 gap-2.5',
   }
 
   const iconSizes = {
+    xs: 'h-2.5 w-2.5',
     sm: 'h-3 w-3',
-    md: 'h-3.5 w-3.5',
-    lg: 'h-4 w-4',
+    md: mobileOptimized ? 'h-4 w-4 md:h-3.5 md:w-3.5' : 'h-3.5 w-3.5',
+    lg: mobileOptimized ? 'h-5 w-5 md:h-4 md:w-4' : 'h-4 w-4',
   }
 
   const statusStyles: Record<
