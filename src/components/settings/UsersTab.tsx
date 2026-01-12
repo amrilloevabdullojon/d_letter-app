@@ -695,8 +695,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
           isLastAdmin={editingUser.role === 'ADMIN' && adminCount <= 1}
           isLastSuperAdmin={editingUser.role === 'SUPERADMIN' && superAdminCount <= 1}
           onSave={(data) => {
-            setEditData(data)
-            saveEdit(editingUser.id)
+            saveEdit(editingUser.id, data)
           }}
           onCancel={cancelEdit}
         />

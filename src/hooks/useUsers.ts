@@ -234,17 +234,22 @@ export function useUsers({ onSuccess, onError }: UseUsersOptions = {}) {
   }, [])
 
   const saveEdit = useCallback(
-    async (userId: string) => {
+    async (userId: string, nextData?: UserEditData) => {
       if (!editSnapshot) return
 
       setSavingId(userId)
       try {
+        const draft = nextData ?? editData
+        if (nextData) {
+          setEditData(nextData)
+        }
+
         // Find changed fields
         const changes: Record<string, unknown> = {}
-        const keys = Object.keys(editData) as (keyof UserEditData)[]
+        const keys = Object.keys(draft) as (keyof UserEditData)[]
         for (const key of keys) {
-          if (editData[key] !== editSnapshot[key]) {
-            changes[key] = editData[key]
+          if (draft[key] !== editSnapshot[key]) {
+            changes[key] = draft[key]
           }
         }
 
@@ -419,9 +424,14 @@ export function useUsers({ onSuccess, onError }: UseUsersOptions = {}) {
 
         if (res.ok) {
           const data = await res.json()
+          const entries = Array.isArray(data.audits)
+            ? data.audits
+            : Array.isArray(data.entries)
+              ? data.entries
+              : []
           setAuditByUser((prev) => ({
             ...prev,
-            [userId]: mode === 'more' ? [...(prev[userId] || []), ...data.entries] : data.entries,
+            [userId]: mode === 'more' ? [...(prev[userId] || []), ...entries] : entries,
           }))
           setAuditCursorByUser((prev) => ({
             ...prev,
