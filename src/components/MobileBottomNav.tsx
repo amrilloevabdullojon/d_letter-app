@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, FileText, Inbox, BarChart3, Settings } from 'lucide-react'
+import { hapticLight } from '@/lib/haptic'
 
 interface MobileBottomNavProps {
   isAdmin: boolean
@@ -41,8 +42,9 @@ export function MobileBottomNav({ isAdmin, hidden }: MobileBottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => hapticLight()}
               aria-current={active ? 'page' : undefined}
-              className={`flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2.5 text-[11px] leading-tight transition ${
+              className={`tap-highlight flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2.5 text-[11px] leading-tight transition ${
                 active ? 'text-teal-200' : 'text-slate-400 hover:text-white'
               }`}
             >
