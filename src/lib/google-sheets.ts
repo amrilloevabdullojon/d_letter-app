@@ -1,7 +1,7 @@
 ﻿import { google } from 'googleapis'
 import { prisma } from './prisma'
 import { STATUS_LABELS, STATUS_FROM_LABEL, formatDate, addWorkingDays } from './utils'
-import type { LetterStatus } from '@prisma/client'
+import type { LetterStatus, Prisma } from '@prisma/client'
 
 // Колонки в Google Sheets (реальный порядок из таблицы)
 const COLUMNS = {
@@ -640,7 +640,10 @@ export async function importFromGoogleSheets() {
       const sheetUpdatedAt = parseSheetDate(row[COLUMNS.SHEET_UPDATED_AT])
       const sheetDeletedAt = parseSheetDate(row[COLUMNS.SHEET_DELETED_AT])
 
-      let existing: Awaited<ReturnType<typeof prisma.letter.findFirst>> = null
+      type LetterWithRelations = Prisma.LetterGetPayload<{
+        include: { owner: true; files: true }
+      }>
+      let existing: LetterWithRelations | null = null
       if (sheetIdRaw) {
         existing = await prisma.letter.findUnique({
           where: { id: sheetIdRaw },
