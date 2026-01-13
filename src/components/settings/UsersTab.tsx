@@ -99,7 +99,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
     loadUserAudit,
     loadUsers,
     exportUsers,
-  } = useUsers({ onSuccess, onError })
+  } = useUsers({ onSuccess, onError, hideSuperAdmin: !isSuperAdmin })
 
   // Approvals state
   const [approvals, setApprovals] = useState<AdminApproval[]>([])
@@ -132,6 +132,18 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
       loadApprovals()
     }
   }, [isSuperAdmin, loadApprovals])
+
+  const roleOptions = useMemo(
+    () =>
+      isSuperAdmin ? ROLE_OPTIONS : ROLE_OPTIONS.filter((role) => role.value !== 'SUPERADMIN'),
+    [isSuperAdmin]
+  )
+
+  useEffect(() => {
+    if (!isSuperAdmin && roleFilter === 'SUPERADMIN') {
+      setRoleFilter('all')
+    }
+  }, [isSuperAdmin, roleFilter, setRoleFilter])
 
   // Handle approval
   const handleApproval = useCallback(
@@ -209,6 +221,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
   // Admin counts
   const adminCount = users.filter((user) => user.role === 'ADMIN').length
   const superAdminCount = users.filter((user) => user.role === 'SUPERADMIN').length
+  const visibleTotal = isSuperAdmin ? total : Math.max(0, total - superAdminCount)
 
   // Selection state
   const allVisibleSelected =
@@ -258,7 +271,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
         <Users className="h-6 w-6 text-emerald-400" />
         <h2 className="text-xl font-semibold text-white">Управление пользователями</h2>
         <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/20 bg-sky-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-sky-300">
-          {total} пользователей
+          {visibleTotal} пользователей
         </span>
       </div>
 
@@ -379,7 +392,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             className={`${fieldBase} w-full px-3 py-2 disabled:opacity-60`}
             aria-label="Роль"
           >
-            {ROLE_OPTIONS.map((role) => (
+            {roleOptions.map((role) => (
               <option key={role.value} value={role.value}>
                 {role.label}
               </option>
@@ -435,7 +448,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             aria-label="Фильтр по роли"
           >
             <option value="all">Все роли</option>
-            {ROLE_OPTIONS.map((role) => (
+            {roleOptions.map((role) => (
               <option key={role.value} value={role.value}>
                 {role.label}
               </option>
@@ -477,7 +490,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
           <span>
-            Показано {filteredUsers.length} из {total}
+            Показано {filteredUsers.length} из {visibleTotal}
           </span>
           <div className="flex items-center gap-3">
             {hasFilters && (
