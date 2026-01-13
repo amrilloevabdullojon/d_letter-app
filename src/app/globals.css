@@ -1060,6 +1060,16 @@ h3 {
   animation: shimmer 1.5s infinite;
 }
 
+.no-bg-animations .animate-snowfall,
+.no-bg-animations .animate-twinkle,
+.no-bg-animations .animate-lights > * {
+  animation: none !important;
+}
+
+.no-bg-animations .animate-snowfall {
+  display: none;
+}
+
 /* Urgent priority pulse animation */
 @keyframes urgentPulse {
   0%,

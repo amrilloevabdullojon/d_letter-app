@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 
 interface Snowflake {
@@ -10,31 +10,31 @@ interface Snowflake {
   speed: number
   opacity: number
   wobble: number
+  delay: number
 }
 
 export function Snowfall() {
   const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
-  const [snowflakes, setSnowflakes] = useState<Snowflake[]>([])
-
-  useEffect(() => {
-    if (!newYearVibe) {
-      setSnowflakes([])
-      return
-    }
-
-    const flakeCount = typeof window !== 'undefined' && window.innerWidth < 768 ? 24 : 50
-    const flakes: Snowflake[] = Array.from({ length: flakeCount }, (_, i) => ({
+  const [personalization] = useLocalStorage<{ backgroundAnimations?: boolean }>(
+    'personalization-settings',
+    { backgroundAnimations: true }
+  )
+  const backgroundAnimations = personalization?.backgroundAnimations ?? true
+  const [snowflakes] = useState<Snowflake[]>(() => {
+    if (typeof window === 'undefined') return []
+    const flakeCount = window.innerWidth < 768 ? 24 : 50
+    return Array.from({ length: flakeCount }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       size: Math.random() * 4 + 2,
       speed: Math.random() * 3 + 2,
       opacity: Math.random() * 0.6 + 0.4,
       wobble: Math.random() * 10,
+      delay: -Math.random() * 10,
     }))
-    setSnowflakes(flakes)
-  }, [newYearVibe])
+  })
 
-  if (!newYearVibe) return null
+  if (!newYearVibe || !backgroundAnimations) return null
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
@@ -49,7 +49,7 @@ export function Snowfall() {
               height: `${flake.size}px`,
               opacity: flake.opacity,
               animationDuration: `${flake.speed + 5}s`,
-              animationDelay: `${-Math.random() * 10}s`,
+              animationDelay: `${flake.delay}s`,
               '--wobble': `${flake.wobble}px`,
             } as React.CSSProperties
           }
@@ -85,18 +85,12 @@ export function ChristmasLights() {
 // Новогодний баннер
 export function NewYearBanner() {
   const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
-  const [show, setShow] = useState(true)
+  const [bannerDismissed, setBannerDismissed] = useLocalStorage<boolean>(
+    'new-year-banner-dismissed',
+    false
+  )
 
-  useEffect(() => {
-    if (newYearVibe) {
-      setShow(true)
-    } else {
-      setShow(false)
-    }
-  }, [newYearVibe])
-
-  if (!newYearVibe) return null
-  if (!show) return null
+  if (!newYearVibe || bannerDismissed) return null
 
   return (
     <div className="relative bg-gradient-to-r from-red-600 via-green-600 to-red-600 px-3 py-1.5 text-center text-white sm:px-4 sm:py-2">
@@ -106,7 +100,7 @@ export function NewYearBanner() {
         }
       </span>
       <button
-        onClick={() => setShow(false)}
+        onClick={() => setBannerDismissed(true)}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white sm:right-4"
       >
         {'\u2715'}

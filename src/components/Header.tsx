@@ -41,6 +41,11 @@ export function Header() {
   const lastFocusedRef = useRef<HTMLElement | null>(null)
   const hasOpenedRef = useRef(false)
   const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
+  const [personalization] = useLocalStorage<{ backgroundAnimations?: boolean }>(
+    'personalization-settings',
+    { backgroundAnimations: true }
+  )
+  const backgroundAnimations = personalization?.backgroundAnimations ?? true
   const isAdminRole = session?.user.role === 'ADMIN' || session?.user.role === 'SUPERADMIN'
   const roleLabel =
     session?.user.role === 'SUPERADMIN'
@@ -69,7 +74,7 @@ export function Header() {
   const closeMobileMenu = useCallback(() => {
     hapticLight()
     setMobileMenuOpen(false)
-  }, [hapticLight, setMobileMenuOpen])
+  }, [setMobileMenuOpen])
 
   const getFocusableElements = useCallback(() => {
     const container = menuRef.current
@@ -207,10 +212,28 @@ export function Header() {
     }
   }, [mobileMenuOpen])
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      if (menuRef.current?.contains(target)) return
+      if (menuButtonRef.current?.contains(target)) return
+      if (target.closest('[aria-controls="mobile-menu"]')) return
+      closeMobileMenu()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [mobileMenuOpen, closeMobileMenu])
+
   return (
     <header className="app-header relative sticky top-0 z-[120] backdrop-blur">
       {/* Christmas lights */}
-      {newYearVibe && (
+      {newYearVibe && backgroundAnimations && (
         <div className="pointer-events-none absolute left-0 right-0 top-0 hidden justify-around overflow-hidden sm:flex">
           {Array.from({ length: 15 }).map((_, i) => {
             const colors = ['#ef4444', '#22c55e', '#f59e0b', '#3b82f6']
@@ -409,7 +432,7 @@ export function Header() {
               ref={menuButtonRef}
               onClick={() => {
                 hapticLight()
-                setMobileMenuOpen(!mobileMenuOpen)
+                setMobileMenuOpen((prev) => !prev)
               }}
               aria-label={
                 mobileMenuOpen
