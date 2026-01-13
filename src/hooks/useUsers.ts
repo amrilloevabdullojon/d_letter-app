@@ -14,6 +14,7 @@ import { userToEditData, getInitialEditData, getInitialCreateData } from '@/lib/
 interface UseUsersOptions {
   onSuccess?: (message: string) => void
   onError?: (message: string) => void
+  hideSuperAdmin?: boolean
 }
 
 interface UsersState {
@@ -29,7 +30,7 @@ interface UsersState {
   emailFilter: 'all' | 'has' | 'none'
 }
 
-export function useUsers({ onSuccess, onError }: UseUsersOptions = {}) {
+export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUsersOptions = {}) {
   const [state, setState] = useState<UsersState>({
     users: [],
     loading: true,
@@ -123,10 +124,14 @@ export function useUsers({ onSuccess, onError }: UseUsersOptions = {}) {
   // Clear selection when users change
   useEffect(() => {
     setSelectedIds((prev) => {
-      const ids = new Set(state.users.map((user) => user.id))
+      const ids = new Set(
+        state.users
+          .filter((user) => (hideSuperAdmin ? user.role !== 'SUPERADMIN' : true))
+          .map((user) => user.id)
+      )
       return new Set(Array.from(prev).filter((id) => ids.has(id)))
     })
-  }, [state.users])
+  }, [state.users, hideSuperAdmin])
 
   // Filtered users (client-side filtering for quick response)
   const filteredUsers = useMemo(() => {
@@ -168,6 +173,10 @@ export function useUsers({ onSuccess, onError }: UseUsersOptions = {}) {
       )
     }
 
+    if (hideSuperAdmin) {
+      result = result.filter((user) => user.role !== 'SUPERADMIN')
+    }
+
     return result
   }, [
     state.users,
@@ -176,6 +185,7 @@ export function useUsers({ onSuccess, onError }: UseUsersOptions = {}) {
     state.accessFilter,
     state.telegramFilter,
     state.emailFilter,
+    hideSuperAdmin,
   ])
 
   // Pagination

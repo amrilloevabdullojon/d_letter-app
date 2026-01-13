@@ -61,7 +61,11 @@ export function PermissionsManager() {
     loadPermissions()
   }, [loadPermissions])
 
-  const handleTogglePermission = async (role: Role, permission: Permission, currentValue: boolean) => {
+  const handleTogglePermission = async (
+    role: Role,
+    permission: Permission,
+    currentValue: boolean
+  ) => {
     if (role === 'SUPERADMIN') {
       toast.warning('Разрешения супер-администратора нельзя изменить')
       return
@@ -147,7 +151,7 @@ export function PermissionsManager() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
   }
@@ -155,11 +159,11 @@ export function PermissionsManager() {
   if (error || !data) {
     return (
       <div className="panel panel-glass rounded-2xl p-6 text-center">
-        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+        <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-red-400" />
         <p className="text-red-300">{error || 'Данные недоступны'}</p>
         <button
           onClick={loadPermissions}
-          className="mt-4 px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition"
+          className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-white transition hover:bg-white/20"
         >
           Попробовать снова
         </button>
@@ -173,42 +177,49 @@ export function PermissionsManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Shield className="w-6 h-6 text-emerald-400" />
+          <Shield className="h-6 w-6 text-emerald-400" />
           <h2 className="text-xl font-semibold text-white">Управление разрешениями</h2>
         </div>
         <button
           onClick={loadPermissions}
-          className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition"
+          className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
           title="Обновить"
         >
-          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      <div className="panel panel-glass rounded-2xl p-4 mb-4 text-sm text-slate-400 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+      <div className="panel panel-glass mb-4 flex items-start gap-3 rounded-2xl border border-amber-400/20 bg-amber-500/5 p-4 text-sm text-slate-300">
+        <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-400" />
         <p>
-          Разрешения супер-администратора нельзя изменить. Супер-администратор всегда имеет полный доступ ко всем функциям системы.
+          Разрешения супер-администратора нельзя изменить. Супер-администратор всегда имеет полный
+          доступ ко всем функциям системы.
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
+      <div className="max-h-[70vh] overflow-auto rounded-2xl border border-white/10 bg-white/5">
+        <table className="w-full min-w-[720px] border-separate border-spacing-y-2 text-sm">
+          <thead className="sticky top-0 z-10 bg-white/5 backdrop-blur">
             <tr className="border-b border-white/10">
-              <th className="text-left py-3 px-4 text-slate-400 font-medium">Разрешение</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Разрешение
+              </th>
               {roles.map((role) => (
-                <th key={role} className="text-center py-3 px-2 min-w-[100px]">
-                  <div className="flex flex-col items-center gap-1">
-                    <span className={`font-medium ${ROLE_COLORS[role]}`}>{ROLE_LABELS[role]}</span>
+                <th key={role} className="min-w-[110px] px-2 py-3 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <span
+                      className={`inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold ${ROLE_COLORS[role]}`}
+                    >
+                      {ROLE_LABELS[role]}
+                    </span>
                     <button
                       onClick={() => handleResetRole(role)}
                       disabled={saving === `reset-${role}`}
-                      className="text-xs text-slate-500 hover:text-slate-300 transition"
+                      className="text-[10px] uppercase tracking-wide text-slate-500 transition hover:text-slate-200 disabled:opacity-50"
                       title="Сбросить к значениям по умолчанию"
                     >
                       {saving === `reset-${role}` ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
                         'сбросить'
                       )}
@@ -220,11 +231,19 @@ export function PermissionsManager() {
           </thead>
           <tbody>
             {data.allPermissions.map((permission) => (
-              <tr key={permission} className="border-b border-white/5 hover:bg-white/5">
-                <td className="py-3 px-4">
-                  <span className="text-slate-200">
-                    {data.permissionLabels[permission] || permission}
-                  </span>
+              <tr key={permission} className="group">
+                <td className="rounded-l-2xl bg-white/5 px-4 py-3 align-middle group-hover:bg-white/10">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-slate-100">
+                      {data.permissionLabels[permission] || permission}
+                    </span>
+                    {data.permissionLabels[permission] &&
+                      data.permissionLabels[permission] !== permission && (
+                        <span className="w-fit rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                          {permission}
+                        </span>
+                      )}
+                  </div>
                 </td>
                 {roles.map((role) => {
                   const enabled = data.permissions[role]?.[permission] ?? false
@@ -232,23 +251,27 @@ export function PermissionsManager() {
                   const isSaving = saving === key
 
                   return (
-                    <td key={role} className="text-center py-3 px-2">
+                    <td
+                      key={role}
+                      className="bg-white/5 px-2 py-3 text-center align-middle last:rounded-r-2xl group-hover:bg-white/10"
+                    >
                       <button
                         onClick={() => handleTogglePermission(role, permission, enabled)}
                         disabled={isSaving}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                        aria-pressed={enabled}
+                        className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition ${
                           enabled
-                            ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-                            : 'bg-slate-500/20 text-slate-500 hover:bg-slate-500/30'
-                        }`}
+                            ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.18)] hover:bg-emerald-500/25'
+                            : 'border-white/10 bg-white/5 text-slate-500 hover:bg-white/10 hover:text-slate-300'
+                        } ${isSaving ? 'cursor-wait opacity-70' : ''}`}
                         title={enabled ? 'Отключить' : 'Включить'}
                       >
                         {isSaving ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : enabled ? (
-                          <Check className="w-4 h-4" />
+                          <Check className="h-4 w-4" />
                         ) : (
-                          <X className="w-4 h-4" />
+                          <X className="h-4 w-4" />
                         )}
                       </button>
                     </td>
