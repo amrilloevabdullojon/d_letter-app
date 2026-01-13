@@ -13,6 +13,11 @@ installCsrfFetch()
 
 export function Providers({ children }: { children: ReactNode }) {
   const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
+  const [personalization] = useLocalStorage<{ backgroundAnimations?: boolean }>(
+    'personalization-settings',
+    { backgroundAnimations: true }
+  )
+  const backgroundAnimations = personalization?.backgroundAnimations ?? true
 
   useEffect(() => {
     const root = document.documentElement
@@ -22,6 +27,15 @@ export function Providers({ children }: { children: ReactNode }) {
       root.classList.remove('new-year')
     }
   }, [newYearVibe])
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (!backgroundAnimations) {
+      root.classList.add('no-bg-animations')
+    } else {
+      root.classList.remove('no-bg-animations')
+    }
+  }, [backgroundAnimations])
 
   return (
     <TRPCProvider>

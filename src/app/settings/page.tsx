@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/Header'
@@ -120,6 +119,10 @@ export default function SettingsPage() {
   const router = useRouter()
 
   const [newYearVibe, setNewYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
+  const [bannerDismissed, setBannerDismissed] = useLocalStorage<boolean>(
+    'new-year-banner-dismissed',
+    false
+  )
 
   // Get active tab from URL, defaulting to 'users'
   const activeTab = (searchParams.get('tab') as TabType) || 'users'
@@ -139,6 +142,13 @@ export default function SettingsPage() {
 
   const handleError = (message: string) => {
     toast.error(message)
+  }
+
+  const handleNewYearVibeToggle = (enabled: boolean) => {
+    setNewYearVibe(enabled)
+    if (enabled && bannerDismissed) {
+      setBannerDismissed(false)
+    }
   }
 
   if (authStatus === 'loading') {
@@ -176,7 +186,7 @@ export default function SettingsPage() {
             description="Добавить легкие зимние акценты и нежную подсветку по всему сайту."
             icon={<Crown className="h-4 w-4" />}
             enabled={newYearVibe}
-            onToggle={setNewYearVibe}
+            onToggle={handleNewYearVibeToggle}
           />
         </div>
 

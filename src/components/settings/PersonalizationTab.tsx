@@ -10,6 +10,7 @@ interface PersonalizationSettings {
   language: 'ru' | 'en'
   density: 'compact' | 'comfortable' | 'spacious'
   animations: boolean
+  backgroundAnimations: boolean
 }
 
 export const PersonalizationTab = memo(function PersonalizationTab() {
@@ -20,6 +21,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
       language: 'ru',
       density: 'comfortable',
       animations: true,
+      backgroundAnimations: true,
     }
   )
 
@@ -216,6 +218,19 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
           enabled={settings.animations}
           onToggle={(enabled) => updateSetting('animations', enabled)}
         />
+        <div className="mt-4">
+          <SettingsToggle
+            label={
+              '\u0410\u043d\u0438\u043c\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0439 \u0444\u043e\u043d'
+            }
+            description={
+              '\u0421\u043d\u0435\u0433, \u043c\u0435\u0440\u0446\u0430\u043d\u0438\u0435 \u0438 \u043f\u0440\u0430\u0437\u0434\u043d\u0438\u0447\u043d\u044b\u0435 \u044d\u0444\u0444\u0435\u043a\u0442\u044b \u0432 \u0444\u043e\u043d\u0435. \u041e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u0435, \u0435\u0441\u043b\u0438 \u043c\u0435\u0448\u0430\u0435\u0442 \u0438\u043b\u0438 \u0442\u043e\u0440\u043c\u043e\u0437\u0438\u0442.'
+            }
+            icon={<Sparkles className="h-4 w-4" />}
+            enabled={settings.backgroundAnimations ?? true}
+            onToggle={(enabled) => updateSetting('backgroundAnimations', enabled)}
+          />
+        </div>
       </div>
     </div>
   )
