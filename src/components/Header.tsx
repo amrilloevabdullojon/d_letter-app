@@ -26,7 +26,7 @@ import { useToast } from '@/components/Toast'
 import { GlobalSearch, SearchButton } from './GlobalSearch'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
-import { useSwipeRef } from '@/hooks/useSwipe'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 export function Header() {
   const { data: session } = useSession()
@@ -73,20 +73,6 @@ export function Header() {
   }, [setMobileMenuOpen])
 
   // Свайп вниз для закрытия меню (только на handle)
-  const handleSwipeRef = useSwipeRef<HTMLDivElement>(
-    {
-      onSwipeDown: () => {
-        if (!mobileMenuOpen) return
-        if (handleSwipeRef.current?.scrollTop !== 0) return
-        closeMobileMenu()
-      },
-    },
-    {
-      minSwipeDistance: 30,
-      maxSwipeTime: 300,
-    }
-  )
-
   const handleSync = async (direction: 'to_sheets' | 'from_sheets') => {
     if (syncing) return
 
@@ -358,245 +344,239 @@ export function Header() {
           </div>
 
           {/* Mobile right section */}
-          <div className="flex items-center gap-2 md:hidden">
-            <ThemeToggle />
-            {session?.user && <Notifications />}
-            <button
-              onClick={() => {
-                hapticLight()
-                setMobileMenuOpen((prev) => !prev)
-              }}
-              aria-label={
-                mobileMenuOpen
-                  ? '\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e'
-                  : '\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e'
-              }
-              aria-expanded={mobileMenuOpen}
-              aria-controls="mobile-menu"
-              className="tap-highlight touch-target app-icon-button"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile menu overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="mobile-overlay fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm md:hidden"
-          onClick={closeMobileMenu}
-          onPointerDown={closeMobileMenu}
-        />
-      )}
-
-      {/* Mobile menu */}
-      <div
-        id="mobile-menu"
-        ref={handleSwipeRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mobile-menu-title"
-        className={`mobile-menu fixed inset-x-0 bottom-0 z-[120] max-h-[85vh] transform overflow-y-auto rounded-t-2xl border-t border-white/10 transition-transform duration-300 sm:inset-y-0 sm:left-auto sm:right-0 sm:top-16 sm:max-h-none sm:w-[85vw] sm:max-w-[320px] sm:translate-y-0 sm:rounded-none sm:border-t-0 md:hidden ${
-          mobileMenuOpen ? 'translate-y-0 sm:translate-x-0' : 'translate-y-full sm:translate-x-full'
-        }`}
-      >
-        <div className="relative sticky top-0 z-10 flex cursor-grab items-center justify-center border-b border-white/10 bg-slate-900/70 px-4 py-3 active:cursor-grabbing sm:hidden">
-          <span
-            id="mobile-menu-title"
-            className="absolute left-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/80"
-          >
-            {'\u041d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u044f'}
-          </span>
-          <div className="h-1 w-10 rounded-full bg-white/20" />
-          <button
-            onClick={closeMobileMenu}
-            aria-label="\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e"
-            className="tap-highlight touch-target absolute right-3 top-1/2 -translate-y-1/2 rounded-md text-slate-200/80 transition hover:bg-white/5 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <nav
-          aria-label="\u041c\u0435\u043d\u044e"
-          className="stagger-animation flex flex-col gap-2 p-4"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
-        >
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              href="/letters/new"
-              onClick={closeMobileMenu}
-              className="tap-highlight touch-target flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
-            >
-              <FileText className="h-5 w-5 text-blue-400" />
-              <span className="leading-tight">{'Новое письмо'}</span>
-            </Link>
-            <Link
-              href="/request"
-              onClick={closeMobileMenu}
-              className="tap-highlight touch-target flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
-            >
-              <Inbox className="h-5 w-5 text-emerald-400" />
-              <span className="leading-tight">{'Подать заявку'}</span>
-            </Link>
-          </div>
-          {/* User info */}
-          {session?.user && (
-            <div className="mb-4 flex items-center gap-3 rounded-lg bg-white/10 p-3">
-              {session.user.image ? (
-                <Image
-                  src={session.user.image}
-                  alt={session.user.name || session.user.email || 'User'}
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 rounded-full"
-                  unoptimized
-                />
-              ) : (
-                <User className="h-10 w-10 rounded-full bg-white/10 p-2" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-white">
-                  {session.user.name || session.user.email?.split('@')[0]}
-                </p>
-                <p className="truncate text-xs text-slate-400">{roleLabel}</p>
-              </div>
-              <Link
-                href="/profile"
-                onClick={closeMobileMenu}
-                className="tap-highlight inline-flex shrink-0 items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1.5 text-xs text-teal-200 transition hover:bg-teal-500/20"
-              >
-                <User className="h-3.5 w-3.5" />
-                {'\u041f\u0440\u043e\u0444\u0438\u043b\u044c'}
-              </Link>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <div className="flex items-center gap-2 md:hidden">
+              <ThemeToggle />
+              {session?.user && <Notifications />}
+              <SheetTrigger asChild>
+                <button
+                  onClick={() => hapticLight()}
+                  aria-label={
+                    mobileMenuOpen
+                      ? '\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e'
+                      : '\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e'
+                  }
+                  aria-expanded={mobileMenuOpen}
+                  aria-controls="mobile-menu"
+                  className="tap-highlight touch-target app-icon-button"
+                >
+                  {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                </button>
+              </SheetTrigger>
             </div>
-          )}
+            <SheetContent
+              id="mobile-menu"
+              side="bottom"
+              className="mobile-menu max-h-[85vh] border-t border-white/10 p-0 md:hidden [&>button]:hidden"
+            >
+              <div className="max-h-[85vh] overflow-y-auto">
+                <div className="relative sticky top-0 z-10 flex items-center justify-center border-b border-white/10 bg-slate-900/70 px-4 py-3 sm:hidden">
+                  <span
+                    id="mobile-menu-title"
+                    className="absolute left-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/80"
+                  >
+                    {'\u041d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u044f'}
+                  </span>
+                  <div className="h-1 w-10 rounded-full bg-white/20" />
+                  <button
+                    onClick={closeMobileMenu}
+                    aria-label="\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e"
+                    className="tap-highlight touch-target absolute right-3 top-1/2 -translate-y-1/2 rounded-md text-slate-200/80 transition hover:bg-white/5 hover:text-white"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <nav
+                  aria-label="\u041c\u0435\u043d\u044e"
+                  className="stagger-animation flex flex-col gap-2 p-4"
+                  style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link
+                      href="/letters/new"
+                      onClick={closeMobileMenu}
+                      className="tap-highlight touch-target flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
+                    >
+                      <FileText className="h-5 w-5 text-blue-400" />
+                      <span className="leading-tight">
+                        {'\u041d\u043e\u0432\u043e\u0435 \u043f\u0438\u0441\u044c\u043c\u043e'}
+                      </span>
+                    </Link>
+                    <Link
+                      href="/request"
+                      onClick={closeMobileMenu}
+                      className="tap-highlight touch-target flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
+                    >
+                      <Inbox className="h-5 w-5 text-emerald-400" />
+                      <span className="leading-tight">
+                        {
+                          '\u041f\u043e\u0434\u0430\u0442\u044c \u0437\u0430\u044f\u0432\u043a\u0443'
+                        }
+                      </span>
+                    </Link>
+                  </div>
+                  {/* User info */}
+                  {session?.user && (
+                    <div className="mb-4 flex items-center gap-3 rounded-lg bg-white/10 p-3">
+                      {session.user.image ? (
+                        <Image
+                          src={session.user.image}
+                          alt={session.user.name || session.user.email || 'User'}
+                          width={40}
+                          height={40}
+                          className="h-10 w-10 rounded-full"
+                          unoptimized
+                        />
+                      ) : (
+                        <User className="h-10 w-10 rounded-full bg-white/10 p-2" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-white">
+                          {session.user.name || session.user.email?.split('@')[0]}
+                        </p>
+                        <p className="truncate text-xs text-slate-400">{roleLabel}</p>
+                      </div>
+                      <Link
+                        href="/profile"
+                        onClick={closeMobileMenu}
+                        className="tap-highlight inline-flex shrink-0 items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1.5 text-xs text-teal-200 transition hover:bg-teal-500/20"
+                      >
+                        <User className="h-3.5 w-3.5" />
+                        {'\u041f\u0440\u043e\u0444\u0438\u043b\u044c'}
+                      </Link>
+                    </div>
+                  )}
 
-          <Link
-            href="/"
-            onClick={closeMobileMenu}
-            className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
-              isActive('/')
-                ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
-                : 'text-slate-200/80 hover:bg-white/5'
-            }`}
-          >
-            <Home className="h-5 w-5" />
-            {'\u0413\u043b\u0430\u0432\u043d\u0430\u044f'}
-          </Link>
+                  <Link
+                    href="/"
+                    onClick={closeMobileMenu}
+                    className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
+                      isActive('/')
+                        ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
+                        : 'text-slate-200/80 hover:bg-white/5'
+                    }`}
+                  >
+                    <Home className="h-5 w-5" />
+                    {'\u0413\u043b\u0430\u0432\u043d\u0430\u044f'}
+                  </Link>
 
-          <Link
-            href="/letters"
-            onClick={closeMobileMenu}
-            className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
-              isActive('/letters')
-                ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
-                : 'text-slate-200/80 hover:bg-white/5'
-            }`}
-          >
-            <FileText className="h-5 w-5" />
-            {'\u041f\u0438\u0441\u044c\u043c\u0430'}
-          </Link>
+                  <Link
+                    href="/letters"
+                    onClick={closeMobileMenu}
+                    className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
+                      isActive('/letters')
+                        ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
+                        : 'text-slate-200/80 hover:bg-white/5'
+                    }`}
+                  >
+                    <FileText className="h-5 w-5" />
+                    {'\u041f\u0438\u0441\u044c\u043c\u0430'}
+                  </Link>
 
-          <Link
-            href="/requests"
-            onClick={closeMobileMenu}
-            className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
-              isActive('/requests')
-                ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
-                : 'text-slate-200/80 hover:bg-white/5'
-            }`}
-          >
-            <Inbox className="h-5 w-5" />
-            {'\u0417\u0430\u044f\u0432\u043a\u0438'}
-          </Link>
+                  <Link
+                    href="/requests"
+                    onClick={closeMobileMenu}
+                    className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
+                      isActive('/requests')
+                        ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
+                        : 'text-slate-200/80 hover:bg-white/5'
+                    }`}
+                  >
+                    <Inbox className="h-5 w-5" />
+                    {'\u0417\u0430\u044f\u0432\u043a\u0438'}
+                  </Link>
 
-          <Link
-            href="/reports"
-            onClick={closeMobileMenu}
-            className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
-              isActive('/reports')
-                ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
-                : 'text-slate-200/80 hover:bg-white/5'
-            }`}
-          >
-            <BarChart3 className="h-5 w-5" />
-            {'\u041e\u0442\u0447\u0435\u0442\u044b'}
-          </Link>
+                  <Link
+                    href="/reports"
+                    onClick={closeMobileMenu}
+                    className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
+                      isActive('/reports')
+                        ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
+                        : 'text-slate-200/80 hover:bg-white/5'
+                    }`}
+                  >
+                    <BarChart3 className="h-5 w-5" />
+                    {'\u041e\u0442\u0447\u0435\u0442\u044b'}
+                  </Link>
 
-          {isAdminRole && (
-            <>
-              <div className="my-2 border-t border-white/10" />
-              <p className="px-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/80">
-                {
-                  '\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435'
-                }
-              </p>
+                  {isAdminRole && (
+                    <>
+                      <div className="my-2 border-t border-white/10" />
+                      <p className="px-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/80">
+                        {
+                          '\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435'
+                        }
+                      </p>
 
-              <button
-                onClick={() => {
-                  hapticMedium()
-                  setMobileMenuOpen(false)
-                  handleSync('from_sheets')
-                }}
-                disabled={syncing}
-                className="tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 disabled:opacity-50"
-              >
-                <RefreshCw className="h-5 w-5" />
-                {'\u0418\u043c\u043f\u043e\u0440\u0442 \u0438\u0437 Sheets'}
-              </button>
+                      <button
+                        onClick={() => {
+                          hapticMedium()
+                          setMobileMenuOpen(false)
+                          handleSync('from_sheets')
+                        }}
+                        disabled={syncing}
+                        className="tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 disabled:opacity-50"
+                      >
+                        <RefreshCw className="h-5 w-5" />
+                        {'\u0418\u043c\u043f\u043e\u0440\u0442 \u0438\u0437 Sheets'}
+                      </button>
 
-              <button
-                onClick={() => {
-                  hapticMedium()
-                  setMobileMenuOpen(false)
-                  handleSync('to_sheets')
-                }}
-                disabled={syncing}
-                className="tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 disabled:opacity-50"
-              >
-                <RefreshCw className="h-5 w-5" />
-                {'\u042d\u043a\u0441\u043f\u043e\u0440\u0442 \u0432 Sheets'}
-              </button>
+                      <button
+                        onClick={() => {
+                          hapticMedium()
+                          setMobileMenuOpen(false)
+                          handleSync('to_sheets')
+                        }}
+                        disabled={syncing}
+                        className="tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 disabled:opacity-50"
+                      >
+                        <RefreshCw className="h-5 w-5" />
+                        {'\u042d\u043a\u0441\u043f\u043e\u0440\u0442 \u0432 Sheets'}
+                      </button>
 
-              <Link
-                href="/settings"
-                onClick={closeMobileMenu}
-                className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
-                  isActive('/settings')
-                    ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
-                    : 'text-slate-200/80 hover:bg-white/5'
-                }`}
-              >
-                <Settings className="h-5 w-5" />
-                {'\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438'}
-              </Link>
-            </>
-          )}
+                      <Link
+                        href="/settings"
+                        onClick={closeMobileMenu}
+                        className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
+                          isActive('/settings')
+                            ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
+                            : 'text-slate-200/80 hover:bg-white/5'
+                        }`}
+                      >
+                        <Settings className="h-5 w-5" />
+                        {'\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438'}
+                      </Link>
+                    </>
+                  )}
 
-          <div className="my-2 border-t border-white/10" />
+                  <div className="my-2 border-t border-white/10" />
 
-          <button
-            onClick={closeMobileMenu}
-            className="tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5"
-          >
-            <X className="h-5 w-5" />
-            {'\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e'}
-          </button>
+                  <button
+                    onClick={closeMobileMenu}
+                    className="tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5"
+                  >
+                    <X className="h-5 w-5" />
+                    {'\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e'}
+                  </button>
 
-          <button
-            onClick={() => {
-              hapticMedium()
-              setMobileMenuOpen(false)
-              signOut({ callbackUrl: '/login' })
-            }}
-            className="tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 text-red-400 transition hover:bg-red-500/10"
-          >
-            <LogOut className="h-5 w-5" />
-            Выйти
-          </button>
-        </nav>
+                  <button
+                    onClick={() => {
+                      hapticMedium()
+                      setMobileMenuOpen(false)
+                      signOut({ callbackUrl: '/login' })
+                    }}
+                    className="tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 text-red-400 transition hover:bg-red-500/10"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    {'\u0412\u044b\u0439\u0442\u0438'}
+                  </button>
+                </nav>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
+
       <MobileBottomNav isAdmin={isAdminRole} hidden={mobileMenuOpen} />
       <GlobalSearch />
     </header>
