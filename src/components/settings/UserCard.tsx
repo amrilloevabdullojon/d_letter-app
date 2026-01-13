@@ -11,7 +11,10 @@ import {
   Shield,
   Crown,
   Mail,
+  Copy,
   MessageSquare,
+  Bell,
+  Smartphone,
   FileText,
   Clock,
   CheckCircle,
@@ -22,6 +25,7 @@ import {
   User as UserIcon,
   Loader2,
 } from 'lucide-react'
+import { useToast } from '@/components/Toast'
 import type { User, UserAuditEntry, AuditFilters } from '@/lib/settings-types'
 import {
   ROLE_BADGE_CLASSES,
@@ -67,6 +71,14 @@ function formatDate(date: string | null): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+  })
+}
+
+function formatShortDate(date: string | null): string {
+  if (!date) return '-'
+  return new Date(date).toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
   })
 }
 
@@ -183,6 +195,7 @@ export function UserCard({
   onAuditFiltersChange,
 }: UserCardProps) {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const toast = useToast()
 
   const deleteLocked =
     (user.role === 'ADMIN' && (!isSuperAdmin || isLastAdmin)) ||
@@ -197,6 +210,27 @@ export function UserCard({
     } else {
       setDeleteConfirm(true)
       setTimeout(() => setDeleteConfirm(false), 3000)
+    }
+  }
+
+  const handleCopyEmail = async () => {
+    if (!user.email) {
+      toast.error(
+        '\u041d\u0435\u0442 email \u0434\u043b\u044f \u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f'
+      )
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(user.email)
+      toast.success(
+        '\u0410\u0434\u0440\u0435\u0441 \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d'
+      )
+    } catch (error) {
+      console.error('Failed to copy email:', error)
+      toast.error(
+        '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c email'
+      )
     }
   }
 
@@ -227,7 +261,9 @@ export function UserCard({
           )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate font-semibold text-white">{user.name || 'Без имени'}</h3>
+              <h3 className="truncate font-semibold text-white">
+                {user.name || '\u041d\u0435\u0442 \u0438\u043c\u0435\u043d\u0438'}
+              </h3>
               <span
                 className={`inline-flex flex-shrink-0 items-center gap-1 rounded px-2 py-0.5 text-xs ${ROLE_BADGE_CLASSES[user.role]}`}
               >
@@ -258,6 +294,12 @@ export function UserCard({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {getUserStatusBadge(user)}
         {getInactiveBadge(user)}
+        {user.lastLoginAt && (
+          <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-1 text-xs text-gray-400">
+            <Clock className="h-3 w-3" />
+            {formatShortDate(user.lastLoginAt)}
+          </span>
+        )}
         <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-1 text-xs text-gray-300">
           <FileText className="h-3 w-3" />
           {user._count.letters} писем
@@ -265,6 +307,24 @@ export function UserCard({
         <span className="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-1 text-xs text-gray-400">
           <MessageSquare className="h-3 w-3" />
           {user._count.comments}
+        </span>
+        <span className="inline-flex items-center gap-2 rounded bg-white/5 px-2 py-1 text-xs text-gray-400">
+          <Mail
+            className={`h-3.5 w-3.5 ${user.notifyEmail ? 'text-emerald-300' : 'text-slate-600'}`}
+            title="Email"
+          />
+          <MessageSquare
+            className={`h-3.5 w-3.5 ${user.notifyTelegram ? 'text-emerald-300' : 'text-slate-600'}`}
+            title="Telegram"
+          />
+          <Smartphone
+            className={`h-3.5 w-3.5 ${user.notifySms ? 'text-emerald-300' : 'text-slate-600'}`}
+            title="SMS"
+          />
+          <Bell
+            className={`h-3.5 w-3.5 ${user.notifyInApp ? 'text-emerald-300' : 'text-slate-600'}`}
+            title="In-app"
+          />
         </span>
       </div>
 
@@ -292,6 +352,14 @@ export function UserCard({
           >
             <UserIcon className="h-4 w-4" />
           </Link>
+          <button
+            onClick={handleCopyEmail}
+            aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c email"
+            disabled={!user.email}
+            className="p-2 text-gray-400 transition hover:text-white disabled:opacity-60"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
           {user.id !== currentUserId && (
             <button
               onClick={() => onToggleAccess(user)}

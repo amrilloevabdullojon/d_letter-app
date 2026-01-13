@@ -83,7 +83,15 @@ export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUser
         params.set('page', resetPage ? '1' : String(state.page))
         params.set('limit', String(state.limit))
 
-        if (state.searchQuery) params.set('search', state.searchQuery)
+        if (state.searchQuery) {
+          const roleTokenMatch = state.searchQuery.match(/role:[a-z]+/i)
+          const plainSearch = roleTokenMatch
+            ? state.searchQuery.replace(roleTokenMatch[0], '').trim()
+            : state.searchQuery
+          if (plainSearch) {
+            params.set('search', plainSearch)
+          }
+        }
         if (state.roleFilter !== 'all') params.set('role', state.roleFilter)
         if (state.accessFilter !== 'all') params.set('access', state.accessFilter)
         if (state.telegramFilter !== 'all') params.set('telegram', state.telegramFilter)
@@ -139,12 +147,32 @@ export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUser
 
     if (state.searchQuery) {
       const query = state.searchQuery.toLowerCase()
-      result = result.filter(
-        (user) =>
-          user.name?.toLowerCase().includes(query) ||
-          user.email?.toLowerCase().includes(query) ||
-          user.telegramChatId?.toLowerCase().includes(query)
-      )
+      const roleMatch = query.match(/role:([a-z]+)/)
+      const roleToken = roleMatch ? roleMatch[1].toUpperCase() : null
+      const roleTokenValue = [
+        'SUPERADMIN',
+        'ADMIN',
+        'MANAGER',
+        'AUDITOR',
+        'EMPLOYEE',
+        'VIEWER',
+      ].includes(roleToken || '')
+        ? (roleToken as UserRole)
+        : null
+      const plainQuery = roleMatch ? query.replace(roleMatch[0], '').trim() : query
+
+      if (plainQuery) {
+        result = result.filter(
+          (user) =>
+            user.name?.toLowerCase().includes(plainQuery) ||
+            user.email?.toLowerCase().includes(plainQuery) ||
+            user.telegramChatId?.toLowerCase().includes(plainQuery)
+        )
+      }
+
+      if (roleTokenValue) {
+        result = result.filter((user) => user.role === roleTokenValue)
+      }
     }
 
     if (state.roleFilter !== 'all') {

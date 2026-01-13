@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   Users,
   UserPlus,
@@ -13,12 +14,26 @@ import {
   ShieldAlert,
   RefreshCw,
   XCircle,
+  Clock,
+  LayoutGrid,
+  Table2,
+  Lock,
+  Unlock,
+  Edit2,
+  Trash2,
+  Copy,
+  Mail,
+  MessageSquare,
+  Bell,
+  Smartphone,
+  User as UserIcon,
 } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
 import { UserCard } from './UserCard'
 import { UserEditModal } from './UserEditModal'
 import type { User, UserRole, AdminApproval } from '@/lib/settings-types'
 import { ROLE_OPTIONS, ROLE_ORDER, ROLE_LABELS, fieldBase } from '@/lib/settings-types'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 
 interface UsersTabProps {
   session: {
@@ -42,6 +57,14 @@ function formatDate(date: string): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+  })
+}
+
+function formatShortDate(date: string | null): string {
+  if (!date) return '-'
+  return new Date(date).toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
   })
 }
 
@@ -100,6 +123,8 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
     loadUsers,
     exportUsers,
   } = useUsers({ onSuccess, onError, hideSuperAdmin: !isSuperAdmin })
+
+  const [viewMode, setViewMode] = useLocalStorage<'cards' | 'table'>('users-view-mode', 'cards')
 
   // Approvals state
   const [approvals, setApprovals] = useState<AdminApproval[]>([])
@@ -262,17 +287,167 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
     telegramFilter !== 'all' ||
     emailFilter !== 'all'
 
+  const toggleAccessFilter = useCallback(
+    (value: 'active' | 'invited' | 'blocked') => {
+      setAccessFilter(accessFilter === value ? 'all' : value)
+    },
+    [accessFilter, setAccessFilter]
+  )
+
+  const toggleTelegramFilter = useCallback(
+    (value: 'has' | 'none') => {
+      setTelegramFilter(telegramFilter === value ? 'all' : value)
+    },
+    [telegramFilter, setTelegramFilter]
+  )
+
+  const toggleEmailFilter = useCallback(
+    (value: 'has' | 'none') => {
+      setEmailFilter(emailFilter === value ? 'all' : value)
+    },
+    [emailFilter, setEmailFilter]
+  )
+
+  const quickFilters = useMemo(
+    () => [
+      {
+        id: 'active',
+        label: '\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0435',
+        active: accessFilter === 'active',
+        onClick: () => toggleAccessFilter('active'),
+      },
+      {
+        id: 'invited',
+        label: '\u041f\u0440\u0438\u0433\u043b\u0430\u0448\u0435\u043d\u044b',
+        active: accessFilter === 'invited',
+        onClick: () => toggleAccessFilter('invited'),
+      },
+      {
+        id: 'blocked',
+        label: '\u0417\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d\u044b',
+        active: accessFilter === 'blocked',
+        onClick: () => toggleAccessFilter('blocked'),
+      },
+      {
+        id: 'no-telegram',
+        label: '\u0411\u0435\u0437 Telegram',
+        active: telegramFilter === 'none',
+        onClick: () => toggleTelegramFilter('none'),
+      },
+      {
+        id: 'no-email',
+        label:
+          '\u0411\u0435\u0437 email-\u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0439',
+        active: emailFilter === 'none',
+        onClick: () => toggleEmailFilter('none'),
+      },
+    ],
+    [
+      accessFilter,
+      emailFilter,
+      telegramFilter,
+      toggleAccessFilter,
+      toggleEmailFilter,
+      toggleTelegramFilter,
+    ]
+  )
+
+  const searchSuggestions = useMemo(() => {
+    const values = new Set<string>()
+    roleOptions.forEach((role) => {
+      values.add(`role:${role.value.toLowerCase()}`)
+    })
+    users.forEach((user) => {
+      if (user.name) values.add(user.name)
+      if (user.email) values.add(user.email)
+      if (user.telegramChatId) values.add(user.telegramChatId)
+    })
+    return Array.from(values).slice(0, 16)
+  }, [roleOptions, users])
+
+  const handleCopyEmail = useCallback(
+    async (email: string | null) => {
+      if (!email) {
+        onError(
+          '\u041d\u0435\u0442 email \u0434\u043b\u044f \u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f'
+        )
+        return
+      }
+
+      try {
+        await navigator.clipboard.writeText(email)
+        onSuccess(
+          '\u0410\u0434\u0440\u0435\u0441 \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d'
+        )
+      } catch (error) {
+        console.error('Failed to copy email:', error)
+        onError(
+          '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c email'
+        )
+      }
+    },
+    [onError, onSuccess]
+  )
+
+  const getStatusMeta = (user: User) => {
+    if (!user.canLogin) {
+      return {
+        label: '\u0411\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d',
+        className: 'bg-red-500/15 text-red-300 border border-red-400/30',
+        icon: <XCircle className="h-3.5 w-3.5" />,
+      }
+    }
+    if (user._count.sessions === 0) {
+      return {
+        label: '\u041f\u0440\u0438\u0433\u043b\u0430\u0448\u0435\u043d',
+        className: 'bg-blue-500/15 text-blue-300 border border-blue-400/30',
+        icon: <Clock className="h-3.5 w-3.5" />,
+      }
+    }
+    return {
+      label: '\u0410\u043a\u0442\u0438\u0432\u0435\u043d',
+      className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/30',
+      icon: <CheckCircle className="h-3.5 w-3.5" />,
+    }
+  }
+
   // Find editing user for modal
   const editingUser = editingId ? users.find((u) => u.id === editingId) : null
 
   return (
     <div className="panel panel-glass mb-8 rounded-2xl p-6">
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Users className="h-6 w-6 text-emerald-400" />
         <h2 className="text-xl font-semibold text-white">Управление пользователями</h2>
-        <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/20 bg-sky-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-sky-300">
+        <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-sky-400/20 bg-sky-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-sky-300">
           {visibleTotal} пользователей
         </span>
+        <div className="ml-2 flex items-center rounded-xl border border-white/10 bg-white/5 p-1">
+          <button
+            onClick={() => setViewMode('cards')}
+            aria-label="\u0412\u0438\u0434 \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0438"
+            title="\u0412\u0438\u0434 \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0438"
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
+              viewMode === 'cards'
+                ? 'bg-emerald-500/20 text-emerald-300'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            aria-label="\u0412\u0438\u0434 \u0442\u0430\u0431\u043b\u0438\u0446\u0430"
+            title="\u0412\u0438\u0434 \u0442\u0430\u0431\u043b\u0438\u0446\u0430"
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
+              viewMode === 'table'
+                ? 'bg-emerald-500/20 text-emerald-300'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Table2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Approvals Panel (SuperAdmin only) */}
@@ -429,6 +604,26 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
 
       {/* Search & Filters */}
       <div className="panel-soft panel-glass mb-6 rounded-2xl p-4">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-slate-500">
+            {
+              '\u0411\u044b\u0441\u0442\u0440\u044b\u0435 \u0444\u0438\u043b\u044c\u0442\u0440\u044b'
+            }
+          </span>
+          {quickFilters.map((filter) => (
+            <button
+              key={filter.id}
+              onClick={filter.onClick}
+              className={`rounded-full border px-3 py-1 text-xs transition ${
+                filter.active
+                  ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
+                  : 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -438,6 +633,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`${fieldBase} w-full py-2 pl-9 pr-3`}
               placeholder="Поиск по имени, email, Telegram"
+              list="users-search-suggestions"
               aria-label="Поиск пользователей"
             />
           </div>
@@ -511,11 +707,16 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             </button>
           </div>
         </div>
+        <datalist id="users-search-suggestions">
+          {searchSuggestions.map((value) => (
+            <option key={value} value={value} />
+          ))}
+        </datalist>
       </div>
 
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
-        <div className="panel-soft panel-glass mb-6 flex flex-wrap items-center gap-3 rounded-2xl p-4">
+        <div className="panel-soft panel-glass sticky bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)] z-20 mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 shadow-[0_20px_40px_rgba(2,6,23,0.45)] md:bottom-4">
           <span className="text-sm text-white">Выбрано: {selectedIds.size}</span>
           <select
             value={bulkAction}
@@ -539,7 +740,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
               aria-label="Новая роль"
             >
               <option value="">Выберите роль</option>
-              {ROLE_OPTIONS.map((role) => (
+              {roleOptions.map((role) => (
                 <option key={role.value} value={role.value}>
                   {role.label}
                 </option>
@@ -638,6 +839,187 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
               </div>
             </div>
           ))}
+        </div>
+      ) : viewMode === 'table' ? (
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm">
+            <thead className="sticky top-0 z-10 bg-white/5 backdrop-blur">
+              <tr className="text-xs uppercase tracking-wide text-slate-400">
+                <th className="px-3 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAll}
+                    className={controlBase}
+                    aria-label="\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0432\u0441\u0435\u0445"
+                  />
+                </th>
+                <th className="px-3 py-3 text-left">
+                  {'\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c'}
+                </th>
+                <th className="px-3 py-3 text-left">{'\u0420\u043e\u043b\u044c'}</th>
+                <th className="px-3 py-3 text-left">{'\u0421\u0442\u0430\u0442\u0443\u0441'}</th>
+                <th className="px-3 py-3 text-left">
+                  {
+                    '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0432\u0445\u043e\u0434'
+                  }
+                </th>
+                <th className="px-3 py-3 text-center">{'\u041a\u0430\u043d\u0430\u043b\u044b'}</th>
+                <th className="px-3 py-3 text-right">
+                  {'\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f'}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedUsers.map((user) => {
+                const status = getStatusMeta(user)
+                const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1
+                const isLastSuperAdmin = user.role === 'SUPERADMIN' && superAdminCount <= 1
+                const deleteLocked =
+                  (user.role === 'ADMIN' && (!isSuperAdmin || isLastAdmin)) ||
+                  (user.role === 'SUPERADMIN' && (!isSuperAdmin || isLastSuperAdmin))
+                const canToggleAccess =
+                  user.id !== session.user.id && user.role !== 'ADMIN' && user.role !== 'SUPERADMIN'
+
+                return (
+                  <tr key={user.id} className="group">
+                    <td className="rounded-l-2xl bg-white/5 px-3 py-3 align-middle group-hover:bg-white/10">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(user.id)}
+                        onChange={() => toggleSelect(user.id)}
+                        className={controlBase}
+                        aria-label={`\u0412\u044b\u0431\u0440\u0430\u0442\u044c ${user.name || user.email || 'user'}`}
+                      />
+                    </td>
+                    <td className="bg-white/5 px-3 py-3 align-middle group-hover:bg-white/10">
+                      <div className="flex items-center gap-3">
+                        {user.image ? (
+                          <img
+                            src={user.image}
+                            alt={user.name || user.email || 'User'}
+                            className="h-9 w-9 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xs text-slate-200">
+                            {(user.name || user.email || '?')[0].toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-white">
+                            {user.name || '\u041d\u0435\u0442 \u0438\u043c\u0435\u043d\u0438'}
+                          </div>
+                          <div className="truncate text-xs text-slate-400">{user.email || '-'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="bg-white/5 px-3 py-3 align-middle group-hover:bg-white/10">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200">
+                        {ROLE_LABELS[user.role]}
+                      </span>
+                    </td>
+                    <td className="bg-white/5 px-3 py-3 align-middle group-hover:bg-white/10">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs ${status.className}`}
+                      >
+                        {status.icon}
+                        {status.label}
+                      </span>
+                    </td>
+                    <td
+                      className="bg-white/5 px-3 py-3 align-middle text-slate-300 group-hover:bg-white/10"
+                      title={user.lastLoginAt ? formatDate(user.lastLoginAt) : '-'}
+                    >
+                      {formatShortDate(user.lastLoginAt)}
+                    </td>
+                    <td className="bg-white/5 px-3 py-3 align-middle group-hover:bg-white/10">
+                      <div className="flex items-center justify-center gap-2">
+                        <Mail
+                          className={`h-4 w-4 ${user.notifyEmail ? 'text-emerald-300' : 'text-slate-600'}`}
+                          title="Email"
+                        />
+                        <MessageSquare
+                          className={`h-4 w-4 ${user.notifyTelegram ? 'text-emerald-300' : 'text-slate-600'}`}
+                          title="Telegram"
+                        />
+                        <Smartphone
+                          className={`h-4 w-4 ${user.notifySms ? 'text-emerald-300' : 'text-slate-600'}`}
+                          title="SMS"
+                        />
+                        <Bell
+                          className={`h-4 w-4 ${user.notifyInApp ? 'text-emerald-300' : 'text-slate-600'}`}
+                          title="In-app"
+                        />
+                      </div>
+                    </td>
+                    <td className="rounded-r-2xl bg-white/5 px-3 py-3 text-right align-middle group-hover:bg-white/10">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/users/${user.id}`}
+                          className="rounded-lg p-2 text-slate-400 transition hover:text-white"
+                          aria-label="\u041f\u0440\u043e\u0444\u0438\u043b\u044c"
+                        >
+                          <UserIcon className="h-4 w-4" />
+                        </Link>
+                        <button
+                          onClick={() => handleCopyEmail(user.email)}
+                          className="rounded-lg p-2 text-slate-400 transition hover:text-white"
+                          aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c email"
+                          disabled={!user.email}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                        {user.id !== session.user.id && (
+                          <button
+                            onClick={() => onToggleAccess(user)}
+                            aria-label={
+                              user.canLogin
+                                ? '\u041e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f'
+                                : '\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f'
+                            }
+                            disabled={!canToggleAccess}
+                            className="rounded-lg p-2 text-slate-400 transition hover:text-emerald-300 disabled:opacity-60"
+                          >
+                            {user.canLogin ? (
+                              <Lock className="h-4 w-4" />
+                            ) : (
+                              <Unlock className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onEdit(user)}
+                          aria-label="\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c"
+                          className="rounded-lg p-2 text-slate-400 transition hover:text-white"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        {user.id !== session.user.id && (
+                          <button
+                            onClick={() => {
+                              if (deleteLocked) return
+                              if (
+                                confirm(
+                                  '\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f?'
+                                )
+                              ) {
+                                onDelete(user.id)
+                              }
+                            }}
+                            aria-label="\u0423\u0434\u0430\u043b\u0438\u0442\u044c"
+                            disabled={deleteLocked}
+                            className="rounded-lg p-2 text-slate-400 transition hover:text-red-400 disabled:opacity-60"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
