@@ -855,8 +855,12 @@ export default function ReportsPage() {
     router.push(`/letters?status=${status}`)
   }
 
-  const handleOwnerClick = (owner: { id: string; name: string; count: number }) => {
-    setSelectedOwner(owner)
+  const handleOwnerClick = (owner: { id: string | null; name: string; count: number }) => {
+    const ownerId = owner.id
+    if (!ownerId) {
+      return
+    }
+    setSelectedOwner({ id: ownerId, name: owner.name, count: owner.count })
   }
 
   const handleNavigateToOwnerLetters = (ownerId: string) => {
