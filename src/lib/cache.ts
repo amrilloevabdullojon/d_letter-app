@@ -107,6 +107,7 @@ export const cache = new SimpleCache()
 
 export const CACHE_TTL = {
   STATS: 2 * 60 * 1000,
+  STATS_REPORT: 2 * 60 * 1000,
   LETTERS_LIST: 30 * 1000,
   LETTER_DETAIL: 60 * 1000,
   USERS: 5 * 60 * 1000,
@@ -114,6 +115,7 @@ export const CACHE_TTL = {
 
 export const CACHE_KEYS = {
   STATS: 'stats',
+  STATS_REPORT: 'stats:report',
   LETTERS: (params: string) => `letters:${params}`,
   LETTER: (id: string) => `letter:${id}`,
   USERS: 'users',

@@ -6,6 +6,7 @@ import { cache, CACHE_TTL, CACHE_KEYS } from '@/lib/cache'
 import type { LetterStatus } from '@prisma/client'
 import { URGENT_DAYS, MONTHS_TO_SHOW } from '@/lib/constants'
 import { logger } from '@/lib/logger.server'
+import { normalizeLetterType, normalizeOrganization } from '@/lib/reporting'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +35,15 @@ interface StatsData {
     count: number
   }>
   monthly: Array<{ month: string; created: number; done: number }>
+  report?: {
+    letters: Array<{
+      createdAt: string
+      org: string
+      type: string
+      status: LetterStatus
+      ownerId: string | null
+    }>
+  }
 }
 
 // GET /api/stats - получить статистику
@@ -45,8 +55,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Проверяем кэш
-    const cachedStats = await cache.get<StatsData>(CACHE_KEYS.STATS)
-    if (cachedStats && Array.isArray(cachedStats.byOrgTypePeriod)) {
+    const includeReport = request.nextUrl.searchParams.get('includeReport') === '1'
+    const cacheKey = includeReport ? CACHE_KEYS.STATS_REPORT : CACHE_KEYS.STATS
+    const cachedStats = await cache.get<StatsData>(cacheKey)
+    if (!includeReport && cachedStats && Array.isArray(cachedStats.byOrgTypePeriod)) {
+      return NextResponse.json(cachedStats)
+    }
+    if (includeReport && cachedStats?.report?.letters) {
       return NextResponse.json(cachedStats)
     }
 
@@ -190,7 +205,14 @@ export async function GET(request: NextRequest) {
         deletedAt: null,
         OR: [{ createdAt: { gte: yearAgo } }, { closeDate: { gte: yearAgo } }],
       },
-      select: { createdAt: true, closeDate: true, status: true, org: true, type: true },
+      select: {
+        createdAt: true,
+        closeDate: true,
+        status: true,
+        org: true,
+        type: true,
+        ownerId: true,
+      },
     })
 
     // Группируем по месяцам
@@ -233,10 +255,6 @@ export async function GET(request: NextRequest) {
       periodBuckets.push({ key, label })
     }
     const periodLabelByKey = new Map(periodBuckets.map((bucket) => [bucket.key, bucket.label]))
-    const normalizeLabel = (value: string | null | undefined, fallback: string) => {
-      const trimmed = value?.trim()
-      return trimmed ? trimmed : fallback
-    }
     const orgTypePeriodMap = new Map<
       string,
       { periodKey: string; periodLabel: string; org: string; type: string; count: number }
@@ -249,8 +267,8 @@ export async function GET(request: NextRequest) {
       ).padStart(2, '0')}`
       const periodLabel = periodLabelByKey.get(periodKey)
       if (!periodLabel) return
-      const org = normalizeLabel(letter.org, 'Не указано')
-      const type = normalizeLabel(letter.type, 'Не указано')
+      const org = normalizeOrganization(letter.org)
+      const type = normalizeLetterType(letter.type)
       const rowKey = `${periodKey}||${org}||${type}`
       const existing = orgTypePeriodMap.get(rowKey)
       if (existing) {
@@ -274,6 +292,18 @@ export async function GET(request: NextRequest) {
       return a.type.localeCompare(b.type, 'ru-RU')
     })
 
+    const reportLetters = includeReport
+      ? monthlyLetters
+          .filter((letter) => letter.createdAt >= periodStart)
+          .map((letter) => ({
+            createdAt: letter.createdAt.toISOString(),
+            org: normalizeOrganization(letter.org),
+            type: normalizeLetterType(letter.type),
+            status: letter.status,
+            ownerId: letter.ownerId,
+          }))
+      : []
+
     // Среднее время выполнения
     let avgDays = 0
     if (completedLetters.length > 0) {
@@ -292,7 +322,7 @@ export async function GET(request: NextRequest) {
     // Статистика по типам
     const typeStats = byType
       .map((t) => ({
-        type: t.type || 'Не указан',
+        type: normalizeLetterType(t.type),
         count: t._count.id,
       }))
       .sort((a, b) => b.count - a.count)
@@ -316,10 +346,17 @@ export async function GET(request: NextRequest) {
       byType: typeStats,
       byOrgTypePeriod: orgTypePeriodStats,
       monthly: monthlyData,
+      ...(includeReport
+        ? {
+            report: {
+              letters: reportLetters,
+            },
+          }
+        : {}),
     }
 
     // Сохраняем в кэш
-    await cache.set(CACHE_KEYS.STATS, result, CACHE_TTL.STATS)
+    await cache.set(cacheKey, result, includeReport ? CACHE_TTL.STATS_REPORT : CACHE_TTL.STATS)
 
     return NextResponse.json(result)
   } catch (error) {
