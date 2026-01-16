@@ -86,6 +86,7 @@ model User {
   requestsAssigned   Request[]        @relation("RequestAssignee")
   requestComments    RequestComment[] @relation("RequestCommentAuthor")
   requestHistory     RequestHistory[] @relation("RequestHistoryActor")
+  pushSubscriptions  PushSubscription[]
 
   @@index([role])              // Индекс для фильтрации по роли
   @@index([canLogin])          // Индекс для фильтрации по доступу
@@ -623,4 +624,21 @@ model PermissionAudit {
   createdAt  DateTime @default(now())
 
   @@index([role, createdAt])
+}
+
+// ===== PUSH SUBSCRIPTIONS =====
+
+model PushSubscription {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint       String
+  p256dh         String
+  auth           String
+  expirationTime DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, endpoint])
+  @@index([userId])
 }
