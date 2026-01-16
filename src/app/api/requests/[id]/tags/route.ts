@@ -13,9 +13,10 @@ const updateTagsSchema = z.object({
 // PUT /api/requests/:id/tags - обновить теги заявки
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -26,7 +27,7 @@ export async function PUT(
       return csrfError
     }
 
-    const requestId = params.id
+    const requestId = id
 
     const existingRequest = await prisma.request.findUnique({
       where: { id: requestId },
