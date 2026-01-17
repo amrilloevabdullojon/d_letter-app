@@ -165,7 +165,7 @@ export async function searchLetters(
   // Просроченные письма
   if (overdue) {
     where.deadlineDate = {
-      ...(where.deadlineDate || {}),
+      ...(typeof where.deadlineDate === 'object' && where.deadlineDate !== null ? where.deadlineDate : {}),
       lt: new Date(),
     }
     where.status = { not: 'DONE' }
