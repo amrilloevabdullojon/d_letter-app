@@ -6,6 +6,7 @@ import { Snowfall, NewYearBanner } from '@/components/Snowfall'
 import { Particles } from '@/components/Particles'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { AuthGuard } from '@/components/AuthGuard'
+import { PageTransition } from '@/components/PageTransition'
 
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <AuthGuard>
             <NewYearBanner />
-            {children}
+            <PageTransition>{children}</PageTransition>
             <Particles />
             <Snowfall />
             <OfflineIndicator />
