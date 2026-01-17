@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
 
 interface Snowflake {
   id: number
@@ -15,15 +16,11 @@ interface Snowflake {
 
 export function Snowfall() {
   const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
-  const [personalization] = useLocalStorage<{
-    backgroundAnimations?: boolean
-    snowfall?: boolean
-  }>(
-    'personalization-settings',
-    { backgroundAnimations: true, snowfall: false }
-  )
-  const backgroundAnimations = personalization?.backgroundAnimations ?? true
-  const snowfallEnabled = personalization?.snowfall ?? false
+  const { preferences } = useUserPreferences()
+
+  // Use database preferences with fallback to defaults
+  const backgroundAnimations = preferences?.backgroundAnimations ?? true
+  const snowfallEnabled = preferences?.snowfall ?? false
   const [snowflakes] = useState<Snowflake[]>(() => {
     if (typeof window === 'undefined') return []
     const flakeCount = window.innerWidth < 768 ? 30 : 60

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
 
 interface Particle {
   id: number
@@ -15,15 +16,11 @@ interface Particle {
 }
 
 export function Particles() {
-  const [personalization] = useLocalStorage<{
-    backgroundAnimations?: boolean
-    particles?: boolean
-  }>(
-    'personalization-settings',
-    { backgroundAnimations: true, particles: false }
-  )
-  const backgroundAnimations = personalization?.backgroundAnimations ?? true
-  const particlesEnabled = personalization?.particles ?? false
+  const { preferences } = useUserPreferences()
+
+  // Use database preferences with fallback to defaults
+  const backgroundAnimations = preferences?.backgroundAnimations ?? true
+  const particlesEnabled = preferences?.particles ?? false
 
   const [particles] = useState<Particle[]>(() => {
     if (typeof window === 'undefined') return []
