@@ -283,10 +283,14 @@ function ReminderCard({
               {REMINDER_TYPE_LABELS[reminder.type]}
             </span>
             {isOverdue && (
-              <AlertTriangle className="w-4 h-4 text-red-400" title="Просрочено" />
+              <span title="Просрочено">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+              </span>
             )}
             {reminder.isSent && (
-              <Check className="w-4 h-4 text-green-400" title="Отправлено" />
+              <span title="Отправлено">
+                <Check className="w-4 h-4 text-green-400" />
+              </span>
             )}
           </div>
 
