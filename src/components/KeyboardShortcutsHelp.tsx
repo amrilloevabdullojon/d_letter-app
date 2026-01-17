@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { X, Keyboard } from 'lucide-react'
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcuts'
 
@@ -12,30 +12,17 @@ interface ShortcutGroup {
   }>
 }
 
+interface KeyboardShortcutsHelpProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
 /**
  * Модальное окно со справкой по горячим клавишам
  *
  * Открывается по нажатию "?"
  */
-export function KeyboardShortcutsHelp() {
-  const [isOpen, setIsOpen] = useState(false)
-
-  // Открытие по "?"
-  useKeyboardShortcut({
-    key: '?',
-    shift: true, // Shift+/ = ?
-    description: 'Show keyboard shortcuts',
-    handler: () => setIsOpen(true),
-  })
-
-  // Закрытие по Escape
-  useKeyboardShortcut({
-    key: 'Escape',
-    description: 'Close shortcuts help',
-    handler: () => setIsOpen(false),
-    enabled: isOpen,
-  })
-
+export function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShortcutsHelpProps) {
   if (!isOpen) return null
 
   const shortcutGroups: ShortcutGroup[] = [
@@ -91,7 +78,7 @@ export function KeyboardShortcutsHelp() {
       {/* Overlay */}
       <div
         className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-        onClick={() => setIsOpen(false)}
+        onClick={onClose}
       />
 
       {/* Modal */}
@@ -110,7 +97,7 @@ export function KeyboardShortcutsHelp() {
             </div>
           </div>
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-700 hover:text-white"
           >
             <X className="h-5 w-5" />
@@ -158,27 +145,53 @@ export function KeyboardShortcutsHelp() {
   )
 }
 
+export function useKeyboardShortcutsHelp() {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const open = useCallback(() => setIsOpen(true), [])
+  const close = useCallback(() => setIsOpen(false), [])
+
+  // Открытие по "?"
+  useKeyboardShortcut({
+    key: '?',
+    shift: true, // Shift+/ = ?
+    description: 'Show keyboard shortcuts',
+    handler: open,
+  })
+
+  // Закрытие по Escape
+  useKeyboardShortcut({
+    key: 'Escape',
+    description: 'Close shortcuts help',
+    handler: close,
+    enabled: isOpen,
+  })
+
+  const KeyboardShortcutsDialog = useMemo(
+    () => <KeyboardShortcutsHelp isOpen={isOpen} onClose={close} />,
+    [isOpen, close]
+  )
+
+  return { isOpen, open, close, KeyboardShortcutsDialog }
+}
+
 /**
  * Floating button для открытия справки
  */
 export function KeyboardShortcutsButton() {
-  const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const { isOpen, open, close, KeyboardShortcutsDialog } = useKeyboardShortcutsHelp()
 
   return (
     <>
       <button
-        onClick={() => setIsHelpOpen(true)}
+        onClick={() => (isOpen ? close() : open())}
         className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gray-800 shadow-lg transition hover:bg-gray-700"
         title="Горячие клавиши (?)"
       >
         <Keyboard className="h-5 w-5 text-gray-300" />
       </button>
 
-      {isHelpOpen && (
-        <div onClick={() => setIsHelpOpen(false)}>
-          <KeyboardShortcutsHelp />
-        </div>
-      )}
+      {KeyboardShortcutsDialog}
     </>
   )
 }
