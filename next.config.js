@@ -23,7 +23,10 @@ const nextConfig = {
     ],
   },
 
-  // Webpack оптимизации
+  // Пустой turbopack config для подавления warning
+  turbopack: {},
+
+  // Webpack оптимизации (только для legacy режима)
   webpack: (config, { isServer }) => {
     // Оптимизация bundle size
     if (!isServer) {
