@@ -112,8 +112,8 @@ export function Toast({
   const animationsEnabled = preferences?.animations ?? true
   const [progressValue, setProgressValue] = useState(100)
   const [isHovered, setIsHovered] = useState(false)
-  const timeoutRef = useRef<NodeJS.Timeout>()
-  const intervalRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const Icon = toastIcons[type]
   const colors = toastColors[type]
