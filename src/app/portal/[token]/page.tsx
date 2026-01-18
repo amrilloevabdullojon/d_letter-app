@@ -380,7 +380,7 @@ export default async function ApplicantPortalPage({ params, searchParams }: Page
             </div>
             <div className="sm:col-span-2">
               <span className="text-muted">{copy.contactLabel}</span>{' '}
-              {letter.owner?.email || copy.ownerFallback} · {copy.workingHours}
+              {letter.owner?.email || copy.ownerFallback} Â· {copy.workingHours}
             </div>
           </div>
           <div className="panel-soft panel-glass rounded-xl p-4 text-sm text-slate-200">
