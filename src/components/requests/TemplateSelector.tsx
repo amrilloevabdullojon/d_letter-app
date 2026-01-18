@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { RequestCategory } from '@prisma/client'
+import type { RequestCategory } from '@/types/prisma'
 import { useRequestTemplates } from '@/hooks/useRequestTemplates'
 import {
   Dialog,
@@ -101,3 +101,5 @@ function getCategoryLabel(category: RequestCategory): string {
   }
   return labels[category] || category
 }
+
+

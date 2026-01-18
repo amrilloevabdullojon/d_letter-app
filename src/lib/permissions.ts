@@ -1,4 +1,4 @@
-import type { Role } from '@prisma/client'
+import type { Role } from '@/types/prisma'
 
 export type Permission =
   | 'MANAGE_USERS'
@@ -135,3 +135,5 @@ export const getDefaultPermissions = (role: Role | null | undefined): Permission
   if (!role) return []
   return DEFAULT_ROLE_PERMISSIONS[role] ?? []
 }
+
+

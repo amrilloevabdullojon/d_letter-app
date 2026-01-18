@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { LetterStatus } from '@prisma/client'
+import type { LetterStatus } from '@/types/prisma'
 
 export type SearchFilters = {
   query: string
@@ -185,3 +185,5 @@ export function useLetterSearch() {
     exportResults,
   }
 }
+
+

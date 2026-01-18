@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { RequestCategory } from '@prisma/client'
+import type { RequestCategory } from '@/types/prisma'
 
 interface RequestTemplate {
   id: string
@@ -139,3 +139,5 @@ export function useRequestTemplates(category?: RequestCategory | null) {
     refetch: fetchTemplates,
   }
 }
+
+

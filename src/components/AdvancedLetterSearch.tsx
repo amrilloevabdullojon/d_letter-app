@@ -14,7 +14,7 @@ import {
   Download,
   Loader2,
 } from 'lucide-react'
-import { LetterStatus } from '@prisma/client'
+import type { LetterStatus } from '@/types/prisma'
 import { STATUS_LABELS } from '@/lib/utils'
 
 type SearchFilters = {
@@ -426,3 +426,5 @@ export function AdvancedLetterSearch({
     </div>
   )
 }
+
+

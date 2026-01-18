@@ -5,7 +5,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { StatusBadge } from './StatusBadge'
 import Link from 'next/link'
 import { formatDate, getWorkingDaysUntilDeadline } from '@/lib/utils'
-import type { LetterStatus } from '@prisma/client'
+import type { LetterStatus } from '@/types/prisma'
 import { Skeleton } from './ui/Skeleton'
 
 interface Letter {
@@ -184,3 +184,5 @@ function LetterItemSkeleton() {
     </div>
   )
 }
+
+
