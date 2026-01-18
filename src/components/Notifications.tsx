@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  FileText,
   Info,
   Search,
   MessageSquare,
@@ -18,15 +19,11 @@ import { useSession } from 'next-auth/react'
 import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays } from '@/lib/utils'
 import { hasPermission } from '@/lib/permissions'
 import { useFetch, useMutation } from '@/hooks/useFetch'
-import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useNotificationSettings } from '@/hooks/useNotificationSettings'
 import { useToast } from '@/components/Toast'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
 import { playNotificationSound, setSoundEnabled } from '@/lib/sounds'
-import {
-  DEFAULT_NOTIFICATION_SETTINGS,
-  NotificationSettings,
-  isWithinQuietHours,
-} from '@/lib/notification-settings'
+import { isWithinQuietHours } from '@/lib/notification-settings'
 
 interface NotificationLetter {
   id: string
@@ -46,9 +43,10 @@ interface DeadlineLetter extends NotificationLetter {
 
 interface UserNotification {
   id: string
-  type: 'COMMENT' | 'STATUS' | 'ASSIGNMENT' | 'SYSTEM'
+  type: 'NEW_LETTER' | 'COMMENT' | 'STATUS' | 'ASSIGNMENT' | 'SYSTEM'
   title: string
   body: string | null
+  priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL' | null
   isRead: boolean
   createdAt: string
   letter?: NotificationLetter | null
@@ -61,6 +59,7 @@ interface UnifiedNotification {
   kind: UnifiedKind
   title: string
   body?: string | null
+  priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL' | null
   createdAt: string
   isRead?: boolean
   letter?: NotificationLetter | null
@@ -91,6 +90,8 @@ const isDeadlineKind = (kind: UnifiedKind) =>
 
 const getKindLabel = (kind: UnifiedKind) => {
   switch (kind) {
+    case 'NEW_LETTER':
+      return '\u041d\u043e\u0432\u044b\u0435 \u043f\u0438\u0441\u044c\u043c\u0430'
     case 'COMMENT':
       return 'Комментарий'
     case 'STATUS':
@@ -147,13 +148,22 @@ const buildFallbackTitle = (item: UnifiedNotification) => {
   }
 }
 
-const decodeUnicodeEscapes = (value: string) =>
-  value.replace(/\\u([0-9a-fA-F]{4})/g, (_, code) => String.fromCharCode(Number.parseInt(code, 16)))
+const decodeUnicodeEscapes = (value: string) => {
+  let result = value
+  for (let i = 0; i < 2; i += 1) {
+    const next = result
+      .replace(/\\\\u([0-9a-fA-F]{4})/g, '\\u$1')
+      .replace(/\\u([0-9a-fA-F]{4})/g, (_, code) => String.fromCharCode(Number.parseInt(code, 16)))
+    if (next === result) break
+    result = next
+  }
+  return result
+}
 
 const normalizeText = (value?: string | null) => {
   if (!value) return ''
   const decoded = decodeUnicodeEscapes(value)
-  return decoded.replace(/\\n/g, '\n')
+  return decoded.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n')
 }
 
 export function Notifications() {
@@ -165,32 +175,34 @@ export function Notifications() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loadDeadlineNotifications, setLoadDeadlineNotifications] = useState(false)
   const [snoozedDeadlines, setSnoozedDeadlines] = useState<Record<string, string>>({})
-  const [storedSettings, setStoredSettings] = useLocalStorage<NotificationSettings>(
-    'notification-settings',
-    DEFAULT_NOTIFICATION_SETTINGS
-  )
+  const { settings: notificationSettings, updateSettings } = useNotificationSettings()
 
   const canManageLetters = hasPermission(session?.user.role, 'MANAGE_LETTERS')
   const currentUserId = session?.user.id
-
-  const notificationSettings = useMemo(
-    () => ({ ...DEFAULT_NOTIFICATION_SETTINGS, ...storedSettings }),
-    [storedSettings]
+  const matrixByEvent = useMemo(
+    () => new Map(notificationSettings.matrix.map((item) => [item.event, item])),
+    [notificationSettings.matrix]
   )
 
-  const updateNotificationSettings = useCallback(
-    (patch: Partial<NotificationSettings>) => {
-      setStoredSettings((prev) => ({
-        ...DEFAULT_NOTIFICATION_SETTINGS,
-        ...prev,
-        ...patch,
-      }))
-
-      if ('soundNotifications' in patch) {
-        setSoundEnabled(patch.soundNotifications!)
-      }
+  const resolvePriority = useCallback(
+    (item: UnifiedNotification) => {
+      if (item.priority) return item.priority
+      const matrixItem = matrixByEvent.get(item.kind)
+      if (matrixItem?.priority)
+        return matrixItem.priority.toUpperCase() as UnifiedNotification['priority']
+      if (item.kind === 'DEADLINE_OVERDUE') return 'CRITICAL'
+      if (item.kind === 'DEADLINE_URGENT') return 'HIGH'
+      return 'NORMAL'
     },
-    [setStoredSettings]
+    [matrixByEvent]
+  )
+
+  const isInAppEnabledForEvent = useCallback(
+    (kind: UnifiedKind) => {
+      const matrixItem = matrixByEvent.get(kind)
+      return matrixItem ? matrixItem.channels.inApp : true
+    },
+    [matrixByEvent]
   )
 
   useEffect(() => {
@@ -279,6 +291,7 @@ export function Notifications() {
       kind: 'DEADLINE_OVERDUE' as const,
       title: '',
       body: null,
+      priority: 'CRITICAL',
       createdAt: letter.deadlineDate,
       letter,
       daysLeft: getWorkingDaysUntilDeadline(letter.deadlineDate),
@@ -288,6 +301,7 @@ export function Notifications() {
       kind: 'DEADLINE_URGENT' as const,
       title: '',
       body: null,
+      priority: 'HIGH',
       createdAt: letter.deadlineDate,
       letter,
       daysLeft: getWorkingDaysUntilDeadline(letter.deadlineDate),
@@ -314,6 +328,7 @@ export function Notifications() {
       kind: notif.type,
       title: notif.title,
       body: notif.body,
+      priority: notif.priority ?? undefined,
       createdAt: notif.createdAt,
       isRead: notif.isRead,
       letter: notif.letter ?? null,
@@ -321,8 +336,10 @@ export function Notifications() {
     const all = [...userItems, ...deadlineNotifications]
 
     const getPriority = (item: UnifiedNotification) => {
-      if (item.kind === 'DEADLINE_OVERDUE') return 2
-      if (item.kind === 'DEADLINE_URGENT') return 1
+      const priority = resolvePriority(item)
+      if (priority === 'CRITICAL') return 3
+      if (priority === 'HIGH') return 2
+      if (priority === 'NORMAL') return 1
       return 0
     }
 
@@ -340,18 +357,24 @@ export function Notifications() {
       }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     })
-  }, [deadlineNotifications, userNotifications])
+  }, [deadlineNotifications, resolvePriority, userNotifications])
 
-  const isImportantNotification = (item: UnifiedNotification) => {
-    if (isDeadlineKind(item.kind)) return true
-    if (item.kind === 'ASSIGNMENT' || item.kind === 'SYSTEM') return true
-    return item.isRead === false
-  }
+  const isImportantNotification = useCallback(
+    (item: UnifiedNotification) => {
+      if (isDeadlineKind(item.kind)) return true
+      const priority = resolvePriority(item)
+      if (priority === 'HIGH' || priority === 'CRITICAL') return true
+      return item.isRead === false
+    },
+    [resolvePriority]
+  )
 
   const settingsFilteredNotifications = useMemo(() => {
     if (!notificationSettings.inAppNotifications) return []
 
     return unifiedNotifications.filter((item) => {
+      if (!isInAppEnabledForEvent(item.kind)) return false
+      if (item.kind === 'NEW_LETTER' && !notificationSettings.notifyOnNewLetter) return false
       if (item.kind === 'COMMENT' && !notificationSettings.notifyOnComment) return false
       if (item.kind === 'STATUS' && !notificationSettings.notifyOnStatusChange) return false
       if (item.kind === 'ASSIGNMENT' && !notificationSettings.notifyOnAssignment) return false
@@ -368,12 +391,15 @@ export function Notifications() {
     })
   }, [
     notificationSettings.inAppNotifications,
+    notificationSettings.notifyOnNewLetter,
     notificationSettings.notifyOnComment,
     notificationSettings.notifyOnStatusChange,
     notificationSettings.notifyOnAssignment,
     notificationSettings.notifyOnSystem,
     notificationSettings.notifyOnDeadline,
     notificationSettings.quietMode,
+    isImportantNotification,
+    isInAppEnabledForEvent,
     quietHoursActive,
     unifiedNotifications,
   ])
@@ -659,6 +685,13 @@ export function Notifications() {
   const renderNotificationIcon = (item: UnifiedNotification) => {
     const commonClass = 'w-4 h-4'
     switch (item.kind) {
+      case 'NEW_LETTER':
+        return {
+          icon: FileText,
+          color: 'text-emerald-300',
+          bg: 'bg-emerald-500/20',
+          cls: commonClass,
+        }
       case 'COMMENT':
         return { icon: MessageSquare, color: 'text-sky-400', bg: 'bg-sky-500/20', cls: commonClass }
       case 'STATUS':
@@ -872,7 +905,7 @@ export function Notifications() {
                 <button
                   onClick={() => {
                     hapticLight()
-                    updateNotificationSettings({
+                    updateSettings({
                       groupSimilar: !notificationSettings.groupSimilar,
                     })
                   }}
@@ -887,7 +920,7 @@ export function Notifications() {
                 <button
                   onClick={() => {
                     hapticLight()
-                    updateNotificationSettings({
+                    updateSettings({
                       showPreviews: !notificationSettings.showPreviews,
                     })
                   }}
@@ -902,7 +935,7 @@ export function Notifications() {
                 <button
                   onClick={() => {
                     hapticLight()
-                    updateNotificationSettings({
+                    updateSettings({
                       showOrganizations: !notificationSettings.showOrganizations,
                     })
                   }}
@@ -1128,7 +1161,17 @@ export function Notifications() {
               )}
             </div>
 
-            <div className="border-t border-slate-800/80">
+            <div className="divide-y divide-slate-800/80 border-t border-slate-800/80">
+              <Link
+                href="/notifications"
+                onClick={() => {
+                  hapticLight()
+                  setIsOpen(false)
+                }}
+                className="tap-highlight block px-4 py-3 text-center text-sm text-slate-400 transition hover:text-slate-200"
+              >
+                История уведомлений
+              </Link>
               <Link
                 href="/settings"
                 onClick={() => {

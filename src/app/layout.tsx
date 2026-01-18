@@ -1,5 +1,5 @@
-import type { Metadata } from 'next'
-import { Manrope, Space_Grotesk } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import { Manrope, Rubik } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
 import { Snowfall, NewYearBanner } from '@/components/Snowfall'
@@ -8,6 +8,8 @@ import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { AuthGuard } from '@/components/AuthGuard'
 import { PageTransition } from '@/components/PageTransition'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import { SkipToContent } from '@/components/SkipToContent'
+import { PWAProvider } from '@/components/PWAProvider'
 
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
@@ -16,8 +18,8 @@ const manrope = Manrope({
   variable: '--font-manrope',
 })
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
+const spaceGrotesk = Rubik({
+  subsets: ['latin', 'cyrillic'],
   display: 'swap',
   preload: true,
   variable: '--font-space',
@@ -32,6 +34,24 @@ export const metadata: Metadata = {
     icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
     apple: [{ url: '/apple-touch-icon.svg', type: 'image/svg+xml' }],
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'DMED Letters',
+  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#14b8a6' },
+    { media: '(prefers-color-scheme: dark)', color: '#14b8a6' },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -41,15 +61,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${manrope.variable} ${spaceGrotesk.variable} app-body min-h-screen text-white`}
       >
         <Providers>
-          <ThemeProvider>
-            <AuthGuard>
-              <NewYearBanner />
-              <PageTransition>{children}</PageTransition>
-              <Particles />
-              <Snowfall />
-              <OfflineIndicator />
-            </AuthGuard>
-          </ThemeProvider>
+          <PWAProvider>
+            <ThemeProvider>
+              <SkipToContent />
+              <AuthGuard>
+                <NewYearBanner />
+                <PageTransition>{children}</PageTransition>
+                <Particles />
+                <Snowfall />
+                <OfflineIndicator />
+              </AuthGuard>
+            </ThemeProvider>
+          </PWAProvider>
         </Providers>
       </body>
     </html>
