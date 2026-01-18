@@ -16,6 +16,7 @@
 # misc
 .DS_Store
 *.pem
+/dmed-app/*.rar
 
 # debug
 npm-debug.log*
