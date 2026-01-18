@@ -61,7 +61,7 @@ export function AdvancedSearch({
   const [filters, setFilters] = useState<SearchFilters>(initialFilters)
   const [showFilters, setShowFilters] = useState(initialShowFilters)
   const [activeFilterCount, setActiveFilterCount] = useState(0)
-  const debounceTimerRef = useRef<NodeJS.Timeout>()
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Calculate active filter count
   useEffect(() => {
