@@ -19,6 +19,11 @@ import type {
 const isMissingNotificationActorColumn = (error: unknown) =>
   error instanceof Error && error.message.includes('Notification.actorId')
 
+const isMissingNotificationDedupeKeyColumn = (error: unknown) =>
+  error instanceof Error &&
+  /Notification\.dedupeKey/i.test(error.message) &&
+  /does not exist/i.test(error.message)
+
 const isMissingNotificationPreferenceTable = (error: unknown) =>
   error instanceof Error &&
   /NotificationPreference/i.test(error.message) &&
@@ -219,6 +224,7 @@ export const dispatchNotification = async ({
   const dedupeSince =
     dedupeWindowMinutes > 0 ? new Date(now.getTime() - dedupeWindowMinutes * 60 * 1000) : null
   const baseDedupeKey = dedupeKey || [event, letterId || 'none', actorId || 'system'].join(':')
+  let dedupeKeySupported = true
 
   for (const user of users) {
     const settings =
@@ -241,17 +247,28 @@ export const dispatchNotification = async ({
       settings.quietHoursEnabled &&
       isWithinQuietHours(now, settings.quietHoursStart, settings.quietHoursEnd)
 
-    if (dedupeSince && baseDedupeKey) {
-      const existing = await prisma.notification.findFirst({
-        where: {
-          userId: user.id,
-          dedupeKey: baseDedupeKey,
-          createdAt: { gte: dedupeSince },
-        },
-        select: { id: true },
-      })
-      if (existing) {
-        continue
+    if (dedupeSince && baseDedupeKey && dedupeKeySupported) {
+      try {
+        const existing = await prisma.notification.findFirst({
+          where: {
+            userId: user.id,
+            dedupeKey: baseDedupeKey,
+            createdAt: { gte: dedupeSince },
+          },
+          select: { id: true },
+        })
+        if (existing) {
+          continue
+        }
+      } catch (error) {
+        if (!isMissingNotificationDedupeKeyColumn(error)) {
+          throw error
+        }
+        dedupeKeySupported = false
+        logger.warn(
+          'dispatchNotification',
+          'Notification.dedupeKey column missing, skipping dedupe checks'
+        )
       }
     }
 
@@ -266,16 +283,20 @@ export const dispatchNotification = async ({
     const hasAnyChannel = Object.values(channelFlags).some(Boolean)
     if (!hasAnyChannel) continue
 
-    const data = {
+    const baseData = {
       userId: user.id,
       letterId: letterId || undefined,
-      actorId: actorId || undefined,
       type: event,
       title,
       body: body || undefined,
       priority,
-      dedupeKey: baseDedupeKey,
       metadata: metadata ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
+    }
+
+    const data = {
+      ...baseData,
+      ...(actorId ? { actorId } : {}),
+      ...(dedupeKeySupported && baseDedupeKey ? { dedupeKey: baseDedupeKey } : {}),
     }
 
     let notification: { id: string }
@@ -283,11 +304,28 @@ export const dispatchNotification = async ({
     try {
       notification = await prisma.notification.create({ data })
     } catch (error) {
-      if (!isMissingNotificationActorColumn(error)) {
+      const missingActor = isMissingNotificationActorColumn(error)
+      const missingDedupeKey = isMissingNotificationDedupeKeyColumn(error)
+      if (!missingActor && !missingDedupeKey) {
         throw error
       }
 
-      const { actorId: _actorId, ...fallbackData } = data
+      if (missingDedupeKey && dedupeKeySupported) {
+        dedupeKeySupported = false
+        logger.warn(
+          'dispatchNotification',
+          'Notification.dedupeKey column missing, skipping dedupe fields'
+        )
+      }
+
+      const fallbackData = {
+        ...baseData,
+        ...(missingActor ? {} : actorId ? { actorId } : {}),
+        ...(missingDedupeKey || !dedupeKeySupported || !baseDedupeKey
+          ? {}
+          : { dedupeKey: baseDedupeKey }),
+      }
+
       notification = await prisma.notification.create({ data: fallbackData })
     }
 
