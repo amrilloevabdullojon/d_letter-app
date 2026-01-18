@@ -4,34 +4,52 @@ import { useState, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface MobileTab {
-  id: string
+  id?: string
+  value?: string
   label: string
   icon?: ReactNode
-  content: ReactNode
+  content?: ReactNode
   badge?: number
 }
 
 interface MobileTabsProps {
   tabs: MobileTab[]
   defaultTab?: string
+  activeTab?: string
+  onChange?: (tab: string) => void
   className?: string
 }
 
-export function MobileTabs({ tabs, defaultTab, className }: MobileTabsProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id)
+export function MobileTabs({
+  tabs,
+  defaultTab,
+  activeTab: controlledActiveTab,
+  onChange,
+  className,
+}: MobileTabsProps) {
+  const [internalActiveTab, setInternalActiveTab] = useState(
+    defaultTab || tabs[0]?.id || tabs[0]?.value || ''
+  )
 
-  const activeTabContent = tabs.find((tab) => tab.id === activeTab)?.content
+  // Use controlled or uncontrolled mode
+  const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : internalActiveTab
+  const setActiveTab = onChange || setInternalActiveTab
+
+  const activeTabContent = tabs.find(
+    (tab) => (tab.id || tab.value) === activeTab
+  )?.content
 
   return (
     <div className={cn('flex flex-col', className)}>
       {/* Tab Navigation */}
       <div className="mobile-scroll no-scrollbar -mx-4 flex gap-2 overflow-x-auto border-b border-white/10 px-4 pb-3">
         {tabs.map((tab) => {
-          const isActive = activeTab === tab.id
+          const tabValue = tab.id || tab.value || ''
+          const isActive = activeTab === tabValue
           return (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              key={tabValue}
+              onClick={() => setActiveTab(tabValue)}
               className={cn(
                 'tap-highlight touch-target-sm relative flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition',
                 isActive
@@ -53,10 +71,12 @@ export function MobileTabs({ tabs, defaultTab, className }: MobileTabsProps) {
         })}
       </div>
 
-      {/* Tab Content */}
-      <div className="mt-4" role="tabpanel">
-        {activeTabContent}
-      </div>
+      {/* Tab Content - only render if content is provided (for uncontrolled mode) */}
+      {activeTabContent && (
+        <div className="mt-4" role="tabpanel">
+          {activeTabContent}
+        </div>
+      )}
     </div>
   )
 }

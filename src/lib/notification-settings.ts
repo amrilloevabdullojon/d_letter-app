@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export type NotificationDigest = 'instant' | 'daily' | 'weekly' | 'never'
 
 export type QuietMode = 'all' | 'important'
@@ -55,6 +57,157 @@ export interface NotificationSettings {
   matrix: NotificationMatrixItem[]
   subscriptions: NotificationSubscription[]
 }
+
+// ==================== ZOD VALIDATION SCHEMAS ====================
+
+/**
+ * Валидация времени в формате HH:MM
+ */
+export const timeStringSchema = z
+  .string()
+  .regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Время должно быть в формате HH:MM (00:00-23:59)')
+
+/**
+ * Валидация event type - только разрешённые значения
+ */
+export const notificationEventSchema = z.enum([
+  'NEW_LETTER',
+  'COMMENT',
+  'STATUS',
+  'ASSIGNMENT',
+  'DEADLINE_URGENT',
+  'DEADLINE_OVERDUE',
+  'SYSTEM',
+])
+
+/**
+ * Валидация приоритета
+ */
+export const notificationPrioritySchema = z.enum(['low', 'normal', 'high', 'critical'])
+
+/**
+ * Валидация каналов уведомлений
+ * Требование: хотя бы один канал должен быть включён
+ */
+export const notificationChannelsSchema = z
+  .object({
+    inApp: z.boolean(),
+    email: z.boolean(),
+    telegram: z.boolean(),
+    sms: z.boolean(),
+    push: z.boolean(),
+  })
+  .refine(
+    (channels) => Object.values(channels).some((enabled) => enabled === true),
+    {
+      message: 'Хотя бы один канал уведомлений должен быть включён',
+    }
+  )
+
+/**
+ * Валидация одного элемента матрицы уведомлений
+ */
+export const notificationMatrixItemSchema = z.object({
+  event: notificationEventSchema,
+  channels: notificationChannelsSchema,
+  priority: notificationPrioritySchema,
+})
+
+/**
+ * Валидация матрицы уведомлений
+ * Требование: должны быть все обязательные события
+ */
+export const notificationMatrixSchema = z
+  .array(notificationMatrixItemSchema)
+  .refine(
+    (matrix) => {
+      const events = new Set(matrix.map((item) => item.event))
+      const requiredEvents: NotificationEventType[] = [
+        'NEW_LETTER',
+        'COMMENT',
+        'STATUS',
+        'ASSIGNMENT',
+        'DEADLINE_URGENT',
+        'DEADLINE_OVERDUE',
+        'SYSTEM',
+      ]
+      return requiredEvents.every((event) => events.has(event))
+    },
+    {
+      message: 'Матрица уведомлений должна содержать все типы событий',
+    }
+  )
+
+/**
+ * Валидация подписки на уведомления
+ */
+export const notificationSubscriptionSchema = z.object({
+  event: z.union([z.literal('ALL'), notificationEventSchema]),
+  scope: z.enum(['role', 'user', 'all']),
+  value: z.string().optional(),
+})
+
+/**
+ * Валидация полных настроек уведомлений
+ */
+export const notificationSettingsSchema = z
+  .object({
+    // Channel toggles
+    inAppNotifications: z.boolean(),
+    emailNotifications: z.boolean(),
+    telegramNotifications: z.boolean(),
+    smsNotifications: z.boolean(),
+    pushNotifications: z.boolean(),
+
+    // Email settings
+    emailDigest: z.enum(['instant', 'daily', 'weekly', 'never']),
+
+    // Sound
+    soundNotifications: z.boolean(),
+
+    // Quiet hours
+    quietHoursEnabled: z.boolean(),
+    quietHoursStart: timeStringSchema,
+    quietHoursEnd: timeStringSchema,
+    quietMode: z.enum(['all', 'important']),
+
+    // Display preferences
+    groupSimilar: z.boolean(),
+    showPreviews: z.boolean(),
+    showOrganizations: z.boolean(),
+
+    // Event toggles
+    notifyOnNewLetter: z.boolean(),
+    notifyOnStatusChange: z.boolean(),
+    notifyOnComment: z.boolean(),
+    notifyOnAssignment: z.boolean(),
+    notifyOnDeadline: z.boolean(),
+    notifyOnSystem: z.boolean(),
+
+    // Matrix and subscriptions
+    matrix: notificationMatrixSchema,
+    subscriptions: z.array(notificationSubscriptionSchema),
+  })
+  .strict() // Не позволять дополнительные поля
+  .refine(
+    (settings) => {
+      // Если quiet hours включены, проверяем что время корректно
+      if (settings.quietHoursEnabled) {
+        return settings.quietHoursStart !== settings.quietHoursEnd
+      }
+      return true
+    },
+    {
+      message: 'Время начала и окончания тихих часов не может быть одинаковым',
+      path: ['quietHoursEnabled'],
+    }
+  )
+
+/**
+ * Валидация частичных обновлений настроек
+ * Все поля опциональны, но если указаны - должны быть валидны
+ */
+export const notificationSettingsUpdateSchema = notificationSettingsSchema.partial()
 
 const defaultMatrix: NotificationMatrixItem[] = [
   {
@@ -161,4 +314,55 @@ export const normalizeNotificationSettings = (
     matrix: mergedMatrix,
     subscriptions,
   }
+}
+
+/**
+ * Валидация и нормализация настроек уведомлений
+ * Возвращает либо валидные настройки, либо выбрасывает ошибку валидации
+ *
+ * @example
+ * try {
+ *   const settings = validateAndNormalizeSettings({ emailNotifications: true })
+ * } catch (error) {
+ *   if (error instanceof z.ZodError) {
+ *     console.error('Validation failed:', error.errors)
+ *   }
+ * }
+ */
+export const validateAndNormalizeSettings = (
+  settings: Partial<NotificationSettings>
+): NotificationSettings => {
+  const normalized = normalizeNotificationSettings(settings)
+  return notificationSettingsSchema.parse(normalized)
+}
+
+/**
+ * Безопасная валидация настроек уведомлений
+ * Возвращает результат валидации без выбрасывания ошибки
+ *
+ * @example
+ * const result = safeValidateSettings({ emailNotifications: true })
+ * if (result.success) {
+ *   console.log('Valid settings:', result.data)
+ * } else {
+ *   console.error('Validation errors:', result.error.errors)
+ * }
+ */
+export const safeValidateSettings = (settings: Partial<NotificationSettings>) => {
+  const normalized = normalizeNotificationSettings(settings)
+  return notificationSettingsSchema.safeParse(normalized)
+}
+
+/**
+ * Валидация частичных обновлений настроек
+ */
+export const validateSettingsUpdate = (updates: Partial<NotificationSettings>) => {
+  return notificationSettingsUpdateSchema.parse(updates)
+}
+
+/**
+ * Безопасная валидация частичных обновлений
+ */
+export const safeValidateSettingsUpdate = (updates: Partial<NotificationSettings>) => {
+  return notificationSettingsUpdateSchema.safeParse(updates)
 }

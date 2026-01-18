@@ -94,6 +94,8 @@ model User {
   pushSubscriptions  PushSubscription[]
   requestTemplates   RequestResponseTemplate[]
   preferences        UserPreferences?
+  settingsHistory    SettingsHistory[]
+  settingsHistoryChanged SettingsHistory[] @relation("SettingsHistoryChangedBy")
 
   @@index([role])              // Индекс для фильтрации по роли
   @@index([canLogin])          // Индекс для фильтрации по доступу
@@ -768,6 +770,43 @@ enum NotificationSubscriptionScope {
   ROLE
   USER
   ALL
+}
+
+// ===== ИСТОРИЯ НАСТРОЕК =====
+
+model SettingsHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entityType SettingsEntity
+  entityId   String
+  action     SettingsAction
+  before     Json?
+  after      Json
+  diff       Json?
+  changedBy  String?
+  changedByUser User? @relation("SettingsHistoryChangedBy", fields: [changedBy], references: [id], onDelete: SetNull)
+  ipAddress  String?
+  userAgent  String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([userId, entityType, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([entityType, createdAt(sort: Desc)])
+}
+
+enum SettingsEntity {
+  PROFILE
+  PREFERENCES
+  NOTIFICATIONS
+  USER
+}
+
+enum SettingsAction {
+  CREATED
+  UPDATED
+  DELETED
+  RESET
 }
 
 model NotificationDelivery {

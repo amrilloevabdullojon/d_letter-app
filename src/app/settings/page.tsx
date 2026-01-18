@@ -18,9 +18,11 @@ import { useToast } from '@/components/Toast'
 import { hasPermission } from '@/lib/permissions'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useIsMobileOrTablet } from '@/hooks/useMediaQuery'
 import dynamic from 'next/dynamic'
 import { SettingsToggle } from '@/components/settings/SettingsToggle'
 import { ScrollIndicator } from '@/components/mobile/ScrollIndicator'
+import { MobileTabs } from '@/components/mobile/MobileTabs'
 
 // Lazy load tab components for better performance
 const PermissionsManager = dynamic(
@@ -78,6 +80,19 @@ const NotificationsTab = dynamic(
     ),
   }
 )
+const MobileNotificationsTab = dynamic(
+  () =>
+    import('@/components/settings/MobileNotificationsTab').then((mod) => ({
+      default: mod.MobileNotificationsTab,
+    })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+      </div>
+    ),
+  }
+)
 const PersonalizationTab = dynamic(
   () =>
     import('@/components/settings/PersonalizationTab').then((mod) => ({
@@ -117,6 +132,7 @@ export default function SettingsPage() {
   const toast = useToast()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const isMobile = useIsMobileOrTablet()
 
   const [newYearVibe, setNewYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
   const [bannerDismissed, setBannerDismissed] = useLocalStorage<boolean>(
@@ -163,6 +179,49 @@ export default function SettingsPage() {
     return null
   }
 
+  // Mobile tabs configuration
+  const mobileTabs = [
+    ...(isSuperAdmin
+      ? [
+          {
+            value: 'permissions' as TabType,
+            label: 'Роли',
+            icon: <Shield className="h-5 w-5" />,
+          },
+        ]
+      : []),
+    {
+      value: 'users' as TabType,
+      label: 'Пользователи',
+      icon: <Users className="h-5 w-5" />,
+    },
+    {
+      value: 'sync' as TabType,
+      label: 'Синхр.',
+      icon: <RefreshCw className="h-5 w-5" />,
+    },
+    {
+      value: 'audit' as TabType,
+      label: 'Аудит',
+      icon: <History className="h-5 w-5" />,
+    },
+    {
+      value: 'notifications' as TabType,
+      label: 'Уведомления',
+      icon: <Bell className="h-5 w-5" />,
+    },
+    {
+      value: 'personalization' as TabType,
+      label: 'Тема',
+      icon: <Palette className="h-5 w-5" />,
+    },
+    {
+      value: 'workflow' as TabType,
+      label: 'Процесс',
+      icon: <Settings className="h-5 w-5" />,
+    },
+  ]
+
   return (
     <div className="app-shell min-h-screen">
       <Header />
@@ -190,90 +249,96 @@ export default function SettingsPage() {
           />
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6 border-b border-white/10 pb-4">
-          <ScrollIndicator className="no-scrollbar flex gap-2 md:flex-wrap" showArrows={true}>
-            {isSuperAdmin && (
+        {/* Tabs - Mobile vs Desktop */}
+        {isMobile ? (
+          <div className="mb-6">
+            <MobileTabs tabs={mobileTabs} activeTab={activeTab} onChange={handleTabChange} />
+          </div>
+        ) : (
+          <div className="mb-6 border-b border-white/10 pb-4">
+            <ScrollIndicator className="no-scrollbar flex gap-2 md:flex-wrap" showArrows={true}>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => handleTabChange('permissions')}
+                  className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
+                    activeTab === 'permissions'
+                      ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <Shield className="mr-2 inline-block h-4 w-4" />
+                  Разрешения
+                </button>
+              )}
               <button
-                onClick={() => handleTabChange('permissions')}
+                onClick={() => handleTabChange('users')}
                 className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                  activeTab === 'permissions'
+                  activeTab === 'users'
                     ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <Shield className="mr-2 inline-block h-4 w-4" />
-                Разрешения
+                <Users className="mr-2 inline-block h-4 w-4" />
+                Пользователи
               </button>
-            )}
-            <button
-              onClick={() => handleTabChange('users')}
-              className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                activeTab === 'users'
-                  ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Users className="mr-2 inline-block h-4 w-4" />
-              Пользователи
-            </button>
-            <button
-              onClick={() => handleTabChange('sync')}
-              className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                activeTab === 'sync'
-                  ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <RefreshCw className="mr-2 inline-block h-4 w-4" />
-              Синхронизация
-            </button>
-            <button
-              onClick={() => handleTabChange('audit')}
-              className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                activeTab === 'audit'
-                  ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <History className="mr-2 inline-block h-4 w-4" />
-              Аудит
-            </button>
-            <button
-              onClick={() => handleTabChange('notifications')}
-              className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                activeTab === 'notifications'
-                  ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Bell className="mr-2 inline-block h-4 w-4" />
-              Уведомления
-            </button>
-            <button
-              onClick={() => handleTabChange('personalization')}
-              className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                activeTab === 'personalization'
-                  ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Palette className="mr-2 inline-block h-4 w-4" />
-              Персонализация
-            </button>
-            <button
-              onClick={() => handleTabChange('workflow')}
-              className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                activeTab === 'workflow'
-                  ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Settings className="mr-2 inline-block h-4 w-4" />
-              Рабочий процесс
-            </button>
-          </ScrollIndicator>
-        </div>
+              <button
+                onClick={() => handleTabChange('sync')}
+                className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  activeTab === 'sync'
+                    ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <RefreshCw className="mr-2 inline-block h-4 w-4" />
+                Синхронизация
+              </button>
+              <button
+                onClick={() => handleTabChange('audit')}
+                className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  activeTab === 'audit'
+                    ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <History className="mr-2 inline-block h-4 w-4" />
+                Аудит
+              </button>
+              <button
+                onClick={() => handleTabChange('notifications')}
+                className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  activeTab === 'notifications'
+                    ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Bell className="mr-2 inline-block h-4 w-4" />
+                Уведомления
+              </button>
+              <button
+                onClick={() => handleTabChange('personalization')}
+                className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  activeTab === 'personalization'
+                    ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Palette className="mr-2 inline-block h-4 w-4" />
+                Персонализация
+              </button>
+              <button
+                onClick={() => handleTabChange('workflow')}
+                className={`tap-highlight touch-target-sm whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  activeTab === 'workflow'
+                    ? 'border border-teal-400/30 bg-teal-500/20 text-teal-300'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Settings className="mr-2 inline-block h-4 w-4" />
+                Рабочий процесс
+              </button>
+            </ScrollIndicator>
+          </div>
+        )}
 
         {/* Tab Content */}
         {activeTab === 'permissions' && isSuperAdmin && (
@@ -295,7 +360,8 @@ export default function SettingsPage() {
 
         {activeTab === 'audit' && <LoginAuditTab onError={handleError} />}
 
-        {activeTab === 'notifications' && <NotificationsTab />}
+        {activeTab === 'notifications' &&
+          (isMobile ? <MobileNotificationsTab /> : <NotificationsTab />)}
 
         {activeTab === 'personalization' && <PersonalizationTab />}
 

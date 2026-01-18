@@ -53,7 +53,50 @@
       "icons": [{ "src": "/logo-mark.svg", "sizes": "96x96" }]
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-letters.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Список писем на десктопе"
+    },
+    {
+      "src": "/screenshots/mobile-letters.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Список писем на мобильном"
+    },
+    {
+      "src": "/screenshots/desktop-detail.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Детали письма на десктопе"
+    },
+    {
+      "src": "/screenshots/mobile-detail.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Детали письма на мобильном"
+    },
+    {
+      "src": "/screenshots/desktop-settings.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Настройки на десктопе"
+    },
+    {
+      "src": "/screenshots/mobile-settings.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Настройки на мобильном"
+    }
+  ],
   "related_applications": [],
   "prefer_related_applications": false,
   "share_target": {

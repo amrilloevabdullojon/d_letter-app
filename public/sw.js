@@ -1,11 +1,12 @@
 // Service Worker for DMED Letters
-const CACHE_NAME = 'dmed-letters-v2'
+const CACHE_NAME = 'dmed-letters-v3'
 const STATIC_ASSETS = [
   '/favicon.ico',
   '/favicon.svg',
   '/apple-touch-icon.svg',
   '/manifest.webmanifest',
   '/logo-mark.svg',
+  '/offline.html',
 ]
 
 self.addEventListener('install', (event) => {
@@ -33,7 +34,9 @@ self.addEventListener('fetch', (event) => {
   if (!request.url.startsWith('http')) return
 
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request))
+    event.respondWith(
+      fetch(request).catch(() => caches.match('/offline.html').then((response) => response || new Response('Offline')))
+    )
     return
   }
 
@@ -134,3 +137,128 @@ self.addEventListener('pushsubscriptionchange', (event) => {
       })
   )
 })
+
+// Background Sync для offline операций
+const SYNC_TAGS = {
+  COMMENT_SYNC: 'comment-sync',
+  STATUS_UPDATE_SYNC: 'status-update-sync',
+  ASSIGNMENT_SYNC: 'assignment-sync',
+}
+
+self.addEventListener('sync', (event) => {
+  console.log('Background sync event:', event.tag)
+
+  if (event.tag === SYNC_TAGS.COMMENT_SYNC) {
+    event.waitUntil(syncComments())
+  } else if (event.tag === SYNC_TAGS.STATUS_UPDATE_SYNC) {
+    event.waitUntil(syncStatusUpdates())
+  } else if (event.tag === SYNC_TAGS.ASSIGNMENT_SYNC) {
+    event.waitUntil(syncAssignments())
+  }
+})
+
+async function syncComments() {
+  try {
+    const db = await openDB()
+    const pendingComments = await db.getAll('pendingComments')
+
+    for (const comment of pendingComments) {
+      try {
+        const response = await fetch(`/api/letters/${comment.letterId}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: comment.text }),
+        })
+
+        if (response.ok) {
+          await db.delete('pendingComments', comment.id)
+          await notifyClient({ type: 'comment-synced', comment })
+        }
+      } catch (error) {
+        console.error('Failed to sync comment:', error)
+      }
+    }
+  } catch (error) {
+    console.error('Background sync failed:', error)
+  }
+}
+
+async function syncStatusUpdates() {
+  try {
+    const db = await openDB()
+    const pendingUpdates = await db.getAll('pendingStatusUpdates')
+
+    for (const update of pendingUpdates) {
+      try {
+        const response = await fetch(`/api/letters/${update.letterId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: update.status }),
+        })
+
+        if (response.ok) {
+          await db.delete('pendingStatusUpdates', update.id)
+          await notifyClient({ type: 'status-synced', update })
+        }
+      } catch (error) {
+        console.error('Failed to sync status update:', error)
+      }
+    }
+  } catch (error) {
+    console.error('Status sync failed:', error)
+  }
+}
+
+async function syncAssignments() {
+  try {
+    const db = await openDB()
+    const pendingAssignments = await db.getAll('pendingAssignments')
+
+    for (const assignment of pendingAssignments) {
+      try {
+        const response = await fetch(`/api/letters/${assignment.letterId}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: assignment.userId }),
+        })
+
+        if (response.ok) {
+          await db.delete('pendingAssignments', assignment.id)
+          await notifyClient({ type: 'assignment-synced', assignment })
+        }
+      } catch (error) {
+        console.error('Failed to sync assignment:', error)
+      }
+    }
+  } catch (error) {
+    console.error('Assignment sync failed:', error)
+  }
+}
+
+async function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('dmed-offline', 1)
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result)
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result
+
+      if (!db.objectStoreNames.contains('pendingComments')) {
+        db.createObjectStore('pendingComments', { keyPath: 'id', autoIncrement: true })
+      }
+      if (!db.objectStoreNames.contains('pendingStatusUpdates')) {
+        db.createObjectStore('pendingStatusUpdates', { keyPath: 'id', autoIncrement: true })
+      }
+      if (!db.objectStoreNames.contains('pendingAssignments')) {
+        db.createObjectStore('pendingAssignments', { keyPath: 'id', autoIncrement: true })
+      }
+    }
+  })
+}
+
+async function notifyClient(message) {
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+  clients.forEach((client) => client.postMessage(message))
+}
