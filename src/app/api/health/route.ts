@@ -112,15 +112,24 @@ export async function GET(request: Request) {
     if (hasRedis) {
       try {
         // Test Redis connection
-        const { redis } = await import('@/lib/redis')
-        const redisStart = Date.now()
-        await redis.ping()
-        const latency = Date.now() - redisStart
+        const { getRedisClient } = await import('@/lib/redis')
+        const redis = getRedisClient()
 
-        checks.externalServices.redis = {
-          status: latency > 500 ? 'warning' : 'ok',
-          latency,
-          details: { configured: true },
+        if (redis) {
+          const redisStart = Date.now()
+          await redis.ping()
+          const latency = Date.now() - redisStart
+
+          checks.externalServices.redis = {
+            status: latency > 500 ? 'warning' : 'ok',
+            latency,
+            details: { configured: true },
+          }
+        } else {
+          checks.externalServices.redis = {
+            status: 'error',
+            error: 'Redis client not available',
+          }
         }
       } catch (error) {
         checks.externalServices.redis = {
