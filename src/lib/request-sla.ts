@@ -1,4 +1,4 @@
-import { RequestPriority, SlaStatus } from '@prisma/client'
+import type { RequestPriority, SlaStatus } from '@/types/prisma'
 
 // SLA правила по приоритетам (в часах)
 const SLA_RULES = {
@@ -167,3 +167,5 @@ export function shouldUpdateSlaStatus(
   const newStatus = calculateSlaStatus(slaDeadline, resolvedAt, requestStatus)
   return currentStatus !== newStatus
 }
+
+

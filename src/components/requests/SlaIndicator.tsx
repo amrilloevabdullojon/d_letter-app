@@ -1,6 +1,6 @@
 'use client'
 
-import { SlaStatus } from '@prisma/client'
+import type { SlaStatus } from '@/types/prisma'
 import {
   getSlaStatusColor,
   getSlaStatusLabel,
@@ -114,3 +114,5 @@ export function SlaIndicator({
     </div>
   )
 }
+
+

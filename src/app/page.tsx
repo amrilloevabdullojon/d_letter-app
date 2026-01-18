@@ -24,7 +24,7 @@ import {
   Activity,
 } from 'lucide-react'
 import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays, STATUS_LABELS } from '@/lib/utils'
-import type { LetterStatus } from '@prisma/client'
+import type { LetterStatus } from '@/types/prisma'
 
 interface Letter {
   id: string
@@ -587,3 +587,5 @@ export default function HomePage() {
     </div>
   )
 }
+
+

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import type { LetterStatus } from '@prisma/client'
+import type { LetterStatus } from '@/types/prisma'
 
 /**
  * Типы для дашборда
@@ -155,3 +155,5 @@ export function useDashboard() {
     error: stats.error || recent.error || urgent.error || overdue.error || unassigned.error,
   }
 }
+
+

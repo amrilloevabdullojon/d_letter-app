@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { LetterStatus } from '@prisma/client'
+import type { LetterStatus } from '@/types/prisma'
 import { toast } from '@/lib/toast'
 
 /**
@@ -234,3 +234,5 @@ export function useCreateLetter() {
     },
   })
 }
+
+

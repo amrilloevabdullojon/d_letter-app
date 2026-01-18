@@ -1,5 +1,5 @@
-﻿import Link from 'next/link'
-import type { LetterStatus } from '@prisma/client'
+import Link from 'next/link'
+import type { LetterStatus } from '@/types/prisma'
 import { prisma } from '@/lib/prisma'
 import {
   STATUS_LABELS,
@@ -380,7 +380,7 @@ export default async function ApplicantPortalPage({ params, searchParams }: Page
             </div>
             <div className="sm:col-span-2">
               <span className="text-muted">{copy.contactLabel}</span>{' '}
-              {letter.owner?.email || copy.ownerFallback} · {copy.workingHours}
+              {letter.owner?.email || copy.ownerFallback} � {copy.workingHours}
             </div>
           </div>
           <div className="panel-soft panel-glass rounded-xl p-4 text-sm text-slate-200">
@@ -511,3 +511,5 @@ export default async function ApplicantPortalPage({ params, searchParams }: Page
     </div>
   )
 }
+
+

@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { RequestCategory } from '@prisma/client'
+import type { RequestCategory } from '@/types/prisma'
 import { Loader2, Plus, Trash2, Edit, Globe, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -309,3 +309,5 @@ export default function RequestTemplatesPage() {
     </div>
   )
 }
+
+
