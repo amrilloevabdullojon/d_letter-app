@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
         type: true,
         title: true,
         body: true,
-        priority: true,
         isRead: true,
         createdAt: true,
         letter: {
