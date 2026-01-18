@@ -22,7 +22,6 @@ export async function GET() {
         where: {
           deletedAt: null,
           status: 'DONE',
-          updatedAt: { not: null },
         },
         select: {
           createdAt: true,
@@ -55,9 +54,6 @@ export async function GET() {
     })
   } catch (error) {
     console.error('Failed to load request stats:', error)
-    return NextResponse.json(
-      { error: 'Ошибка при загрузке статистики' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Ошибка при загрузке статистики' }, { status: 500 })
   }
 }

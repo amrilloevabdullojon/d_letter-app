@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     const total = await prisma.notification.count({ where })
 
-    const buildSelect = (includeActor: boolean) => ({
+    const notificationSelectBase = {
       id: true,
       createdAt: true,
       type: true,
@@ -89,27 +89,18 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { createdAt: 'asc' },
       },
-      ...(includeActor ? { actor: { select: { id: true, name: true, email: true } } } : {}),
-    })
+    } satisfies Prisma.NotificationSelect
 
-    let notifications: Array<{
-      id: string
-      createdAt: Date
-      type: NotificationType
-      priority: string
-      title: string
-      body: string | null
-      letter: { id: string; number: string; org: string } | null
-      deliveries: Array<{
-        id: string
-        channel: NotificationChannel
-        status: string
-        recipient: string | null
-        sentAt: Date | null
-        createdAt: Date
-      }>
-      actor?: { id: string; name: string | null; email: string | null } | null
-    }>
+    const notificationSelectWithActor = {
+      ...notificationSelectBase,
+      actor: { select: { id: true, name: true, email: true } },
+    } satisfies Prisma.NotificationSelect
+
+    type NotificationHistoryItem = Prisma.NotificationGetPayload<{
+      select: typeof notificationSelectBase
+    }> & { actor?: { id: string; name: string | null; email: string | null } | null }
+
+    let notifications: NotificationHistoryItem[]
 
     try {
       notifications = await prisma.notification.findMany({
@@ -117,7 +108,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         take: format === 'csv' ? undefined : limit,
         skip: format === 'csv' ? undefined : offset,
-        select: buildSelect(true),
+        select: notificationSelectWithActor,
       })
     } catch (error) {
       if (!isMissingNotificationActorColumn(error)) {
@@ -129,7 +120,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         take: format === 'csv' ? undefined : limit,
         skip: format === 'csv' ? undefined : offset,
-        select: buildSelect(false),
+        select: notificationSelectBase,
       })
     }
 
