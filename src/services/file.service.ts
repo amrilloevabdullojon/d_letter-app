@@ -3,7 +3,7 @@ import { saveLocalUpload } from '@/lib/file-storage'
 import { syncFileToDrive } from '@/lib/file-sync'
 import { logger } from '@/lib/logger.server'
 import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE } from '@/lib/constants'
-import type { File, FileStatus, FileStorageProvider, Prisma } from '@prisma/client'
+import type { File as PrismaFile, FileStatus, Prisma } from '@prisma/client'
 import { env } from '@/lib/env.validation'
 
 /**
@@ -28,7 +28,7 @@ export class FileServiceError extends Error {
 }
 
 export type UploadFileInput = {
-  file: File | Blob
+  file: Blob
   letterId: string
   userId: string
   fileName: string
@@ -55,7 +55,7 @@ export class FileService {
    *   fileName: 'document.pdf'
    * })
    */
-  static async upload(input: UploadFileInput): Promise<File> {
+  static async upload(input: UploadFileInput): Promise<PrismaFile> {
     const startTime = logger.startTimer()
 
     try {
@@ -125,18 +125,14 @@ export class FileService {
         letterId: input.letterId,
         fileName: input.fileName,
       })
-      throw new FileServiceError(
-        'Ошибка при загрузке файла',
-        'UPLOAD_FAILED',
-        500
-      )
+      throw new FileServiceError('Ошибка при загрузке файла', 'UPLOAD_FAILED', 500)
     }
   }
 
   /**
    * Валидация файла перед загрузкой
    */
-  private static async validateFile(file: File | Blob): Promise<void> {
+  private static async validateFile(file: Blob): Promise<void> {
     // Check file size
     if (file.size > MAX_FILE_SIZE) {
       throw new FileServiceError(
@@ -147,12 +143,8 @@ export class FileService {
     }
 
     // Check file type
-    if (!ALLOWED_FILE_TYPES.includes(file.type as any)) {
-      throw new FileServiceError(
-        'Тип файла не поддерживается',
-        'INVALID_FILE_TYPE',
-        400
-      )
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      throw new FileServiceError('Тип файла не поддерживается', 'INVALID_FILE_TYPE', 400)
     }
   }
 
@@ -165,11 +157,7 @@ export class FileService {
       logger.info('file.service', 'File synced to Drive', { fileId })
     } catch (error) {
       logger.error('file.service', error, { fileId, operation: 'sync' })
-      throw new FileServiceError(
-        'Ошибка при синхронизации с Drive',
-        'SYNC_FAILED',
-        500
-      )
+      throw new FileServiceError('Ошибка при синхронизации с Drive', 'SYNC_FAILED', 500)
     }
   }
 
@@ -193,7 +181,7 @@ export class FileService {
    * @example
    * const files = await FileService.getByLetter('letter123')
    */
-  static async getByLetter(letterId: string): Promise<File[]> {
+  static async getByLetter(letterId: string): Promise<PrismaFile[]> {
     try {
       return await prisma.file.findMany({
         where: { letterId },
@@ -201,11 +189,7 @@ export class FileService {
       })
     } catch (error) {
       logger.error('file.service', error, { letterId })
-      throw new FileServiceError(
-        'Ошибка при получении файлов',
-        'FETCH_FAILED',
-        500
-      )
+      throw new FileServiceError('Ошибка при получении файлов', 'FETCH_FAILED', 500)
     }
   }
 
@@ -215,18 +199,14 @@ export class FileService {
    * @example
    * const file = await FileService.getById('file123')
    */
-  static async getById(fileId: string): Promise<File | null> {
+  static async getById(fileId: string): Promise<PrismaFile | null> {
     try {
       return await prisma.file.findUnique({
         where: { id: fileId },
       })
     } catch (error) {
       logger.error('file.service', error, { fileId })
-      throw new FileServiceError(
-        'Ошибка при получении файла',
-        'FETCH_FAILED',
-        500
-      )
+      throw new FileServiceError('Ошибка при получении файла', 'FETCH_FAILED', 500)
     }
   }
 
@@ -267,11 +247,7 @@ export class FileService {
         throw error
       }
       logger.error('file.service', error, { fileId, userId })
-      throw new FileServiceError(
-        'Ошибка при удалении файла',
-        'DELETE_FAILED',
-        500
-      )
+      throw new FileServiceError('Ошибка при удалении файла', 'DELETE_FAILED', 500)
     }
   }
 
@@ -281,11 +257,7 @@ export class FileService {
    * @example
    * await FileService.updateStatus('file123', 'SYNCED', 'https://drive.google.com/...')
    */
-  static async updateStatus(
-    fileId: string,
-    status: FileStatus,
-    driveUrl?: string
-  ): Promise<void> {
+  static async updateStatus(fileId: string, status: FileStatus, driveUrl?: string): Promise<void> {
     try {
       await prisma.file.update({
         where: { id: fileId },
@@ -301,11 +273,7 @@ export class FileService {
       })
     } catch (error) {
       logger.error('file.service', error, { fileId, status })
-      throw new FileServiceError(
-        'Ошибка при обновлении статуса',
-        'UPDATE_FAILED',
-        500
-      )
+      throw new FileServiceError('Ошибка при обновлении статуса', 'UPDATE_FAILED', 500)
     }
   }
 
@@ -361,11 +329,7 @@ export class FileService {
       return statusCounts
     } catch (error) {
       logger.error('file.service', error, { letterId })
-      throw new FileServiceError(
-        'Ошибка при получении статистики',
-        'STATS_FAILED',
-        500
-      )
+      throw new FileServiceError('Ошибка при получении статистики', 'STATS_FAILED', 500)
     }
   }
 
@@ -409,11 +373,7 @@ export class FileService {
       return retriedCount
     } catch (error) {
       logger.error('file.service', error, { letterId })
-      throw new FileServiceError(
-        'Ошибка при повторной синхронизации',
-        'RETRY_FAILED',
-        500
-      )
+      throw new FileServiceError('Ошибка при повторной синхронизации', 'RETRY_FAILED', 500)
     }
   }
 }
