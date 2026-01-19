@@ -404,7 +404,7 @@ export class SettingsService {
         where: { userId },
       })
 
-      const data: Partial<typeof emptyProfile> = {}
+      const data: ProfileUpdateInput = {}
 
       // Normalize string fields
       if ('bio' in updates) data.bio = normalizeOptional(updates.bio)
