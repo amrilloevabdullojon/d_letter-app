@@ -56,8 +56,6 @@ const resolveAutoOwnerId = async (): Promise<string | null> => {
     SELECT u.id
     FROM "User" u
     WHERE u."canLogin" = true
-      AND u."deletedAt" IS NULL
-      AND u."isActive" = true
     ORDER BY (
       SELECT COUNT(*)
       FROM "Letter" l
