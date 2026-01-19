@@ -221,6 +221,9 @@ export default function SettingsPage() {
       icon: <Settings className="h-5 w-5" />,
     },
   ]
+  const handleMobileTabChange = (tab: string) => {
+    handleTabChange(tab as TabType)
+  }
 
   return (
     <div className="app-shell min-h-screen">
@@ -252,7 +255,7 @@ export default function SettingsPage() {
         {/* Tabs - Mobile vs Desktop */}
         {isMobile ? (
           <div className="mb-6">
-            <MobileTabs tabs={mobileTabs} activeTab={activeTab} onChange={handleTabChange} />
+            <MobileTabs tabs={mobileTabs} activeTab={activeTab} onChange={handleMobileTabChange} />
           </div>
         ) : (
           <div className="mb-6 border-b border-white/10 pb-4">
