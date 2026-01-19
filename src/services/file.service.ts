@@ -256,7 +256,7 @@ export class FileService {
    * Обновить статус файла
    *
    * @example
-   * await FileService.updateStatus('file123', 'SYNCED', 'https://drive.google.com/...')
+   * await FileService.updateStatus('file123', 'READY', 'https://drive.google.com/...')
    */
   static async updateStatus(fileId: string, status: FileStatus, driveUrl?: string): Promise<void> {
     try {
@@ -318,11 +318,11 @@ export class FileService {
       }
 
       files.forEach((group) => {
-        if (group.status === 'SYNCED') {
+        if (group.status === 'READY') {
           statusCounts.synced = group._count
-        } else if (group.status === 'PENDING_SYNC') {
+        } else if (group.status === 'PENDING_SYNC' || group.status === 'UPLOADING') {
           statusCounts.pending = group._count
-        } else if (group.status === 'SYNC_FAILED') {
+        } else if (group.status === 'FAILED') {
           statusCounts.failed = group._count
         }
       })
@@ -343,7 +343,7 @@ export class FileService {
   static async retryFailedSyncs(letterId?: string): Promise<number> {
     try {
       const where: Prisma.FileWhereInput = {
-        status: 'SYNC_FAILED',
+        status: 'FAILED',
         ...(letterId && { letterId }),
       }
 
