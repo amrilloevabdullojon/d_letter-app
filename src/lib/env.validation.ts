@@ -24,17 +24,17 @@ const envSchema = z.object({
   GOOGLE_PRIVATE_KEY: z
     .string()
     .min(1)
-    .refine(
-      (key) => key.includes('-----BEGIN PRIVATE KEY-----'),
-      'Must be a valid private key'
-    )
+    .refine((key) => key.includes('-----BEGIN PRIVATE KEY-----'), 'Must be a valid private key')
     .describe('Service account private key'),
   GOOGLE_SPREADSHEET_ID: z.string().min(1).describe('Google Sheets document ID'),
   GOOGLE_SHEET_NAME: z.string().optional().describe('Sheet name (optional)'),
 
   // Google Drive
   GOOGLE_DRIVE_FOLDER_ID: z.string().optional().describe('Drive folder for profile assets'),
-  GOOGLE_DRIVE_ATTACHMENTS_FOLDER_ID: z.string().optional().describe('Drive folder for attachments'),
+  GOOGLE_DRIVE_ATTACHMENTS_FOLDER_ID: z
+    .string()
+    .optional()
+    .describe('Drive folder for attachments'),
   GOOGLE_DRIVE_SHARE_MODE: z.enum(['public', 'private', 'domain']).optional().default('private'),
   GOOGLE_DRIVE_SHARE_DOMAIN: z.string().optional(),
 
@@ -52,7 +52,7 @@ const envSchema = z.object({
     .optional()
     .transform((val) => val === 'true')
     .pipe(z.boolean())
-    .default(true),
+    .catch(true),
   LOCAL_UPLOADS_DIR: z.string().optional(),
 
   // Cloudflare Turnstile
