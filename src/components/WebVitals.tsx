@@ -22,14 +22,9 @@ export function WebVitals() {
     }
 
     // Динамический импорт web-vitals для production
-    import('web-vitals').then(({ onCLS, onFID, onFCP, onLCP, onTTFB, onINP }) => {
+    import('web-vitals').then(({ onCLS, onFCP, onLCP, onTTFB, onINP }) => {
       // CLS - Cumulative Layout Shift
       onCLS((metric) => {
-        sendToAnalytics(metric)
-      })
-
-      // FID - First Input Delay (deprecated, but still useful)
-      onFID((metric) => {
         sendToAnalytics(metric)
       })
 
