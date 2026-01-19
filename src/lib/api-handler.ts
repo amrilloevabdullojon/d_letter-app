@@ -87,7 +87,10 @@ function getRequestId(req: NextRequest): string {
   )
 }
 
-function finalizeApiResponse<T>(response: NextResponse<T>, requestId: string): NextResponse<T> {
+function finalizeApiResponse<T>(
+  response: NextResponse<T> | NextResponse<{ error: string }>,
+  requestId: string
+): NextResponse<T | { error: string }> {
   response.headers.set('x-request-id', requestId)
   return applySecurityHeaders(response)
 }
