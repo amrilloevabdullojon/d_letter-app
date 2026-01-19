@@ -17,6 +17,9 @@ import type {
   UserPreferences,
   SettingsEntity,
   SettingsAction,
+  ThemeMode,
+  UIDensity,
+  WallpaperStyle,
 } from '@prisma/client'
 
 /**
@@ -150,9 +153,9 @@ export type FullProfileData = {
 // ==================== PREFERENCES TYPES ====================
 
 export type PreferencesUpdateInput = Partial<{
-  theme: 'LIGHT' | 'DARK' | 'SYSTEM'
+  theme: ThemeMode | 'SYSTEM'
   language: string
-  density: 'COMFORTABLE' | 'COMPACT' | 'SPACIOUS'
+  density: UIDensity
   animations: boolean
   backgroundAnimations: boolean
   pageTransitions: boolean
@@ -160,7 +163,7 @@ export type PreferencesUpdateInput = Partial<{
   listAnimations: boolean
   modalAnimations: boolean
   scrollAnimations: boolean
-  wallpaperStyle: string
+  wallpaperStyle: WallpaperStyle
   wallpaperIntensity: number
   snowfall: boolean
   particles: boolean
@@ -191,6 +194,65 @@ const mapDigestFrequency = (digest: NotificationSettings['emailDigest']): Digest
   if (digest === 'daily') return 'DAILY'
   if (digest === 'weekly') return 'WEEKLY'
   return 'NONE'
+}
+
+type PreferencesUpdateData = Partial<
+  Pick<
+    UserPreferences,
+    | 'theme'
+    | 'language'
+    | 'density'
+    | 'animations'
+    | 'backgroundAnimations'
+    | 'pageTransitions'
+    | 'microInteractions'
+    | 'listAnimations'
+    | 'modalAnimations'
+    | 'scrollAnimations'
+    | 'wallpaperStyle'
+    | 'wallpaperIntensity'
+    | 'snowfall'
+    | 'particles'
+    | 'soundNotifications'
+    | 'desktopNotifications'
+  >
+>
+
+const normalizeThemeMode = (theme: PreferencesUpdateInput['theme']): ThemeMode | undefined => {
+  if (!theme) return undefined
+  return theme === 'SYSTEM' ? 'AUTO' : theme
+}
+
+const normalizePreferencesUpdates = (updates: PreferencesUpdateInput): PreferencesUpdateData => {
+  const data: PreferencesUpdateData = {}
+  const theme = normalizeThemeMode(updates.theme)
+  if (theme) data.theme = theme
+  if (typeof updates.language === 'string') data.language = updates.language
+  if (updates.density) data.density = updates.density
+  if (typeof updates.animations === 'boolean') data.animations = updates.animations
+  if (typeof updates.backgroundAnimations === 'boolean') {
+    data.backgroundAnimations = updates.backgroundAnimations
+  }
+  if (typeof updates.pageTransitions === 'boolean') data.pageTransitions = updates.pageTransitions
+  if (typeof updates.microInteractions === 'boolean')
+    data.microInteractions = updates.microInteractions
+  if (typeof updates.listAnimations === 'boolean') data.listAnimations = updates.listAnimations
+  if (typeof updates.modalAnimations === 'boolean') data.modalAnimations = updates.modalAnimations
+  if (typeof updates.scrollAnimations === 'boolean')
+    data.scrollAnimations = updates.scrollAnimations
+  if (updates.wallpaperStyle) data.wallpaperStyle = updates.wallpaperStyle
+  if (typeof updates.wallpaperIntensity === 'number') {
+    data.wallpaperIntensity = updates.wallpaperIntensity
+  }
+  if (typeof updates.snowfall === 'boolean') data.snowfall = updates.snowfall
+  if (typeof updates.particles === 'boolean') data.particles = updates.particles
+  if (typeof updates.soundNotifications === 'boolean') {
+    data.soundNotifications = updates.soundNotifications
+  }
+  if (typeof updates.desktopNotifications === 'boolean') {
+    data.desktopNotifications = updates.desktopNotifications
+  }
+  return data
 }
 
 const buildActivity = async (userId: string): Promise<ProfileActivity> => {
@@ -690,12 +752,13 @@ export class SettingsService {
         where: { userId },
       })
 
+      const data = normalizePreferencesUpdates(updates)
       const preferences = await prisma.userPreferences.upsert({
         where: { userId },
-        update: updates,
+        update: data,
         create: {
           userId,
-          ...updates,
+          ...data,
         },
       })
 
