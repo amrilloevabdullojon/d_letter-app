@@ -75,7 +75,7 @@ const envSchema = z.object({
     .optional()
     .transform((val) => val === 'true')
     .pipe(z.boolean())
-    .default(false),
+    .catch(false),
 })
 
 // Type-safe environment variables
