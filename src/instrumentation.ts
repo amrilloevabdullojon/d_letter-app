@@ -17,7 +17,7 @@ export async function register() {
     const { logger } = await import('./lib/logger.server')
     const { env, isProd, hasSentry, hasRedis, hasTelegram } = await import('./lib/env.validation')
 
-    logger.info('application.startup', {
+    logger.info('application.startup', 'Application startup', {
       environment: env.NODE_ENV,
       features: {
         sentry: hasSentry,
@@ -35,7 +35,10 @@ export async function register() {
 
     // Warm up critical connections
     if (hasRedis) {
-      logger.info('application.startup', 'Redis configured, connection will be established on first use')
+      logger.info(
+        'application.startup',
+        'Redis configured, connection will be established on first use'
+      )
     }
   }
 }
