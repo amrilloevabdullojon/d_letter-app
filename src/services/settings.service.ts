@@ -9,7 +9,15 @@ import {
   type NotificationMatrixItem,
   type NotificationSubscription,
 } from '@/lib/notification-settings'
-import type { Prisma, DigestFrequency, Role, UserProfile, UserPreferences, SettingsEntity, SettingsAction } from '@prisma/client'
+import type {
+  Prisma,
+  DigestFrequency,
+  Role,
+  UserProfile,
+  UserPreferences,
+  SettingsEntity,
+  SettingsAction,
+} from '@prisma/client'
 
 /**
  * Settings Service - Централизованный сервис для работы с настройками пользователей
@@ -111,7 +119,7 @@ export type ProfileActivity = {
     user: {
       id: string
       name: string | null
-      email: string
+      email: string | null
     }
     letter: {
       id: string
@@ -233,7 +241,10 @@ const buildActivity = async (userId: string): Promise<ProfileActivity> => {
 /**
  * Вычислить разницу между двумя объектами
  */
-function calculateDiff(before: unknown, after: unknown): Record<string, { old: unknown; new: unknown }> {
+function calculateDiff(
+  before: unknown,
+  after: unknown
+): Record<string, { old: unknown; new: unknown }> {
   const diff: Record<string, { old: unknown; new: unknown }> = {}
 
   if (!before || typeof before !== 'object') {
@@ -369,11 +380,7 @@ export class SettingsService {
         throw error
       }
       logger.error('settings.service', error, { userId })
-      throw new SettingsServiceError(
-        'Ошибка при получении профиля',
-        'FETCH_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при получении профиля', 'FETCH_FAILED', 500)
     }
   }
 
@@ -487,11 +494,7 @@ export class SettingsService {
       } as ProfileData
     } catch (error) {
       logger.error('settings.service', error, { userId, updates })
-      throw new SettingsServiceError(
-        'Ошибка при обновлении профиля',
-        'UPDATE_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при обновлении профиля', 'UPDATE_FAILED', 500)
     }
   }
 
@@ -501,10 +504,7 @@ export class SettingsService {
    * @example
    * await SettingsService.deleteProfileAsset('user1', 'avatar')
    */
-  static async deleteProfileAsset(
-    userId: string,
-    type: 'avatar' | 'cover'
-  ): Promise<void> {
+  static async deleteProfileAsset(userId: string, type: 'avatar' | 'cover'): Promise<void> {
     try {
       const field = type === 'avatar' ? 'avatarUrl' : 'coverUrl'
 
@@ -516,11 +516,7 @@ export class SettingsService {
       logger.info('settings.service', 'Profile asset deleted', { userId, type })
     } catch (error) {
       logger.error('settings.service', error, { userId, type })
-      throw new SettingsServiceError(
-        'Ошибка при удалении asset',
-        'DELETE_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при удалении asset', 'DELETE_FAILED', 500)
     }
   }
 
@@ -553,11 +549,7 @@ export class SettingsService {
       return token
     } catch (error) {
       logger.error('settings.service', error, { userId })
-      throw new SettingsServiceError(
-        'Ошибка при генерации токена',
-        'TOKEN_GENERATION_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при генерации токена', 'TOKEN_GENERATION_FAILED', 500)
     }
   }
 
@@ -628,11 +620,7 @@ export class SettingsService {
       }
     } catch (error) {
       logger.error('settings.service', error, { token })
-      throw new SettingsServiceError(
-        'Ошибка при получении публичного профиля',
-        'FETCH_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при получении публичного профиля', 'FETCH_FAILED', 500)
     }
   }
 
@@ -678,11 +666,7 @@ export class SettingsService {
       return preferences
     } catch (error) {
       logger.error('settings.service', error, { userId })
-      throw new SettingsServiceError(
-        'Ошибка при получении настроек',
-        'FETCH_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при получении настроек', 'FETCH_FAILED', 500)
     }
   }
 
@@ -734,11 +718,7 @@ export class SettingsService {
       return preferences
     } catch (error) {
       logger.error('settings.service', error, { userId, updates })
-      throw new SettingsServiceError(
-        'Ошибка при обновлении настроек',
-        'UPDATE_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при обновлении настроек', 'UPDATE_FAILED', 500)
     }
   }
 
@@ -796,11 +776,7 @@ export class SettingsService {
       return preferences
     } catch (error) {
       logger.error('settings.service', error, { userId })
-      throw new SettingsServiceError(
-        'Ошибка при сбросе настроек',
-        'RESET_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при сбросе настроек', 'RESET_FAILED', 500)
     }
   }
 
@@ -815,10 +791,12 @@ export class SettingsService {
   static async getNotificationSettings(userId: string): Promise<NotificationSettings> {
     try {
       // Try to get from NotificationPreference table
-      const preference = await prisma.notificationPreference.findUnique({
-        where: { userId },
-        select: { settings: true },
-      }).catch(() => null)
+      const preference = await prisma.notificationPreference
+        .findUnique({
+          where: { userId },
+          select: { settings: true },
+        })
+        .catch(() => null)
 
       if (preference?.settings) {
         return normalizeNotificationSettings(preference.settings as Partial<NotificationSettings>)
@@ -904,17 +882,19 @@ export class SettingsService {
       })
 
       // Update preference table
-      const preference = await prisma.notificationPreference.upsert({
-        where: { userId },
-        update: { settings: nextSettings as unknown as Prisma.InputJsonValue },
-        create: {
-          userId,
-          settings: nextSettings as unknown as Prisma.InputJsonValue,
-        },
-      }).catch((error) => {
-        logger.warn('settings.service', 'NotificationPreference table missing', { error })
-        return null
-      })
+      const preference = await prisma.notificationPreference
+        .upsert({
+          where: { userId },
+          update: { settings: nextSettings as unknown as Prisma.InputJsonValue },
+          create: {
+            userId,
+            settings: nextSettings as unknown as Prisma.InputJsonValue,
+          },
+        })
+        .catch((error) => {
+          logger.warn('settings.service', 'NotificationPreference table missing', { error })
+          return null
+        })
 
       // Create history entry
       if (preference) {
@@ -1017,16 +997,18 @@ export class SettingsService {
 
       // Create new subscriptions
       if (normalizedSubscriptions.length > 0) {
-        await prisma.notificationSubscription.createMany({
-          data: normalizedSubscriptions.map((subscription) => ({
-            userId,
-            scope: subscription.scope.toUpperCase() as 'ROLE' | 'USER' | 'ALL',
-            value: subscription.value,
-            event: subscription.event,
-          })),
-        }).catch(() => {
-          logger.warn('settings.service', 'NotificationSubscription table missing')
-        })
+        await prisma.notificationSubscription
+          .createMany({
+            data: normalizedSubscriptions.map((subscription) => ({
+              userId,
+              scope: subscription.scope.toUpperCase() as 'ROLE' | 'USER' | 'ALL',
+              value: subscription.value,
+              event: subscription.event,
+            })),
+          })
+          .catch(() => {
+            logger.warn('settings.service', 'NotificationSubscription table missing')
+          })
       }
 
       // Also update in settings
@@ -1039,11 +1021,7 @@ export class SettingsService {
       logger.info('settings.service', 'Notification subscriptions updated', { userId })
     } catch (error) {
       logger.error('settings.service', error, { userId, subscriptions })
-      throw new SettingsServiceError(
-        'Ошибка при обновлении подписок',
-        'UPDATE_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при обновлении подписок', 'UPDATE_FAILED', 500)
     }
   }
 
@@ -1091,11 +1069,7 @@ export class SettingsService {
       return history
     } catch (error) {
       logger.error('settings.service', error, { userId, options })
-      throw new SettingsServiceError(
-        'Ошибка при получении истории настроек',
-        'FETCH_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при получении истории настроек', 'FETCH_FAILED', 500)
     }
   }
 
@@ -1105,22 +1079,14 @@ export class SettingsService {
    * @example
    * await SettingsService.revertToVersion('user1', 'history123', 'admin1')
    */
-  static async revertToVersion(
-    userId: string,
-    historyId: string,
-    adminId?: string
-  ): Promise<void> {
+  static async revertToVersion(userId: string, historyId: string, adminId?: string): Promise<void> {
     try {
       const historyEntry = await prisma.settingsHistory.findUnique({
         where: { id: historyId },
       })
 
       if (!historyEntry) {
-        throw new SettingsServiceError(
-          'Запись в истории не найдена',
-          'NOT_FOUND',
-          404
-        )
+        throw new SettingsServiceError('Запись в истории не найдена', 'NOT_FOUND', 404)
       }
 
       if (historyEntry.userId !== userId) {
@@ -1157,11 +1123,7 @@ export class SettingsService {
           break
 
         default:
-          throw new SettingsServiceError(
-            'Неизвестный тип настроек',
-            'INVALID_ENTITY_TYPE',
-            400
-          )
+          throw new SettingsServiceError('Неизвестный тип настроек', 'INVALID_ENTITY_TYPE', 400)
       }
 
       logger.info('settings.service', 'Settings reverted to version', {
@@ -1174,11 +1136,7 @@ export class SettingsService {
         throw error
       }
       logger.error('settings.service', error, { userId, historyId, adminId })
-      throw new SettingsServiceError(
-        'Ошибка при откате настроек',
-        'REVERT_FAILED',
-        500
-      )
+      throw new SettingsServiceError('Ошибка при откате настроек', 'REVERT_FAILED', 500)
     }
   }
 }
