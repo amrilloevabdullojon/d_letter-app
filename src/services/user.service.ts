@@ -299,34 +299,35 @@ export class UserService {
     }
   }> {
     try {
-      const [letters, watchedCount, commentsCount, notifications] = await Promise.all([
-        prisma.letter.groupBy({
-          by: ['status'],
-          where: {
-            ownerId: userId,
-            deletedAt: null,
-          },
-          _count: true,
-        }),
-        prisma.watcher.count({
-          where: { userId },
-        }),
-        prisma.comment.count({
-          where: { authorId: userId },
-        }),
-        prisma.notification.aggregate({
-          where: { userId },
-          _count: {
-            _all: true,
-          },
-        }),
-        prisma.notification.count({
-          where: {
-            userId,
-            isRead: false,
-          },
-        }),
-      ])
+      const [letters, watchedCount, commentsCount, notificationsAggregate, unreadCount] =
+        await Promise.all([
+          prisma.letter.groupBy({
+            by: ['status'],
+            where: {
+              ownerId: userId,
+              deletedAt: null,
+            },
+            _count: true,
+          }),
+          prisma.watcher.count({
+            where: { userId },
+          }),
+          prisma.comment.count({
+            where: { authorId: userId },
+          }),
+          prisma.notification.aggregate({
+            where: { userId },
+            _count: {
+              _all: true,
+            },
+          }),
+          prisma.notification.count({
+            where: {
+              userId,
+              isRead: false,
+            },
+          }),
+        ])
 
       const byStatus: Record<string, number> = {}
       let totalLetters = 0
@@ -343,8 +344,8 @@ export class UserService {
         watchedLetters: watchedCount,
         comments: commentsCount,
         notifications: {
-          unread: notifications[4] as number,
-          total: notifications[3]._count._all,
+          unread: unreadCount,
+          total: notificationsAggregate._count._all,
         },
       }
     } catch (error) {
