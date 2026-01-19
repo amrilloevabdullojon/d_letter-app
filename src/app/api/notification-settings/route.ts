@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { z } from 'zod'
+import type { ZodIssue } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
@@ -42,19 +43,19 @@ export async function PUT(request: NextRequest) {
     const parsed = notificationSettingsUpdateSchema.safeParse(body?.settings ?? body)
     if (!parsed.success) {
       // Возвращаем детальные ошибки валидации
-      return NextResponse.json({
-        error: 'Ошибка валидации настроек',
-        details: parsed.error.errors.map((err) => ({
-          path: err.path.join('.'),
-          message: err.message,
-        })),
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'Ошибка валидации настроек',
+          details: parsed.error.errors.map((err: ZodIssue) => ({
+            path: err.path.join('.'),
+            message: err.message,
+          })),
+        },
+        { status: 400 }
+      )
     }
 
-    const settings = await SettingsService.updateNotificationSettings(
-      session.user.id,
-      parsed.data
-    )
+    const settings = await SettingsService.updateNotificationSettings(session.user.id, parsed.data)
 
     // Handle subscriptions if provided
     if (parsed.data.subscriptions) {
@@ -67,13 +68,16 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ settings })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({
-        error: 'Ошибка валидации настроек',
-        details: error.errors.map((err) => ({
-          path: err.path.join('.'),
-          message: err.message,
-        })),
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'Ошибка валидации настроек',
+          details: error.errors.map((err: ZodIssue) => ({
+            path: err.path.join('.'),
+            message: err.message,
+          })),
+        },
+        { status: 400 }
+      )
     }
     if (error instanceof SettingsServiceError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
