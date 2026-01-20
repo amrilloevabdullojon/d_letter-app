@@ -168,12 +168,7 @@ const requestStatusListSchema = z
       .map((item) => item.trim().replace(/\s+/g, '_'))
       .filter(Boolean)
   )
-  .refine((values) => values.length > 0, { message: 'Status filter is empty' })
-  .refine(
-    (values) =>
-      values.every((value) => requestStatuses.includes(value as (typeof requestStatuses)[number])),
-    { message: 'Invalid status value' }
-  )
+  .pipe(z.array(requestStatusSchema).min(1, 'Status filter is empty'))
 
 export const createRequestSchema = z.object({
   organization: z.string().min(1, 'Организация обязательна').max(500),
