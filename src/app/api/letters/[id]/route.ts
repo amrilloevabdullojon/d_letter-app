@@ -10,7 +10,6 @@ import { hasPermission } from '@/lib/permissions'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
-import { CACHE_TTL } from '@/lib/cache'
 
 // GET /api/letters/[id] - получить письмо по ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -130,7 +129,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     void favorites
     void files
 
-    const cacheSeconds = Math.max(1, Math.floor(CACHE_TTL.LETTER_DETAIL / 1000))
     return NextResponse.json(
       {
         ...letterData,
@@ -146,7 +144,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       },
       {
         headers: {
-          'Cache-Control': `private, max-age=${cacheSeconds}, stale-while-revalidate=${cacheSeconds}`,
+          'Cache-Control': 'private, no-store',
         },
       }
     )
