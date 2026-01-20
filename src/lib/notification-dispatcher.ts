@@ -40,6 +40,8 @@ const isMissingNotificationDeliveryTable = (error: unknown) =>
   /NotificationDelivery/i.test(error.message) &&
   /does not exist/i.test(error.message)
 
+let notificationDeliveryAvailable: boolean | null = null
+
 type DispatchNotificationInput = {
   event: NotificationEventType
   title: string
@@ -345,6 +347,9 @@ export const dispatchNotification = async ({
       recipient?: string | null
       error?: string | null
     }) => {
+      if (notificationDeliveryAvailable === false) {
+        return
+      }
       try {
         await prisma.notificationDelivery.create({
           data: {
@@ -357,8 +362,10 @@ export const dispatchNotification = async ({
             sentAt: data.status === 'SENT' ? new Date() : undefined,
           },
         })
+        notificationDeliveryAvailable = true
       } catch (error) {
         if (isMissingNotificationDeliveryTable(error)) {
+          notificationDeliveryAvailable = false
           logger.warn(
             'dispatchNotification',
             'NotificationDelivery table missing, skipping delivery audit'

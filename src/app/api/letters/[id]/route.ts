@@ -32,65 +32,78 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       Math.max(1, parseInt(searchParams.get('commentsLimit') || '20', 10))
     )
     const commentsSkip = (commentsPage - 1) * commentsLimit
+    const summaryMode = searchParams.get('summary') === '1'
+
+    const include = summaryMode
+      ? {
+          owner: {
+            select: { id: true, name: true, email: true, image: true, telegramChatId: true },
+          },
+          files: true,
+          favorites: {
+            where: { userId: session.user.id },
+          },
+        }
+      : {
+          owner: {
+            select: { id: true, name: true, email: true, image: true, telegramChatId: true },
+          },
+          files: true,
+          tags: true,
+          // OPTIMIZED: Removed nested replies loading to prevent N+1
+          // Clients should use GET /api/letters/[id]/comments endpoint for full comment tree
+          comments: {
+            include: {
+              author: {
+                select: { id: true, name: true, email: true, image: true },
+              },
+              _count: {
+                select: { replies: true },
+              },
+            },
+            where: { parentId: null },
+            orderBy: { createdAt: 'desc' as const },
+            take: commentsLimit,
+            skip: commentsSkip,
+          },
+          watchers: {
+            include: {
+              user: {
+                select: { id: true, name: true, email: true },
+              },
+            },
+          },
+          favorites: {
+            where: { userId: session.user.id },
+          },
+          history: {
+            include: {
+              user: {
+                select: { id: true, name: true, email: true },
+              },
+            },
+            orderBy: { createdAt: 'desc' as const },
+            take: 20,
+          },
+          linkedFrom: {
+            include: {
+              to: {
+                select: { id: true, number: true, org: true },
+              },
+            },
+          },
+          linkedTo: {
+            include: {
+              from: {
+                select: { id: true, number: true, org: true },
+              },
+            },
+          },
+        }
 
     const letter = await prisma.letter.findUnique({
       where: { id },
-      include: {
-        owner: {
-          select: { id: true, name: true, email: true, image: true, telegramChatId: true },
-        },
-        files: true,
-        tags: true,
-        // OPTIMIZED: Removed nested replies loading to prevent N+1
-        // Clients should use GET /api/letters/[id]/comments endpoint for full comment tree
-        comments: {
-          include: {
-            author: {
-              select: { id: true, name: true, email: true, image: true },
-            },
-            _count: {
-              select: { replies: true },
-            },
-          },
-          where: { parentId: null },
-          orderBy: { createdAt: 'desc' },
-          take: commentsLimit,
-          skip: commentsSkip,
-        },
-        watchers: {
-          include: {
-            user: {
-              select: { id: true, name: true, email: true },
-            },
-          },
-        },
-        favorites: {
-          where: { userId: session.user.id },
-        },
-        history: {
-          include: {
-            user: {
-              select: { id: true, name: true, email: true },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-        },
-        linkedFrom: {
-          include: {
-            to: {
-              select: { id: true, number: true, org: true },
-            },
-          },
-        },
-        linkedTo: {
-          include: {
-            from: {
-              select: { id: true, number: true, org: true },
-            },
-          },
-        },
-      },
+      include,
     })
 
     if (!letter) {
@@ -104,7 +117,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Проверить, подписан ли текущий пользователь
-    const isWatching = letter.watchers.some((w) => w.userId === session.user.id)
+    const isWatching = summaryMode
+      ? Boolean(
+          await prisma.watcher.findFirst({
+            where: { letterId: id, userId: session.user.id },
+            select: { id: true },
+          })
+        )
+      : (letter.watchers ?? []).some((w) => w.userId === session.user.id)
 
     // Проверить, в избранном ли
     const isFavorite = letter.favorites.length > 0
@@ -121,9 +141,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }))
 
     // Get total comment count for pagination
-    const totalComments = await prisma.comment.count({
-      where: { letterId: id, parentId: null },
-    })
+    const totalComments = summaryMode
+      ? null
+      : await prisma.comment.count({
+          where: { letterId: id, parentId: null },
+        })
+
+    const commentsReturned = summaryMode ? 0 : (letter.comments ?? []).length
+    const commentTotalValue = typeof totalComments === 'number' ? totalComments : 0
 
     const { favorites, files, ...letterData } = letter
     void favorites
@@ -138,8 +163,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         commentsPagination: {
           page: commentsPage,
           limit: commentsLimit,
-          total: totalComments,
-          hasMore: commentsSkip + letter.comments.length < totalComments,
+          total: commentTotalValue,
+          hasMore: summaryMode ? false : commentsSkip + commentsReturned < commentTotalValue,
         },
       },
       {

@@ -27,6 +27,7 @@ export function RelatedLetters({ currentLetterId, organization }: RelatedLetters
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
+    const controller = new AbortController()
     const loadRelated = async () => {
       try {
         const params = new URLSearchParams({
@@ -34,15 +35,22 @@ export function RelatedLetters({ currentLetterId, organization }: RelatedLetters
           exclude: currentLetterId,
           limit: '10',
         })
-        const res = await fetch(`/api/letters/related?${params}`)
+        const res = await fetch(`/api/letters/related?${params}`, {
+          signal: controller.signal,
+        })
         if (res.ok) {
           const data = await res.json()
           setLetters(data.letters || [])
         }
       } catch (error) {
+        if ((error as DOMException).name === 'AbortError') {
+          return
+        }
         console.error('Failed to load related letters:', error)
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
@@ -51,11 +59,12 @@ export function RelatedLetters({ currentLetterId, organization }: RelatedLetters
     } else {
       setLoading(false)
     }
+    return () => controller.abort()
   }, [currentLetterId, organization])
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+      <div className="panel panel-soft panel-glass rounded-2xl p-4">
         <div className="flex items-center gap-2 text-gray-400">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span className="text-sm">Загрузка связанных писем...</span>
@@ -71,7 +80,7 @@ export function RelatedLetters({ currentLetterId, organization }: RelatedLetters
   const displayLetters = expanded ? letters : letters.slice(0, 3)
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+    <div className="panel panel-soft panel-glass rounded-2xl p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
           <FileText className="h-4 w-4 text-blue-400" />
@@ -87,7 +96,7 @@ export function RelatedLetters({ currentLetterId, organization }: RelatedLetters
           <Link
             key={letter.id}
             href={`/letters/${letter.id}`}
-            className="group flex items-center gap-3 rounded-lg border border-gray-700/50 bg-gray-900/50 p-3 transition hover:border-gray-600 hover:bg-gray-900"
+            className="panel-soft panel-glass group flex items-center gap-3 rounded-xl p-3 transition hover:bg-white/5"
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -116,5 +125,3 @@ export function RelatedLetters({ currentLetterId, organization }: RelatedLetters
     </div>
   )
 }
-
-

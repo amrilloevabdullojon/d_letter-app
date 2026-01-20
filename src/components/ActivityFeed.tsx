@@ -125,22 +125,31 @@ export function ActivityFeed({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const controller = new AbortController()
     const fetchHistory = async () => {
       try {
-        const res = await fetch(`/api/letters/${letterId}/history`)
+        const res = await fetch(`/api/letters/${letterId}/history?limit=${maxItems}`, {
+          signal: controller.signal,
+        })
         if (res.ok) {
           const data = await res.json()
           setHistory(data.history || [])
         }
       } catch (error) {
+        if ((error as DOMException).name === 'AbortError') {
+          return
+        }
         console.error('Failed to fetch history:', error)
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchHistory()
-  }, [letterId])
+    return () => controller.abort()
+  }, [letterId, maxItems])
 
   if (loading) {
     return (
@@ -176,9 +185,7 @@ export function ActivityFeed({
           return (
             <div
               key={item.id}
-              className={`flex gap-3 rounded-lg border border-gray-700/50 bg-gray-800/30 ${
-                compact ? 'p-3' : 'p-3'
-              }`}
+              className={`panel-soft panel-glass flex gap-3 rounded-xl ${compact ? 'p-3' : 'p-3'}`}
             >
               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-700/50">
                 <Icon className="h-4 w-4 text-gray-400" />

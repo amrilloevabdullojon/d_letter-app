@@ -3,13 +3,13 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import {
   Upload,
-  X,
   Loader2,
   FileText,
   Trash2,
   ExternalLink,
   Eye,
   Image as ImageIcon,
+  RotateCcw,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { MAX_FILE_SIZE, MAX_FILE_SIZE_LABEL } from '@/lib/constants'
@@ -66,8 +66,10 @@ export function FileUpload({ letterId, files, onFilesChange }: FileUploadProps) 
   const toast = useToast()
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [syncingFileId, setSyncingFileId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [previewFile, setPreviewFile] = useState<FileInfo | null>(null)
+  const [isVisible, setIsVisible] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const hasPendingFiles = files.some((file) => file.status && file.status !== 'READY')
 
@@ -84,12 +86,21 @@ export function FileUpload({ letterId, files, onFilesChange }: FileUploadProps) 
   }, [])
 
   useEffect(() => {
-    if (!hasPendingFiles) return
+    if (!hasPendingFiles || !isVisible) return
     const timer = setTimeout(() => {
       onFilesChange()
     }, 5000)
     return () => clearTimeout(timer)
-  }, [hasPendingFiles, onFilesChange])
+  }, [hasPendingFiles, isVisible, onFilesChange])
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      setIsVisible(document.visibilityState === 'visible')
+    }
+    handleVisibility()
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
 
   const handleUpload = async (file: File) => {
     // Проверка размера файла на клиенте
@@ -193,8 +204,36 @@ export function FileUpload({ letterId, files, onFilesChange }: FileUploadProps) 
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
+  const getStatusLabel = (status?: string | null) => {
+    if (!status || status === 'READY') return null
+    if (status === 'PENDING_SYNC') return 'Ожидает синхронизации'
+    if (status === 'UPLOADING') return 'Загрузка...'
+    if (status === 'FAILED') return 'Ошибка синхронизации'
+    return '\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0441\u0442\u0430\u0442\u0443\u0441'
+  }
+
+  const handleRetrySync = async (fileId: string) => {
+    setSyncingFileId(fileId)
+    const toastId = toast.loading('Синхронизируем файл...')
+    try {
+      const res = await fetch(`/api/files/sync?fileId=${fileId}`, { method: 'POST' })
+      if (res.ok) {
+        toast.success('Синхронизация запущена', { id: toastId })
+        onFilesChange()
+      } else {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error || 'Не удалось синхронизировать файл', { id: toastId })
+      }
+    } catch (error) {
+      console.error('Retry sync error:', error)
+      toast.error('Ошибка синхронизации', { id: toastId })
+    } finally {
+      setSyncingFileId(null)
+    }
+  }
+
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="panel panel-soft panel-glass rounded-2xl p-6">
       <h3 className="mb-4 text-lg font-semibold text-white">Файлы</h3>
 
       {/* Upload zone */}
@@ -249,7 +288,7 @@ export function FileUpload({ letterId, files, onFilesChange }: FileUploadProps) 
             return (
               <div
                 key={file.id}
-                className="group flex items-center justify-between gap-3 rounded-lg bg-gray-700/50 px-4 py-3"
+                className="panel-soft panel-glass group flex items-center justify-between gap-3 rounded-xl px-4 py-3"
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <FileIcon className="h-5 w-5 flex-shrink-0 text-gray-400" />
@@ -268,15 +307,15 @@ export function FileUpload({ letterId, files, onFilesChange }: FileUploadProps) 
                     {file.status && file.status !== 'READY' && (
                       <span
                         className={`text-xs ${
-                          file.status === 'FAILED' ? 'text-red-300' : 'text-amber-300'
+                          file.status === 'FAILED'
+                            ? 'text-red-300'
+                            : file.status === 'PENDING_SYNC'
+                              ? 'text-amber-300'
+                              : 'text-emerald-300'
                         }`}
                         title={file.uploadError || undefined}
                       >
-                        {file.status === 'PENDING_SYNC'
-                          ? 'Ожидание синхронизации...'
-                          : file.status === 'UPLOADING'
-                            ? 'Загрузка...'
-                            : 'Ошибка синхронизации'}
+                        {getStatusLabel(file.status)}
                       </span>
                     )}
                     {file.size && (
@@ -286,6 +325,20 @@ export function FileUpload({ letterId, files, onFilesChange }: FileUploadProps) 
                 </div>
 
                 <div className="flex flex-shrink-0 items-center gap-1">
+                  {(file.status === 'FAILED' || file.status === 'PENDING_SYNC') && (
+                    <button
+                      onClick={() => handleRetrySync(file.id)}
+                      disabled={syncingFileId === file.id}
+                      className="p-2 text-gray-400 transition hover:text-emerald-400 disabled:opacity-50"
+                      title="Повторить синхронизацию"
+                    >
+                      {syncingFileId === file.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                   {canPreview && (
                     <button
                       onClick={() => handlePreview(file)}

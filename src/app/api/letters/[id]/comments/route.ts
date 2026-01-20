@@ -45,13 +45,59 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
     const skip = (page - 1) * limit
     const includeReplies = searchParams.get('includeReplies') !== 'false' // default true
+    const authorFilter = searchParams.get('author')
+    const parentId = searchParams.get('parentId')
+    const authorId = authorFilter === 'me' ? session.user.id : null
+
+    if (parentId) {
+      const parent = await prisma.comment.findFirst({
+        where: { id: parentId, letterId: id },
+        select: { id: true },
+      })
+      if (!parent) {
+        return NextResponse.json({ error: 'Parent comment not found' }, { status: 404 })
+      }
+
+      const replies = await prisma.comment.findMany({
+        where: {
+          letterId: id,
+          parentId,
+        },
+        include: {
+          author: {
+            select: { id: true, name: true, email: true, image: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: limit,
+        skip,
+      })
+
+      const totalReplies = await prisma.comment.count({
+        where: { letterId: id, parentId },
+      })
+
+      return NextResponse.json({
+        comments: replies,
+        pagination: {
+          page,
+          limit,
+          total: totalReplies,
+          hasMore: skip + replies.length < totalReplies,
+        },
+        parentId,
+      })
+    }
+
+    const where = {
+      letterId: id,
+      parentId: null,
+      ...(authorId ? { authorId } : {}),
+    }
 
     // Fetch comments with optional replies
     const comments = await prisma.comment.findMany({
-      where: {
-        letterId: id,
-        parentId: null,
-      },
+      where,
       include: {
         author: {
           select: { id: true, name: true, email: true, image: true },
@@ -79,12 +125,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     // Get total count for pagination
-    const total = await prisma.comment.count({
-      where: {
-        letterId: id,
-        parentId: null,
-      },
-    })
+    const total = await prisma.comment.count({ where })
 
     return NextResponse.json({
       comments,
