@@ -14,6 +14,13 @@ const commentSchema = z.object({
   text: z.string().min(1).max(2000),
   parentId: z.string().optional().nullable(),
 })
+const commentUpdateSchema = z.object({
+  id: z.string().min(1),
+  text: z.string().min(1).max(2000),
+})
+const commentDeleteSchema = z.object({
+  id: z.string().min(1),
+})
 
 // GET /api/letters/[id]/comments - получить комментарии с пагинацией
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -302,6 +309,158 @@ ${text}`
     return NextResponse.json({ success: true, comment })
   } catch (error) {
     logger.error('POST /api/letters/[id]/comments', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id: letterId } = await params
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const permissionError = requirePermission(session.user.role, 'VIEW_LETTERS')
+    if (permissionError) {
+      return permissionError
+    }
+
+    const csrfError = csrfGuard(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const body = await request.json().catch(() => null)
+    const result = commentUpdateSchema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
+    }
+
+    const text = sanitizeInput(result.data.text, 2000).trim()
+    if (!text) {
+      return NextResponse.json(
+        {
+          error:
+            '\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043d\u0435 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u0443\u0441\u0442\u044b\u043c',
+        },
+        { status: 400 }
+      )
+    }
+
+    const comment = await prisma.comment.findFirst({
+      where: { id: result.data.id, letterId },
+      select: { id: true, authorId: true, text: true, updatedAt: true, createdAt: true },
+    })
+
+    if (!comment) {
+      return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
+    }
+
+    const canManage = !requirePermission(session.user.role, 'MANAGE_LETTERS')
+    if (!canManage && comment.authorId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    if (comment.text === text) {
+      return NextResponse.json({ success: true, comment })
+    }
+
+    const [updated, edit] = await prisma.$transaction([
+      prisma.comment.update({
+        where: { id: comment.id },
+        data: { text },
+        include: {
+          author: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      }),
+      prisma.commentEdit.create({
+        data: {
+          commentId: comment.id,
+          editorId: session.user.id,
+          oldText: comment.text,
+          newText: text,
+        },
+        include: {
+          editor: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      }),
+    ])
+
+    return NextResponse.json({ success: true, comment: updated, edit })
+  } catch (error) {
+    logger.error('PATCH /api/letters/[id]/comments', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: letterId } = await params
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const permissionError = requirePermission(session.user.role, 'VIEW_LETTERS')
+    if (permissionError) {
+      return permissionError
+    }
+
+    const csrfError = csrfGuard(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const body = await request.json().catch(() => null)
+    const result = commentDeleteSchema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
+    }
+
+    const comment = await prisma.comment.findFirst({
+      where: { id: result.data.id, letterId },
+      select: { id: true, authorId: true },
+    })
+
+    if (!comment) {
+      return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
+    }
+
+    const canManage = !requirePermission(session.user.role, 'MANAGE_LETTERS')
+    if (!canManage && comment.authorId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const idsToDelete: string[] = [comment.id]
+    let queue: string[] = [comment.id]
+    while (queue.length > 0) {
+      const children = await prisma.comment.findMany({
+        where: { parentId: { in: queue } },
+        select: { id: true },
+      })
+      const childIds = children.map((child) => child.id)
+      if (childIds.length === 0) {
+        break
+      }
+      idsToDelete.push(...childIds)
+      queue = childIds
+    }
+
+    await prisma.comment.deleteMany({
+      where: { id: { in: idsToDelete } },
+    })
+
+    return NextResponse.json({ success: true, deleted: idsToDelete.length })
+  } catch (error) {
+    logger.error('DELETE /api/letters/[id]/comments', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -71,6 +71,7 @@ model User {
   sessions        Session[]
   letters         Letter[]        @relation("OwnerLetters")
   comments        Comment[]
+  commentEdits    CommentEdit[]
   watchers        Watcher[]
   favorites       Favorite[]
   history         History[]
@@ -541,12 +542,27 @@ model Comment {
   parentId  String?
   parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies   Comment[] @relation("CommentReplies")
+  edits     CommentEdit[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@index([letterId])
   @@index([authorId])
   @@index([letterId, createdAt])
+}
+
+model CommentEdit {
+  id        String   @id @default(cuid())
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  editorId  String
+  editor    User     @relation(fields: [editorId], references: [id], onDelete: Cascade)
+  oldText   String   @db.Text
+  newText   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([commentId])
+  @@index([editorId])
 }
 
 // ===== WATCHERS (подписки на письма) =====

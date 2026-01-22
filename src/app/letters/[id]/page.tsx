@@ -67,6 +67,7 @@ import {
   Bell,
   MessageSquare,
   Link2,
+  Pencil,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/components/Toast'
@@ -78,6 +79,7 @@ interface CommentItem {
   id: string
   text: string
   createdAt: string
+  updatedAt: string
   author: {
     id: string
     name: string | null
@@ -86,6 +88,18 @@ interface CommentItem {
   replies?: CommentItem[]
   _count?: {
     replies: number
+  }
+}
+
+interface CommentEditItem {
+  id: string
+  oldText: string
+  newText: string
+  createdAt: string
+  editor: {
+    id: string
+    name: string | null
+    email: string | null
   }
 }
 
@@ -169,6 +183,50 @@ const isEditableElement = (target: EventTarget | null) => {
   return element.isContentEditable
 }
 
+const updateCommentInTree = (
+  items: CommentItem[],
+  commentId: string,
+  updater: (comment: CommentItem) => CommentItem
+) => {
+  let updated = false
+  const nextItems = items.map((comment) => {
+    if (comment.id === commentId) {
+      updated = true
+      return updater(comment)
+    }
+    if (comment.replies && comment.replies.length > 0) {
+      const childResult = updateCommentInTree(comment.replies, commentId, updater)
+      if (childResult.updated) {
+        updated = true
+        return { ...comment, replies: childResult.items }
+      }
+    }
+    return comment
+  })
+  return { items: updated ? nextItems : items, updated }
+}
+
+const removeCommentFromTree = (items: CommentItem[], commentId: string) => {
+  let removed = false
+  const nextItems: CommentItem[] = []
+  for (const comment of items) {
+    if (comment.id === commentId) {
+      removed = true
+      continue
+    }
+    if (comment.replies && comment.replies.length > 0) {
+      const childResult = removeCommentFromTree(comment.replies, commentId)
+      if (childResult.removed) {
+        removed = true
+        nextItems.push({ ...comment, replies: childResult.items })
+        continue
+      }
+    }
+    nextItems.push(comment)
+  }
+  return { items: removed ? nextItems : items, removed }
+}
+
 function LazySection({
   children,
   placeholder,
@@ -228,6 +286,16 @@ export default function LetterDetailPage() {
   const [replyCache, setReplyCache] = useState<Record<string, CommentItem[]>>({})
   const [replyLoading, setReplyLoading] = useState<Record<string, boolean>>({})
   const [expandedReplyIds, setExpandedReplyIds] = useState<string[]>([])
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editingCommentText, setEditingCommentText] = useState('')
+  const [commentActionState, setCommentActionState] = useState<{
+    id: string
+    action: 'edit' | 'delete'
+  } | null>(null)
+  const [commentHistory, setCommentHistory] = useState<Record<string, CommentEditItem[]>>({})
+  const [commentHistoryLoading, setCommentHistoryLoading] = useState<Record<string, boolean>>({})
+  const [commentHistoryError, setCommentHistoryError] = useState<Record<string, string>>({})
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState<string[]>([])
   const [neighbors, setNeighbors] = useState<{
     prev?: NeighborLetter
     next?: NeighborLetter
@@ -248,6 +316,7 @@ export default function LetterDetailPage() {
     >
   >(new Map())
   const commentsInFlightRef = useRef<Set<string>>(new Set())
+  const pendingDeleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const {
     items: comments,
     add: addComment,
@@ -287,6 +356,8 @@ export default function LetterDetailPage() {
       letterAbortRef.current?.abort()
       commentsAbortRef.current?.abort()
       neighborsAbortRef.current?.abort()
+      pendingDeleteTimersRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
+      pendingDeleteTimersRef.current.clear()
     }
   }, [])
 
@@ -498,6 +569,15 @@ export default function LetterDetailPage() {
     setReplyCache({})
     setReplyLoading({})
     setExpandedReplyIds([])
+    setEditingCommentId(null)
+    setEditingCommentText('')
+    setCommentActionState(null)
+    setCommentHistory({})
+    setCommentHistoryLoading({})
+    setCommentHistoryError({})
+    setExpandedHistoryIds([])
+    pendingDeleteTimersRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
+    pendingDeleteTimersRef.current.clear()
     resetCommentsCache()
     if (!letter?.id) {
       setComments([])
@@ -789,6 +869,272 @@ export default function LetterDetailPage() {
     }
   }
 
+  const startEditComment = useCallback((comment: CommentItem) => {
+    setEditingCommentId(comment.id)
+    setEditingCommentText(comment.text)
+  }, [])
+
+  const cancelEditComment = useCallback(() => {
+    setEditingCommentId(null)
+    setEditingCommentText('')
+  }, [])
+
+  const loadCommentHistory = useCallback(
+    async (commentId: string) => {
+      if (!letter?.id) return
+      setCommentHistoryLoading((prev) => ({ ...prev, [commentId]: true }))
+      setCommentHistoryError((prev) => {
+        if (!prev[commentId]) return prev
+        const next = { ...prev }
+        delete next[commentId]
+        return next
+      })
+      try {
+        const res = await fetch(`/api/letters/${letter.id}/comments/history?commentId=${commentId}`)
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          throw new Error(data?.error || 'Не удалось загрузить историю')
+        }
+        setCommentHistory((prev) => ({
+          ...prev,
+          [commentId]: Array.isArray(data?.edits) ? (data.edits as CommentEditItem[]) : [],
+        }))
+      } catch (error) {
+        console.error('Failed to load comment history:', error)
+        setCommentHistoryError((prev) => ({
+          ...prev,
+          [commentId]:
+            '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0438\u0441\u0442\u043e\u0440\u0438\u044e',
+        }))
+      } finally {
+        setCommentHistoryLoading((prev) => ({ ...prev, [commentId]: false }))
+      }
+    },
+    [letter?.id]
+  )
+
+  const toggleCommentHistory = useCallback(
+    (commentId: string) => {
+      setExpandedHistoryIds((prev) => {
+        if (prev.includes(commentId)) {
+          return prev.filter((id) => id !== commentId)
+        }
+        return [...prev, commentId]
+      })
+      if (!commentHistory[commentId] && !commentHistoryLoading[commentId]) {
+        void loadCommentHistory(commentId)
+      }
+    },
+    [commentHistory, commentHistoryLoading, loadCommentHistory]
+  )
+
+  const updateCommentState = useCallback(
+    (commentId: string, updater: (comment: CommentItem) => CommentItem) => {
+      setComments((prev) => {
+        const result = updateCommentInTree(prev, commentId, updater)
+        return result.updated ? result.items : prev
+      })
+      setReplyCache((prev) => {
+        let changed = false
+        const next: Record<string, CommentItem[]> = {}
+        Object.entries(prev).forEach(([key, list]) => {
+          const result = updateCommentInTree(list, commentId, updater)
+          next[key] = result.updated ? result.items : list
+          if (result.updated) {
+            changed = true
+          }
+        })
+        return changed ? next : prev
+      })
+    },
+    [setComments, setReplyCache]
+  )
+
+  const removeCommentState = useCallback(
+    (commentId: string) => {
+      setComments((prev) => {
+        const result = removeCommentFromTree(prev, commentId)
+        return result.removed ? result.items : prev
+      })
+      setReplyCache((prev) => {
+        let changed = false
+        const next: Record<string, CommentItem[]> = { ...prev }
+        if (commentId in next) {
+          delete next[commentId]
+          changed = true
+        }
+        Object.entries(prev).forEach(([key, list]) => {
+          if (key === commentId) {
+            return
+          }
+          const result = removeCommentFromTree(list, commentId)
+          next[key] = result.removed ? result.items : list
+          if (result.removed) {
+            changed = true
+          }
+        })
+        return changed ? next : prev
+      })
+      setExpandedReplyIds((prev) => prev.filter((id) => id !== commentId))
+      setExpandedHistoryIds((prev) => prev.filter((id) => id !== commentId))
+      setCommentHistory((prev) => {
+        if (!prev[commentId]) return prev
+        const next = { ...prev }
+        delete next[commentId]
+        return next
+      })
+      setCommentHistoryLoading((prev) => {
+        if (!prev[commentId]) return prev
+        const next = { ...prev }
+        delete next[commentId]
+        return next
+      })
+      setCommentHistoryError((prev) => {
+        if (!prev[commentId]) return prev
+        const next = { ...prev }
+        delete next[commentId]
+        return next
+      })
+    },
+    [
+      setComments,
+      setCommentHistory,
+      setCommentHistoryError,
+      setCommentHistoryLoading,
+      setExpandedHistoryIds,
+      setExpandedReplyIds,
+      setReplyCache,
+    ]
+  )
+
+  const saveCommentEdit = useCallback(
+    async (commentId: string) => {
+      if (!letter) return
+      const trimmed = editingCommentText.trim()
+      if (!trimmed) {
+        toast.error('Комментарий не может быть пустым')
+        return
+      }
+      setCommentActionState({ id: commentId, action: 'edit' })
+      try {
+        const res = await fetch(`/api/letters/${letter.id}/comments`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: commentId, text: trimmed }),
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          toast.error(data?.error || 'Не удалось обновить комментарий')
+          return
+        }
+        const updatedAt =
+          typeof data?.comment?.updatedAt === 'string'
+            ? data.comment.updatedAt
+            : new Date().toISOString()
+        updateCommentState(commentId, (comment) => ({ ...comment, text: trimmed, updatedAt }))
+        if (data?.edit) {
+          setCommentHistory((prev) => {
+            const existing = prev[commentId]
+            if (!existing) {
+              return prev
+            }
+            return { ...prev, [commentId]: [data.edit as CommentEditItem, ...existing] }
+          })
+        }
+        resetCommentsCache()
+        cancelEditComment()
+        toast.success('Комментарий обновлен')
+      } catch (error) {
+        console.error('Failed to update comment:', error)
+        toast.error('Ошибка при обновлении комментария')
+      } finally {
+        setCommentActionState(null)
+      }
+    },
+    [cancelEditComment, editingCommentText, letter, resetCommentsCache, toast, updateCommentState]
+  )
+
+  const finalizeCommentDelete = useCallback(
+    async (commentId: string) => {
+      if (!letter) return
+      if (!pendingDeleteTimersRef.current.has(commentId)) return
+      pendingDeleteTimersRef.current.delete(commentId)
+      setCommentActionState({ id: commentId, action: 'delete' })
+      try {
+        const res = await fetch(`/api/letters/${letter.id}/comments`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: commentId }),
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          toast.error(data?.error || 'Не удалось удалить комментарий')
+          refreshComments()
+        }
+      } catch (error) {
+        console.error('Failed to delete comment:', error)
+        toast.error('Ошибка при удалении комментария')
+        refreshComments()
+      } finally {
+        setCommentActionState(null)
+      }
+    },
+    [letter, refreshComments, toast]
+  )
+
+  const undoCommentDelete = useCallback(
+    (commentId: string) => {
+      const timerId = pendingDeleteTimersRef.current.get(commentId)
+      if (!timerId) return
+      clearTimeout(timerId)
+      pendingDeleteTimersRef.current.delete(commentId)
+      toast.info('Удаление отменено')
+      refreshComments()
+    },
+    [refreshComments, toast]
+  )
+
+  const handleDeleteComment = useCallback(
+    (commentId: string) => {
+      if (!letter) return
+      if (pendingDeleteTimersRef.current.has(commentId)) return
+      const isTopLevel = comments.some((comment) => comment.id === commentId)
+      removeCommentState(commentId)
+      resetCommentsCache()
+      if (isTopLevel) {
+        setCommentsTotal((prev) => (typeof prev === 'number' ? Math.max(0, prev - 1) : prev))
+      }
+      if (editingCommentId === commentId) {
+        cancelEditComment()
+      }
+      toast.addToast({
+        type: 'info',
+        title: 'Комментарий удален',
+        message: 'Можно отменить в течение нескольких секунд',
+        duration: 5000,
+        action: {
+          label: 'Отменить',
+          onClick: () => undoCommentDelete(commentId),
+        },
+      })
+      const timeoutId = setTimeout(() => {
+        void finalizeCommentDelete(commentId)
+      }, 5000)
+      pendingDeleteTimersRef.current.set(commentId, timeoutId)
+    },
+    [
+      cancelEditComment,
+      comments,
+      editingCommentId,
+      finalizeCommentDelete,
+      letter,
+      removeCommentState,
+      resetCommentsCache,
+      toast,
+      undoCommentDelete,
+    ]
+  )
+
   const handleAddComment = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!letter || !commentText.trim()) return
@@ -801,6 +1147,7 @@ export default function LetterDetailPage() {
     const optimisticComment = {
       text: commentText.trim(),
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       author,
       replies: [],
     }
@@ -930,16 +1277,148 @@ export default function LetterDetailPage() {
       const cachedReplies = replyCache[comment.id] ?? []
       const displayedReplies = includeReplies ? replies : cachedReplies
       const isRepliesLoading = replyLoading[comment.id]
+      const canEditComment = canManageLetters || comment.author.id === currentUserId
+      const isEditing = editingCommentId === comment.id
+      const isActionLoading = commentActionState?.id === comment.id
+      const isSaving = isActionLoading && commentActionState?.action === 'edit'
+      const isEdited = comment.updatedAt && comment.updatedAt !== comment.createdAt
+      const historyExpanded = expandedHistoryIds.includes(comment.id)
+      const historyItems = commentHistory[comment.id] ?? []
+      const historyLoading = commentHistoryLoading[comment.id]
+      const historyError = commentHistoryError[comment.id]
       return (
         <div
           key={comment.id}
           className={`panel-soft panel-glass rounded-xl p-4 ${depth > 0 ? 'ml-6' : ''}`}
         >
-          <div className="flex items-center justify-between text-xs text-gray-400">
-            <span className="font-medium text-gray-200">{author}</span>
-            <span>{new Date(comment.createdAt).toLocaleString('ru-RU')}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+            <div>
+              <div className="font-medium text-gray-200">{author}</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span>{new Date(comment.createdAt).toLocaleString('ru-RU')}</span>
+                {isEdited && (
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200">
+                    {'\u0438\u0437\u043c\u0435\u043d\u0435\u043d\u043e'}
+                  </span>
+                )}
+              </div>
+            </div>
+            {canEditComment && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => startEditComment(comment)}
+                  disabled={isActionLoading}
+                  className="btn-ghost inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-300 transition disabled:opacity-50"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  {'\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteComment(comment.id)}
+                  disabled={isActionLoading}
+                  className="btn-ghost inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-red-200 transition hover:text-red-50 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {'\u0423\u0434\u0430\u043b\u0438\u0442\u044c'}
+                </button>
+              </div>
+            )}
           </div>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">{comment.text}</p>
+          {isEditing ? (
+            <div className="mt-3 space-y-2">
+              <textarea
+                rows={3}
+                value={editingCommentText}
+                onChange={(event) => setEditingCommentText(event.target.value)}
+                className="w-full resize-none rounded-lg border border-gray-600 bg-gray-900/60 px-3 py-2 text-sm text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={cancelEditComment}
+                  disabled={isSaving}
+                  className="btn-secondary inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition disabled:opacity-50"
+                >
+                  {'\u041e\u0442\u043c\u0435\u043d\u0430'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveCommentEdit(comment.id)}
+                  disabled={isSaving}
+                  className="btn-primary inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-white transition disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <MessageSquare className="h-3.5 w-3.5" />
+                  )}
+                  {'\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">{comment.text}</p>
+          )}
+          {isEdited && (
+            <button
+              type="button"
+              onClick={() => toggleCommentHistory(comment.id)}
+              className="mt-2 text-xs font-medium text-emerald-300 transition hover:text-emerald-200"
+            >
+              {historyExpanded
+                ? '\u0421\u043a\u0440\u044b\u0442\u044c \u0438\u0441\u0442\u043e\u0440\u0438\u044e'
+                : '\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u043f\u0440\u0430\u0432\u043e\u043a'}
+            </button>
+          )}
+          {isEdited && historyExpanded && (
+            <div className="mt-3 space-y-2 rounded-lg border border-gray-700/60 bg-gray-900/40 p-3 text-xs text-gray-300">
+              {historyLoading && (
+                <div className="text-gray-400">
+                  {
+                    '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0438\u0441\u0442\u043e\u0440\u0438\u0438...'
+                  }
+                </div>
+              )}
+              {historyError && <div className="text-red-300">{historyError}</div>}
+              {!historyLoading && !historyError && historyItems.length === 0 && (
+                <div className="text-gray-400">
+                  {
+                    '\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u043f\u0440\u0430\u0432\u043e\u043a'
+                  }
+                </div>
+              )}
+              {!historyLoading &&
+                !historyError &&
+                historyItems.map((edit) => {
+                  const editorLabel =
+                    edit.editor.name ||
+                    edit.editor.email ||
+                    '\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439'
+                  return (
+                    <div
+                      key={edit.id}
+                      className="rounded-md border border-gray-700/70 bg-gray-900/40 p-2"
+                    >
+                      <div className="text-[11px] text-gray-400">
+                        {editorLabel}
+                        <span className="text-gray-500">{' \u00b7 '}</span>
+                        {new Date(edit.createdAt).toLocaleString('ru-RU')}
+                      </div>
+                      <div className="mt-2 text-gray-400">
+                        {'\u0411\u044b\u043b\u043e:'}
+                        <div className="mt-1 whitespace-pre-wrap text-gray-300">{edit.oldText}</div>
+                      </div>
+                      <div className="mt-2 text-gray-400">
+                        {'\u0421\u0442\u0430\u043b\u043e:'}
+                        <div className="mt-1 whitespace-pre-wrap text-gray-200">{edit.newText}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          )}
           {repliesCount > 0 && !includeReplies && (
             <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
               <span>{`\u041e\u0442\u0432\u0435\u0442\u044b: ${repliesCount}`}</span>
@@ -967,7 +1446,27 @@ export default function LetterDetailPage() {
         </div>
       )
     },
-    [expandedReplyIds, includeReplies, replyCache, replyLoading, toggleReplyThread]
+    [
+      cancelEditComment,
+      canManageLetters,
+      commentActionState,
+      commentHistory,
+      commentHistoryError,
+      commentHistoryLoading,
+      currentUserId,
+      editingCommentId,
+      editingCommentText,
+      expandedHistoryIds,
+      expandedReplyIds,
+      handleDeleteComment,
+      includeReplies,
+      replyCache,
+      replyLoading,
+      saveCommentEdit,
+      startEditComment,
+      toggleCommentHistory,
+      toggleReplyThread,
+    ]
   )
 
   const renderedComments = useMemo(
