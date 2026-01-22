@@ -13,6 +13,7 @@ import type { LetterStatus } from '@/types/prisma'
 const lettersQuerySchema = paginationSchema.merge(letterFiltersSchema)
 
 type SearchParams = Record<string, string | string[] | undefined>
+type PageProps = { searchParams?: Promise<SearchParams> }
 
 type InitialFilters = {
   page: number
@@ -71,7 +72,8 @@ function buildInitialFilters(
   }
 }
 
-export default async function LettersPage({ searchParams = {} }: { searchParams?: SearchParams }) {
+export default async function LettersPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = (await searchParams) ?? {}
   const session = await getServerSession(authOptions)
   if (!session) {
     redirect('/login')
@@ -81,7 +83,7 @@ export default async function LettersPage({ searchParams = {} }: { searchParams?
     redirect('/')
   }
 
-  const { filters, pagination } = parseSearchParams(searchParams)
+  const { filters, pagination } = parseSearchParams(resolvedSearchParams)
   const list = await getLettersListCached(filters, pagination, session)
   const initialFilters = buildInitialFilters(filters, pagination)
 

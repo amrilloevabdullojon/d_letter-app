@@ -14,6 +14,7 @@ const defaultFilters: RequestQueryInput = {
 }
 
 type SearchParams = Record<string, string | string[] | undefined>
+type PageProps = { searchParams?: Promise<SearchParams> }
 
 function parseSearchParams(searchParams: SearchParams): RequestQueryInput {
   const raw: Record<string, string> = {}
@@ -37,7 +38,8 @@ function parseSearchParams(searchParams: SearchParams): RequestQueryInput {
   return parsed.data
 }
 
-export default async function RequestsPage({ searchParams = {} }: { searchParams?: SearchParams }) {
+export default async function RequestsPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = (await searchParams) ?? {}
   const session = await getServerSession(authOptions)
   if (!session) {
     redirect('/login')
@@ -47,7 +49,7 @@ export default async function RequestsPage({ searchParams = {} }: { searchParams
     redirect('/')
   }
 
-  const query = parseSearchParams(searchParams)
+  const query = parseSearchParams(resolvedSearchParams)
   const normalizedQuery = {
     ...query,
     status: query.status ? query.status.slice(0, 1) : undefined,
