@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import {
@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Plus,
   Search,
+  Clock,
 } from 'lucide-react'
 import { Notifications } from './Notifications'
 import { ThemeToggle } from './ThemeToggle'
@@ -37,11 +38,28 @@ export function Header() {
   const [syncing, setSyncing] = useState(false)
   const [syncMenuOpen, setSyncMenuOpen] = useState(false)
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
+  const [recentMenuOpen, setRecentMenuOpen] = useState(false)
+  const [compactHeader, setCompactHeader] = useState(false)
+  const [routeTransitioning, setRouteTransitioning] = useState(false)
   const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
   const [personalization] = useLocalStorage<{ backgroundAnimations?: boolean }>(
     'personalization-settings',
     { backgroundAnimations: true }
   )
+  const [recentItems, setRecentItems] = useLocalStorage<
+    Array<{
+      id: string
+      label: string
+      href: string
+      kind: 'letter' | 'request'
+      ts: number
+      resolved?: boolean
+      subtitle?: string
+    }>
+  >('recent-items', [])
+  const recentFetchAbortRef = useRef<AbortController | null>(null)
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastPathnameRef = useRef<string | null>(null)
   const backgroundAnimations = personalization?.backgroundAnimations ?? true
   const isAdminRole = session?.user.role === 'ADMIN' || session?.user.role === 'SUPERADMIN'
   const pageMeta = useMemo(() => {
@@ -59,6 +77,23 @@ export function Header() {
     return { label: 'DMED', icon: Home }
   }, [pathname])
   const PageIcon = pageMeta.icon
+  const primaryAction = useMemo(() => {
+    if (pathname?.startsWith('/letters')) {
+      return {
+        href: '/letters/new',
+        label: '\u041d\u043e\u0432\u043e\u0435 \u043f\u0438\u0441\u044c\u043c\u043e',
+        icon: FileText,
+      }
+    }
+    if (pathname?.startsWith('/requests')) {
+      return {
+        href: '/request',
+        label: '\u041f\u043e\u0434\u0430\u0442\u044c \u0437\u0430\u044f\u0432\u043a\u0443',
+        icon: Inbox,
+      }
+    }
+    return null
+  }, [pathname])
   const roleLabel =
     session?.user.role === 'SUPERADMIN'
       ? '\u0421\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d'
@@ -71,6 +106,7 @@ export function Header() {
     setMobileMenuOpen(false)
     setQuickCreateOpen(false)
     setSyncMenuOpen(false)
+    setRecentMenuOpen(false)
   }, [pathname])
 
   // Закрыть меню при клике вне и блокировка скролла
@@ -147,7 +183,15 @@ export function Header() {
     }
   }
 
-  const isActive = (path: string) => pathname === path
+  const isActive = useCallback(
+    (path: string) => {
+      if (!pathname) return false
+      if (path === '/') return pathname === '/'
+      if (path === '/requests') return pathname.startsWith('/requests') || pathname === '/request'
+      return pathname.startsWith(path)
+    },
+    [pathname]
+  )
 
   const navLinkClass = 'app-nav-link app-nav-link-refined whitespace-nowrap text-sm'
 
@@ -177,6 +221,143 @@ export function Header() {
   }, [mobileMenuOpen, closeMobileMenu])
 
   useEffect(() => {
+    const handleScroll = () => {
+      setCompactHeader(window.scrollY > 12)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    if (!pathname) return
+    const letterMatch = pathname.match(/^\/letters\/([a-zA-Z0-9_-]+)$/)
+    const requestMatch = pathname.match(/^\/requests\/([a-zA-Z0-9_-]+)$/)
+    const isNew = pathname.endsWith('/new') || pathname.endsWith('/create')
+    if (isNew) return
+
+    const match = letterMatch ?? requestMatch
+    if (!match) return
+    const id = match[1]
+    const kind: 'letter' | 'request' = letterMatch ? 'letter' : 'request'
+    const label =
+      kind === 'letter'
+        ? `\u041f\u0438\u0441\u044c\u043c\u043e ${id.slice(0, 6)}`
+        : `\u0417\u0430\u044f\u0432\u043a\u0430 ${id.slice(0, 6)}`
+    setRecentItems((prev) => {
+      const next = prev.filter((item) => item.href !== pathname)
+      next.unshift({ id, label, href: pathname, kind, ts: Date.now(), resolved: false })
+      return next.slice(0, 5)
+    })
+  }, [pathname, setRecentItems])
+
+  useEffect(() => {
+    if (!pathname) return
+    if (lastPathnameRef.current && lastPathnameRef.current !== pathname) {
+      setRouteTransitioning(true)
+      if (transitionTimerRef.current) {
+        clearTimeout(transitionTimerRef.current)
+      }
+      transitionTimerRef.current = setTimeout(() => {
+        setRouteTransitioning(false)
+      }, 450)
+    } else {
+      setRouteTransitioning(false)
+    }
+    lastPathnameRef.current = pathname
+    return () => {
+      if (transitionTimerRef.current) {
+        clearTimeout(transitionTimerRef.current)
+      }
+    }
+  }, [pathname])
+
+  useEffect(() => {
+    if (!recentMenuOpen && !mobileMenuOpen) return
+    if (recentItems.length === 0) return
+
+    const pending = recentItems.filter((item) => !item.resolved)
+    if (pending.length === 0) return
+
+    const controller = new AbortController()
+    recentFetchAbortRef.current?.abort()
+    recentFetchAbortRef.current = controller
+
+    const fetchDetails = async () => {
+      const resolvedItems = await Promise.all(
+        pending.map(async (item) => {
+          try {
+            if (item.kind === 'letter') {
+              const res = await fetch(`/api/letters/${item.id}?summary=1`, {
+                signal: controller.signal,
+                cache: 'no-store',
+              })
+              if (!res.ok) return null
+              const data = await res.json()
+              const number = typeof data?.number === 'string' ? data.number : null
+              const org = typeof data?.org === 'string' ? data.org : null
+              const label = number
+                ? `\u041f\u0438\u0441\u044c\u043c\u043e \u2116${number}`
+                : item.label
+              return {
+                id: item.id,
+                label,
+                subtitle: org || undefined,
+                resolved: true,
+              }
+            }
+
+            const res = await fetch(`/api/requests/${item.id}`, {
+              signal: controller.signal,
+              cache: 'no-store',
+            })
+            if (!res.ok) return null
+            const data = await res.json()
+            const request = data?.request
+            const org = typeof request?.organization === 'string' ? request.organization : null
+            const contact =
+              typeof request?.contactName === 'string'
+                ? request.contactName
+                : typeof request?.contactEmail === 'string'
+                  ? request.contactEmail
+                  : null
+            const label = org ? `\u0417\u0430\u044f\u0432\u043a\u0430: ${org}` : item.label
+            return {
+              id: item.id,
+              label,
+              subtitle: contact || undefined,
+              resolved: true,
+            }
+          } catch (error) {
+            if ((error as Error)?.name === 'AbortError') {
+              return null
+            }
+            return null
+          }
+        })
+      )
+
+      if (controller.signal.aborted) return
+      const updates = resolvedItems.filter(
+        (item): item is { id: string; label: string; subtitle?: string; resolved: boolean } =>
+          Boolean(item)
+      )
+      if (updates.length === 0) return
+      setRecentItems((prev) =>
+        prev.map((item) => {
+          const match = updates.find((update) => update.id === item.id)
+          return match ? { ...item, ...match } : item
+        })
+      )
+    }
+
+    void fetchDetails()
+    return () => {
+      controller.abort()
+    }
+  }, [mobileMenuOpen, recentItems, recentMenuOpen, setRecentItems])
+
+  useEffect(() => {
     if (!quickCreateOpen) return
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -190,8 +371,25 @@ export function Header() {
     }
   }, [quickCreateOpen])
 
+  useEffect(() => {
+    if (!recentMenuOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setRecentMenuOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [recentMenuOpen])
+
   return (
-    <header className="app-header app-header-refined app-header-safe relative sticky top-0 z-[120]">
+    <header
+      className={`app-header app-header-refined app-header-safe relative sticky top-0 z-[120] ${compactHeader ? 'app-header-compact' : ''}`}
+      data-compact={compactHeader}
+    >
       {/* Christmas lights */}
       {newYearVibe && backgroundAnimations && (
         <div className="pointer-events-none absolute left-0 right-0 top-0 hidden justify-around overflow-hidden sm:flex">
@@ -209,13 +407,17 @@ export function Header() {
         </div>
       )}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center justify-between sm:h-16">
+        <div
+          className={`flex items-center justify-between ${compactHeader ? 'h-12 sm:h-14' : 'h-14 sm:h-16'}`}
+        >
           {/* Logo */}
           <Link
             href="/"
             className="flex shrink-0 items-center gap-3 transition-transform hover:scale-105"
           >
-            <div className="relative h-10 w-10 overflow-hidden rounded-xl shadow-lg shadow-teal-500/30 sm:h-11 sm:w-11">
+            <div
+              className={`relative overflow-hidden rounded-xl shadow-lg shadow-teal-500/30 ${compactHeader ? 'h-8 w-8 sm:h-9 sm:w-9' : 'h-10 w-10 sm:h-11 sm:w-11'}`}
+            >
               <Image src="/logo-mark.svg" alt="DMED" fill className="object-contain" priority />
             </div>
             <div className="hidden leading-tight sm:block">
@@ -230,20 +432,40 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden items-center gap-1 md:flex">
-            <Link href="/" className={navLinkClass} data-active={isActive('/')}>
+          <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">
+            <Link
+              href="/"
+              className={navLinkClass}
+              data-active={isActive('/')}
+              aria-current={isActive('/') ? 'page' : undefined}
+            >
               <Home className="h-4 w-4" />
               {'\u0413\u043b\u0430\u0432\u043d\u0430\u044f'}
             </Link>
-            <Link href="/letters" className={navLinkClass} data-active={isActive('/letters')}>
+            <Link
+              href="/letters"
+              className={navLinkClass}
+              data-active={isActive('/letters')}
+              aria-current={isActive('/letters') ? 'page' : undefined}
+            >
               <FileText className="h-4 w-4" />
               {'\u041f\u0438\u0441\u044c\u043c\u0430'}
             </Link>
-            <Link href="/requests" className={navLinkClass} data-active={isActive('/requests')}>
+            <Link
+              href="/requests"
+              className={navLinkClass}
+              data-active={isActive('/requests')}
+              aria-current={isActive('/requests') ? 'page' : undefined}
+            >
               <Inbox className="h-4 w-4" />
               {'\u0417\u0430\u044f\u0432\u043a\u0438'}
             </Link>
-            <Link href="/reports" className={navLinkClass} data-active={isActive('/reports')}>
+            <Link
+              href="/reports"
+              className={navLinkClass}
+              data-active={isActive('/reports')}
+              aria-current={isActive('/reports') ? 'page' : undefined}
+            >
               <BarChart3 className="h-4 w-4" />
               {'\u041e\u0442\u0447\u0435\u0442\u044b'}
             </Link>
@@ -310,6 +532,15 @@ export function Header() {
 
           {/* User Menu */}
           <div className="hidden items-center gap-2 md:flex">
+            {primaryAction && (
+              <Link
+                href={primaryAction.href}
+                className="btn-primary inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white transition"
+              >
+                <primaryAction.icon className="h-4 w-4" />
+                {primaryAction.label}
+              </Link>
+            )}
             {/* Quick Create Button */}
             <div className="relative">
               <button
@@ -353,6 +584,60 @@ export function Header() {
                 </>
               )}
             </div>
+            {recentItems.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    hapticLight()
+                    setRecentMenuOpen(!recentMenuOpen)
+                  }}
+                  className="tap-highlight app-icon-button p-2"
+                  aria-haspopup="menu"
+                  aria-expanded={recentMenuOpen}
+                  title="\u041d\u0435\u0434\u0430\u0432\u043d\u043e\u0435"
+                >
+                  <Clock className="h-4.5 w-4.5" />
+                </button>
+                {recentMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setRecentMenuOpen(false)} />
+                    <div className="panel panel-glass animate-scaleIn absolute right-0 top-full z-50 mt-2 w-60 origin-top-right rounded-xl shadow-xl">
+                      <div className="px-4 py-2 text-xs uppercase tracking-wide text-slate-400/80">
+                        {'\u041d\u0435\u0434\u0430\u0432\u043d\u043e\u0435'}
+                      </div>
+                      <div className="border-t border-white/10" />
+                      <div className="max-h-64 overflow-y-auto">
+                        {recentItems.map((item) => (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => {
+                              hapticLight()
+                              setRecentMenuOpen(false)
+                            }}
+                            className="tap-highlight flex w-full items-center gap-2 px-4 py-3 text-sm text-slate-200/80 transition hover:bg-white/5 hover:text-white"
+                          >
+                            {item.kind === 'letter' ? (
+                              <FileText className="h-4 w-4 text-blue-400" />
+                            ) : (
+                              <Inbox className="h-4 w-4 text-emerald-400" />
+                            )}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate">{item.label}</span>
+                              {item.subtitle && (
+                                <span className="block truncate text-xs text-slate-400/90">
+                                  {item.subtitle}
+                                </span>
+                              )}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <SearchButton />
             <ThemeToggle />
             {session?.user && (
@@ -404,6 +689,16 @@ export function Header() {
               >
                 <Search className="h-5 w-5" />
               </button>
+              {primaryAction && (
+                <Link
+                  href={primaryAction.href}
+                  onClick={() => hapticLight()}
+                  className="tap-highlight app-icon-button app-icon-cta h-9 w-9"
+                  aria-label={primaryAction.label}
+                >
+                  <primaryAction.icon className="h-5 w-5" />
+                </Link>
+              )}
               <div className="relative">
                 <button
                   onClick={() => {
@@ -517,6 +812,37 @@ export function Header() {
                       </span>
                     </Link>
                   </div>
+                  {recentItems.length > 0 && (
+                    <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+                      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400/80">
+                        {'\u041d\u0435\u0434\u0430\u0432\u043d\u043e\u0435'}
+                      </div>
+                      <div className="space-y-2">
+                        {recentItems.map((item) => (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={closeMobileMenu}
+                            className="tap-highlight flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-200/80 transition hover:bg-white/10 hover:text-white"
+                          >
+                            {item.kind === 'letter' ? (
+                              <FileText className="h-4 w-4 text-blue-400" />
+                            ) : (
+                              <Inbox className="h-4 w-4 text-emerald-400" />
+                            )}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm">{item.label}</span>
+                              {item.subtitle && (
+                                <span className="block truncate text-xs text-slate-400/90">
+                                  {item.subtitle}
+                                </span>
+                              )}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {/* User info */}
                   {session?.user && (
                     <div className="mb-4 flex items-center gap-3 rounded-lg bg-white/10 p-3">
@@ -557,6 +883,7 @@ export function Header() {
                         ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
                         : 'text-slate-200/80 hover:bg-white/5'
                     }`}
+                    aria-current={isActive('/') ? 'page' : undefined}
                   >
                     <Home className="h-5 w-5" />
                     {'\u0413\u043b\u0430\u0432\u043d\u0430\u044f'}
@@ -570,6 +897,7 @@ export function Header() {
                         ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
                         : 'text-slate-200/80 hover:bg-white/5'
                     }`}
+                    aria-current={isActive('/letters') ? 'page' : undefined}
                   >
                     <FileText className="h-5 w-5" />
                     {'\u041f\u0438\u0441\u044c\u043c\u0430'}
@@ -583,6 +911,7 @@ export function Header() {
                         ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
                         : 'text-slate-200/80 hover:bg-white/5'
                     }`}
+                    aria-current={isActive('/requests') ? 'page' : undefined}
                   >
                     <Inbox className="h-5 w-5" />
                     {'\u0417\u0430\u044f\u0432\u043a\u0438'}
@@ -596,6 +925,7 @@ export function Header() {
                         ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
                         : 'text-slate-200/80 hover:bg-white/5'
                     }`}
+                    aria-current={isActive('/reports') ? 'page' : undefined}
                   >
                     <BarChart3 className="h-5 w-5" />
                     {'\u041e\u0442\u0447\u0435\u0442\u044b'}
@@ -644,6 +974,7 @@ export function Header() {
                             ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
                             : 'text-slate-200/80 hover:bg-white/5'
                         }`}
+                        aria-current={isActive('/settings') ? 'page' : undefined}
                       >
                         <Settings className="h-5 w-5" />
                         {'\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438'}
@@ -678,6 +1009,12 @@ export function Header() {
           </Sheet>
         </div>
       </div>
+
+      {routeTransitioning && (
+        <div className="app-header-progress" aria-hidden="true">
+          <span className="app-header-progress-bar" />
+        </div>
+      )}
 
       <MobileBottomNav isAdmin={isAdminRole} hidden={mobileMenuOpen} />
       <GlobalSearch />

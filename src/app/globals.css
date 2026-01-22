@@ -638,6 +638,34 @@ h4 {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+.app-header-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: rgba(var(--accent) / 0.12);
+  overflow: hidden;
+  z-index: 30;
+}
+
+.app-header-progress-bar {
+  display: block;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--accent) / 0.15),
+    rgba(var(--accent) / 0.85),
+    rgba(var(--accent) / 0.15)
+  );
+  animation: header-progress 0.6s ease-in-out infinite;
+}
+
+.app-header-compact .app-nav-link-refined {
+  font-size: 0.85rem;
+}
+
 .app-nav-link-refined {
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -776,10 +804,32 @@ h4 {
   border-radius: var(--radius-lg);
   border: 1px solid transparent;
   color: rgb(var(--text-muted) / 0.9);
+  position: relative;
   transition:
     background 0.2s ease,
     color 0.2s ease,
     border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.app-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--accent) / 0.1),
+    rgba(var(--accent) / 0.9),
+    rgba(var(--accent) / 0.1)
+  );
+  opacity: 0;
+  transform: scaleX(0.4);
+  transition:
+    opacity 0.2s ease,
     transform 0.2s ease;
 }
 
@@ -794,6 +844,21 @@ h4 {
   border-color: rgba(var(--accent) / 0.55);
   color: #fff;
   box-shadow: 0 10px 24px rgba(var(--accent) / 0.2);
+}
+
+.app-nav-link[data-active='true']::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.app-nav-link:focus-visible {
+  outline: 2px solid rgba(var(--accent) / 0.6);
+  outline-offset: 2px;
+}
+
+.app-header-compact .app-nav-link {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
 }
 
 .app-icon-button {
@@ -1107,6 +1172,15 @@ h4 {
 }
 
 /* Animations */
+@keyframes header-progress {
+  0% {
+    transform: translateX(-60%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1630,6 +1704,11 @@ html.animations-paused body::after {
 
   .interactive-lift:hover {
     transform: none;
+  }
+
+  .app-header-progress-bar {
+    animation: none;
+    transform: translateX(0);
   }
 }
 
