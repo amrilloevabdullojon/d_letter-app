@@ -408,7 +408,7 @@ export function Header() {
 
   return (
     <header
-      className={`app-header app-header-refined app-header-safe relative sticky top-0 z-[120] ${compactHeader ? 'app-header-compact' : ''}`}
+      className={`app-header app-header-refined app-header-safe relative sticky top-0 z-[180] ${compactHeader ? 'app-header-compact' : ''}`}
       data-compact={compactHeader}
     >
       {/* Christmas lights */}
