@@ -23,7 +23,11 @@ export function MobileBottomNav({ isAdmin, hidden }: MobileBottomNavProps) {
     ? [...NAV_ITEMS, { href: '/settings', label: 'Настройки', icon: Settings }]
     : NAV_ITEMS
 
-  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href))
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/'
+    if (href === '/requests') return pathname.startsWith('/requests') || pathname === '/request'
+    return pathname.startsWith(href)
+  }
 
   return (
     <nav

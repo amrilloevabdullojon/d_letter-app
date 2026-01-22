@@ -65,7 +65,7 @@ export function Header() {
   const pageMeta = useMemo(() => {
     if (pathname?.startsWith('/letters'))
       return { label: '\u041f\u0438\u0441\u044c\u043c\u0430', icon: FileText }
-    if (pathname?.startsWith('/requests'))
+    if (pathname?.startsWith('/requests') || pathname?.startsWith('/request'))
       return { label: '\u0417\u0430\u044f\u0432\u043a\u0438', icon: Inbox }
     if (pathname?.startsWith('/reports'))
       return { label: '\u041e\u0442\u0447\u0435\u0442\u044b', icon: BarChart3 }
