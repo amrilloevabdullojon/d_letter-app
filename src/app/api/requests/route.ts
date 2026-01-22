@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import type { RequestCategory, RequestPriority, RequestStatus } from '@prisma/client'
 import { withValidation } from '@/lib/api-handler'
 import { requestQuerySchema, createRequestSchema, type RequestQueryInput } from '@/lib/schemas'
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit'
@@ -14,7 +15,7 @@ import {
   REQUEST_MAX_FILES,
 } from '@/lib/constants'
 import { saveLocalRequestUpload } from '@/lib/file-storage'
-import { FileStorageProvider, Prisma } from '@prisma/client'
+import { FileStorageProvider } from '@prisma/client'
 import { formatNewRequestMessage, sendTelegramMessage } from '@/lib/telegram'
 import { createHash, randomUUID } from 'crypto'
 import { extname } from 'path'
@@ -23,6 +24,7 @@ import { requirePermission } from '@/lib/permission-guard'
 import { calculateSlaDeadline } from '@/lib/request-sla'
 import { sendRequestCreatedEmail } from '@/lib/request-email'
 import { CACHE_TTL } from '@/lib/cache'
+import { getRequestsListCached, invalidateRequestsCache } from '@/lib/list-cache'
 
 const ALLOWED_REQUEST_EXTENSIONS = new Set(
   REQUEST_ALLOWED_FILE_EXTENSIONS.split(',')
@@ -106,13 +108,20 @@ type RequestsListResponse = {
     contactPhone: string
     contactTelegram: string
     description: string
-    status: string
+    status: RequestStatus
+    priority: RequestPriority
+    category: RequestCategory
     createdAt: Date
     updatedAt: Date
     source: string | null
     ipHash: string | null
-    assignedTo: { id: string; name: string | null; email: string | null } | null
-    _count: { files: number }
+    assignedTo: {
+      id: string
+      name: string | null
+      email: string | null
+      image: string | null
+    } | null
+    _count: { files: number; comments: number }
   }>
   pagination: {
     page: number
@@ -143,75 +152,13 @@ export const GET = withValidation<RequestsListResult, unknown, RequestQueryInput
       const { page, limit, status, priority, category, search } = query
       const pageValue = page ?? 1
       const limitValue = limit ?? PAGE_SIZE
-      const where: Prisma.RequestWhereInput = {
-        deletedAt: null, // Исключаем удалённые заявки
-      }
-
-      if (status && status.length > 0) {
-        if (status.length === 1) {
-          where.status = status[0]
-        } else {
-          where.status = { in: status }
-        }
-      }
-
-      if (priority) {
-        where.priority = priority
-      }
-
-      if (category) {
-        where.category = category
-      }
-
-      if (search) {
-        const value = search.trim()
-        if (value) {
-          where.OR = [
-            { organization: { contains: value, mode: 'insensitive' } },
-            { contactName: { contains: value, mode: 'insensitive' } },
-            { contactEmail: { contains: value, mode: 'insensitive' } },
-            { contactPhone: { contains: value, mode: 'insensitive' } },
-            { contactTelegram: { contains: value, mode: 'insensitive' } },
-            { description: { contains: value, mode: 'insensitive' } },
-          ]
-        }
-      }
-
-      const findStart = Date.now()
-      let findMs = 0
-      let countMs = 0
-      const requestsPromise = prisma.request
-        .findMany({
-          where,
-          orderBy: [
-            { priority: 'desc' }, // URGENT > HIGH > NORMAL > LOW
-            { createdAt: 'desc' },
-          ],
-          skip: (pageValue - 1) * limitValue,
-          take: limitValue,
-          include: {
-            assignedTo: { select: { id: true, name: true, email: true, image: true } },
-            _count: { select: { files: true, comments: true } },
-          },
-        })
-        .then((result) => {
-          findMs = Date.now() - findStart
-          return result
-        })
-      const countStart = Date.now()
-      const countPromise = prisma.request.count({ where }).then((result) => {
-        countMs = Date.now() - countStart
-        return result
-      })
-
-      const [requests, total] = await Promise.all([requestsPromise, countPromise])
+      const data = await getRequestsListCached(query, session.user.role)
       const totalDuration = Date.now() - startTime
+
       const logMeta = {
         requestId,
         durationMs: totalDuration,
-        findMs,
-        countMs,
-        total,
+        total: data.pagination.total,
         page: pageValue,
         limit: limitValue,
         status,
@@ -229,16 +176,8 @@ export const GET = withValidation<RequestsListResult, unknown, RequestQueryInput
       const cacheSeconds = Math.max(1, Math.floor(CACHE_TTL.REQUESTS_LIST / 1000))
       return NextResponse.json(
         {
-          requests: requests.map((request) => ({
-            ...request,
-            description: request.description ? request.description.slice(0, 240) : '',
-          })),
-          pagination: {
-            page: pageValue,
-            limit: limitValue,
-            total,
-            totalPages: Math.ceil(total / limitValue),
-          },
+          requests: data.requests,
+          pagination: data.pagination,
         },
         {
           headers: {
@@ -468,6 +407,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    await invalidateRequestsCache()
     return NextResponse.json(
       {
         success: true,

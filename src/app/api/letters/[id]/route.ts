@@ -10,6 +10,7 @@ import { hasPermission } from '@/lib/permissions'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
+import { invalidateLettersCache } from '@/lib/list-cache'
 
 // GET /api/letters/[id] - получить письмо по ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +34,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     )
     const commentsSkip = (commentsPage - 1) * commentsLimit
     const summaryMode = searchParams.get('summary') === '1'
+    const neighborsMode = searchParams.get('neighbors') === '1'
+    const commentsPreview = searchParams.get('commentsPreview') === '1'
 
     const include = summaryMode
       ? {
@@ -116,6 +119,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    let previewComments: Array<{
+      id: string
+      text: string
+      createdAt: Date
+      updatedAt: Date
+      author: { id: string; name: string | null; email: string | null; image: string | null }
+      _count: { replies: number }
+    }> = []
+    let previewTotal: number | null = null
+
+    if (summaryMode && commentsPreview) {
+      const [items, total] = await Promise.all([
+        prisma.comment.findMany({
+          where: { letterId: id, parentId: null },
+          orderBy: { createdAt: 'desc' as const },
+          take: commentsLimit,
+          skip: commentsSkip,
+          include: {
+            author: { select: { id: true, name: true, email: true, image: true } },
+            _count: { select: { replies: true } },
+          },
+        }),
+        prisma.comment.count({ where: { letterId: id, parentId: null } }),
+      ])
+      previewComments = items
+      previewTotal = total
+    }
+
     // Проверить, подписан ли текущий пользователь
     const isWatching = summaryMode
       ? Boolean(
@@ -142,29 +173,61 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Get total comment count for pagination
     const totalComments = summaryMode
-      ? null
+      ? previewTotal
       : await prisma.comment.count({
           where: { letterId: id, parentId: null },
         })
 
-    const commentsReturned = summaryMode ? 0 : (letter.comments ?? []).length
+    const commentsReturned = summaryMode ? previewComments.length : (letter.comments ?? []).length
     const commentTotalValue = typeof totalComments === 'number' ? totalComments : 0
 
     const { favorites, files, ...letterData } = letter
     void favorites
     void files
 
+    let neighbors: {
+      prev?: { id: string; number: string; org: string }
+      next?: { id: string; number: string; org: string }
+    } | null = null
+    if (neighborsMode) {
+      const baseWhere: Prisma.LetterWhereInput = {
+        deletedAt: null,
+        ...(canManageLetters ? {} : { ownerId: session.user.id }),
+      }
+      const [prev, next] = await Promise.all([
+        prisma.letter.findFirst({
+          where: { ...baseWhere, createdAt: { lt: letter.createdAt } },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, number: true, org: true },
+        }),
+        prisma.letter.findFirst({
+          where: { ...baseWhere, createdAt: { gt: letter.createdAt } },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, number: true, org: true },
+        }),
+      ])
+      neighbors = {
+        prev: prev ?? undefined,
+        next: next ?? undefined,
+      }
+    }
+
     return NextResponse.json(
       {
         ...letterData,
         files: sanitizedFiles,
+        comments: summaryMode ? previewComments : letter.comments,
         isWatching,
         isFavorite,
+        neighbors,
         commentsPagination: {
           page: commentsPage,
           limit: commentsLimit,
           total: commentTotalValue,
-          hasMore: summaryMode ? false : commentsSkip + commentsReturned < commentTotalValue,
+          hasMore:
+            summaryMode && !commentsPreview
+              ? false
+              : commentsSkip + commentsReturned < commentTotalValue,
         },
       },
       {
@@ -492,6 +555,7 @@ ${letter.org}
       }
     }
 
+    await invalidateLettersCache()
     return NextResponse.json({ success: true, letter: updatedLetter })
   } catch (error) {
     logger.error('PATCH /api/letters/[id]', error)
@@ -532,6 +596,7 @@ export async function DELETE(
       },
     })
 
+    await invalidateLettersCache()
     return NextResponse.json({ success: true })
   } catch (error) {
     logger.error('DELETE /api/letters/[id]', error)

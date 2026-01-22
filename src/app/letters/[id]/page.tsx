@@ -175,6 +175,13 @@ type NeighborLetter = {
   org: string
 }
 
+const buildCommentsCacheKey = (
+  letterId: string,
+  page: number,
+  withReplies: boolean,
+  filter: 'all' | 'mine'
+) => `${letterId}:${page}:${withReplies ? '1' : '0'}:${filter}`
+
 const isEditableElement = (target: EventTarget | null) => {
   const element = target as HTMLElement | null
   if (!element) return false
@@ -309,7 +316,6 @@ export default function LetterDetailPage() {
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
   const letterAbortRef = useRef<AbortController | null>(null)
   const commentsAbortRef = useRef<AbortController | null>(null)
-  const neighborsAbortRef = useRef<AbortController | null>(null)
   const commentsCacheRef = useRef<
     Map<
       string,
@@ -361,9 +367,9 @@ export default function LetterDetailPage() {
     return () => {
       letterAbortRef.current?.abort()
       commentsAbortRef.current?.abort()
-      neighborsAbortRef.current?.abort()
-      pendingDeleteTimersRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
-      pendingDeleteTimersRef.current.clear()
+      const pendingDeleteTimers = pendingDeleteTimersRef.current
+      pendingDeleteTimers.forEach((timeoutId) => clearTimeout(timeoutId))
+      pendingDeleteTimers.clear()
     }
   }, [])
 
@@ -375,8 +381,10 @@ export default function LetterDetailPage() {
       setLoadError(null)
       const query = new URLSearchParams({
         commentsPage: '1',
-        commentsLimit: '1',
+        commentsLimit: String(COMMENTS_PAGE_SIZE),
         summary: '1',
+        commentsPreview: '1',
+        neighbors: '1',
       })
       const res = await fetch(`/api/letters/${params.id}?${query.toString()}`, {
         signal: controller.signal,
@@ -384,6 +392,28 @@ export default function LetterDetailPage() {
       if (res.ok) {
         const data = await res.json()
         setLetter(data)
+        setNeighbors(data?.neighbors ?? null)
+        const previewComments = Array.isArray(data?.comments)
+          ? (data.comments as CommentItem[])
+          : null
+        if (previewComments && commentFilter === 'all' && !includeReplies) {
+          const total =
+            typeof data?.commentsPagination?.total === 'number'
+              ? data.commentsPagination.total
+              : null
+          const hasMore = Boolean(data?.commentsPagination?.hasMore)
+          setComments(previewComments)
+          setCommentsPage(1)
+          setCommentsHasMore(hasMore)
+          setCommentsTotal(total)
+          const cacheKey = buildCommentsCacheKey(data.id, 1, false, 'all')
+          commentsCacheRef.current.set(cacheKey, {
+            items: previewComments,
+            page: 1,
+            hasMore,
+            total,
+          })
+        }
       } else if (res.status === 403 || res.status === 404) {
         router.push('/letters')
       } else {
@@ -404,13 +434,7 @@ export default function LetterDetailPage() {
         setLoading(false)
       }
     }
-  }, [params.id, router])
-
-  const buildCommentsCacheKey = useCallback(
-    (letterId: string, page: number, withReplies: boolean, filter: 'all' | 'mine') =>
-      `${letterId}:${page}:${withReplies ? '1' : '0'}:${filter}`,
-    []
-  )
+  }, [commentFilter, includeReplies, params.id, router, setComments])
 
   const resetCommentsCache = useCallback(() => {
     commentsCacheRef.current.clear()
@@ -493,7 +517,7 @@ export default function LetterDetailPage() {
         }
       }
     },
-    [buildCommentsCacheKey, commentFilter, includeReplies, letter?.id, setComments]
+    [commentFilter, includeReplies, letter?.id, setComments]
   )
 
   const loadCommentReplies = useCallback(
@@ -521,37 +545,6 @@ export default function LetterDetailPage() {
     },
     [letter?.id]
   )
-
-  const loadNeighbors = useCallback(async (currentId: string) => {
-    neighborsAbortRef.current?.abort()
-    const controller = new AbortController()
-    neighborsAbortRef.current = controller
-    try {
-      const res = await fetch('/api/letters?limit=100&sortBy=created&sortOrder=desc', {
-        signal: controller.signal,
-      })
-      if (!res.ok) {
-        return
-      }
-      const data = await res.json()
-      const list = Array.isArray(data.letters) ? (data.letters as Array<NeighborLetter>) : []
-      const index = list.findIndex((item) => item.id === currentId)
-      if (index < 0) {
-        setNeighbors(null)
-        return
-      }
-      setNeighbors({
-        prev: list[index + 1],
-        next: list[index - 1],
-      })
-    } catch (error) {
-      if ((error as DOMException).name === 'AbortError') {
-        return
-      }
-      console.error('Failed to load neighbors:', error)
-      setNeighbors(null)
-    }
-  }, [])
 
   const refreshComments = useCallback(() => {
     resetCommentsCache()
@@ -606,11 +599,6 @@ export default function LetterDetailPage() {
     setReplyCache({})
     setReplyLoading({})
   }, [includeReplies])
-
-  useEffect(() => {
-    if (!letter?.id) return
-    loadNeighbors(letter.id)
-  }, [letter?.id, loadNeighbors])
 
   useEffect(() => {
     if (!neighbors) return

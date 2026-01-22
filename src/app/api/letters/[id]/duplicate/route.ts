@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
+import { invalidateLettersCache } from '@/lib/list-cache'
 
 // POST /api/letters/[id]/duplicate - дублировать письмо
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       },
     })
 
+    await invalidateLettersCache()
     return NextResponse.json({
       success: true,
       id: duplicate.id,

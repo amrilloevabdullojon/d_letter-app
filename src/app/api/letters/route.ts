@@ -9,9 +9,9 @@ import { logger } from '@/lib/logger.server'
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit'
 import { withValidation } from '@/lib/api-handler'
 import { letterFiltersSchema, paginationSchema } from '@/lib/schemas'
-import { LetterService } from '@/services/letter.service'
 import { PORTAL_TOKEN_EXPIRY_DAYS, DEFAULT_DEADLINE_WORKING_DAYS } from '@/lib/constants'
 import { CACHE_TTL } from '@/lib/cache'
+import { getLettersListCached, invalidateLettersCache } from '@/lib/list-cache'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { z } from 'zod'
@@ -79,12 +79,12 @@ export const GET = withValidation<LettersListResponse, unknown, LettersQueryInpu
     }
 
     const { page, limit, ...filters } = query
-    const result = await LetterService.findMany(filters, { page, limit }, session.user.id)
+    const result = await getLettersListCached(filters, { page, limit }, session)
 
     const cacheSeconds = Math.max(1, Math.floor(CACHE_TTL.LETTERS_LIST / 1000))
     return NextResponse.json(
       {
-        letters: result.data,
+        letters: result.letters,
         pagination: result.pagination,
       },
       {
@@ -282,6 +282,7 @@ ${letter.org}
         { subject, text, telegram }
       )
     }
+    await invalidateLettersCache()
     return NextResponse.json({ success: true, letter }, { status: 201 })
   } catch (error) {
     logger.error('POST /api/letters', error)

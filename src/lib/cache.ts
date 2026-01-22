@@ -92,6 +92,27 @@ class SimpleCache {
     this.cache.clear()
   }
 
+  async invalidatePrefix(prefix: string): Promise<void> {
+    const keys = Array.from(this.cache.keys())
+    keys.forEach((key) => {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key)
+      }
+    })
+
+    const redis = getRedisClient()
+    if (!redis) return
+
+    try {
+      const redisKeys = await redis.keys(`${prefix}*`)
+      if (redisKeys.length > 0) {
+        await redis.del(...redisKeys)
+      }
+    } catch {
+      // Ignore Redis failures.
+    }
+  }
+
   cleanup(): void {
     const now = Date.now()
     const entries = Array.from(this.cache.entries())
@@ -112,6 +133,7 @@ export const CACHE_TTL = {
   REQUESTS_LIST: 30 * 1000,
   LETTER_DETAIL: 60 * 1000,
   USERS: 5 * 60 * 1000,
+  DASHBOARD: 30 * 1000,
 }
 
 export const CACHE_KEYS = {
@@ -120,4 +142,6 @@ export const CACHE_KEYS = {
   LETTERS: (params: string) => `letters:${params}`,
   LETTER: (id: string) => `letter:${id}`,
   USERS: 'users',
+  REQUESTS: (params: string) => `requests:${params}`,
+  DASHBOARD: (role: string) => `dashboard:${role}`,
 }

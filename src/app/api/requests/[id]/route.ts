@@ -10,6 +10,7 @@ import { csrfGuard } from '@/lib/security'
 import type { Prisma } from '@prisma/client'
 import { calculateSlaDeadline, calculateSlaStatus } from '@/lib/request-sla'
 import { sendRequestStatusUpdateEmail } from '@/lib/request-email'
+import { invalidateRequestsCache } from '@/lib/list-cache'
 
 const CONTEXT = 'API:Requests:[id]'
 
@@ -275,6 +276,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       })
     }
 
+    await invalidateRequestsCache()
     return NextResponse.json({ success: true, request: updated })
   } catch (error) {
     const { id } = await params
@@ -283,7 +285,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params
     const session = await getServerSession(authOptions)
@@ -347,6 +352,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       filesCount: requestRecord._count.files,
     })
 
+    await invalidateRequestsCache()
     return NextResponse.json({ success: true })
   } catch (error) {
     const { id } = await params

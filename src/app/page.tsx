@@ -1,15 +1,6 @@
-'use client'
-
-import { useSession } from 'next-auth/react'
-import { Header } from '@/components/Header'
-import { StatusBadge } from '@/components/StatusBadge'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { StatsWidgets } from '@/components/StatsWidgets'
-import { useAuthRedirect } from '@/hooks/useAuthRedirect'
-import { DashboardSection } from '@/components/DashboardSection'
-import { StatsSkeleton, CardSkeleton } from '@/components/ui/Skeleton'
-import { toast, handleApiError } from '@/lib/toast'
 import {
   FileText,
   Clock,
@@ -23,15 +14,20 @@ import {
   Inbox,
   Activity,
 } from 'lucide-react'
-import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays, STATUS_LABELS } from '@/lib/utils'
+import { Header } from '@/components/Header'
+import { StatusBadge } from '@/components/StatusBadge'
+import { StatsWidgets } from '@/components/StatsWidgets'
+import { authOptions } from '@/lib/auth'
+import { getDashboardData, DashboardError } from '@/lib/dashboard'
+import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays } from '@/lib/utils'
 import type { LetterStatus } from '@/types/prisma'
 
-interface Letter {
+type Letter = {
   id: string
   number: string
   org: string
-  date: string
-  deadlineDate: string
+  date: Date | string
+  deadlineDate: Date | string
   status: LetterStatus
   type: string | null
   owner: {
@@ -40,132 +36,54 @@ interface Letter {
   } | null
 }
 
-interface Stats {
-  total: number
-  active: number
-  overdue: number
-  completed: number
-  urgent: number
-  byStatus: Record<LetterStatus, number>
-}
-
-interface StatsResponse {
-  summary: {
-    total: number
-    overdue: number
-    urgent: number
-    done: number
-    inProgress: number
-    notReviewed: number
-    todayDeadlines: number
-    weekDeadlines: number
-    monthNew: number
-    monthDone: number
-    avgDays: number
-  }
-  byStatus: Record<LetterStatus, number>
-}
-
-interface Request {
+type Request = {
   id: string
   organization: string
   contactName: string
   status: string
   priority: string
-  createdAt: string
+  createdAt: Date | string
 }
 
-export default function HomePage() {
-  const { data: session, status } = useSession()
-  useAuthRedirect(status)
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [statsSummary, setStatsSummary] = useState<StatsResponse['summary'] | null>(null)
-  const [recentLetters, setRecentLetters] = useState<Letter[]>([])
-  const [urgentLetters, setUrgentLetters] = useState<Letter[]>([])
-  const [overdueLetters, setOverdueLetters] = useState<Letter[]>([])
-  const [unassignedLetters, setUnassignedLetters] = useState<Letter[]>([])
-  const [recentRequests, setRecentRequests] = useState<Request[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (session) {
-      loadDashboard()
-    }
-  }, [session])
-
-  const loadDashboard = async () => {
-    setLoading(true)
-    try {
-      // Загрузить все данные параллельно
-      const [statsRes, recentRes, urgentRes, overdueRes, unassignedRes, requestsRes] =
-        await Promise.all([
-          fetch('/api/stats'),
-          fetch('/api/letters?limit=5&sortBy=created&sortOrder=desc'),
-          fetch('/api/letters?filter=urgent&limit=5'),
-          fetch('/api/letters?filter=overdue&limit=5'),
-          fetch('/api/letters?filter=unassigned&limit=5'),
-          fetch('/api/requests?limit=5&status=NEW,IN_REVIEW'),
-        ])
-
-      const [statsData, recentData, urgentData, overdueData, unassignedData, requestsData] =
-        await Promise.all([
-          statsRes.ok ? (statsRes.json() as Promise<StatsResponse>) : Promise.resolve(null),
-          recentRes.ok
-            ? (recentRes.json() as Promise<{ letters: Letter[] }>)
-            : Promise.resolve(null),
-          urgentRes.json() as Promise<{ letters: Letter[] }>,
-          overdueRes.json() as Promise<{ letters: Letter[] }>,
-          unassignedRes.json() as Promise<{ letters: Letter[] }>,
-          requestsRes.json() as Promise<{ requests: Request[] }>,
-        ])
-
-      if (statsData?.summary) {
-        setStatsSummary(statsData.summary)
-        setStats({
-          total: statsData.summary.total,
-          active: statsData.summary.inProgress,
-          overdue: statsData.summary.overdue,
-          completed: statsData.summary.done,
-          urgent: statsData.summary.urgent,
-          byStatus: statsData.byStatus,
-        })
-      } else {
-        setStatsSummary(null)
-        setStats(null)
-      }
-
-      setRecentLetters(recentData?.letters || [])
-      setUrgentLetters(urgentData.letters || [])
-      setOverdueLetters(overdueData.letters || [])
-      setUnassignedLetters(unassignedData.letters || [])
-      setRecentRequests(requestsData.requests || [])
-    } catch (error) {
-      console.error('Failed to load dashboard:', error)
-      handleApiError(error, 'Не удалось загрузить данные дашборда')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (status === 'loading') {
-    return (
-      <div className="app-shell flex min-h-screen items-center justify-center bg-gray-900">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-emerald-500"></div>
-      </div>
-    )
-  }
-
+export default async function HomePage() {
+  const session = await getServerSession(authOptions)
   if (!session) {
-    return null
+    redirect('/login')
   }
 
-  const completionRate = stats ? Math.round((stats.completed / stats.total) * 100) || 0 : 0
+  let dashboardData
+  try {
+    dashboardData = await getDashboardData(session)
+  } catch (error) {
+    if (error instanceof DashboardError) {
+      redirect(error.code === 'FORBIDDEN' ? '/letters?error=forbidden' : '/login')
+    }
+    throw error
+  }
+
+  const statsSummary = dashboardData.summary
+  const stats = {
+    total: statsSummary.total,
+    active: statsSummary.inProgress,
+    overdue: statsSummary.overdue,
+    completed: statsSummary.done,
+    urgent: statsSummary.urgent,
+    byStatus: dashboardData.byStatus,
+  }
+
+  const recentLetters = dashboardData.recentLetters as Letter[]
+  const urgentLetters = dashboardData.urgentLetters as Letter[]
+  const overdueLetters = dashboardData.overdueLetters as Letter[]
+  const unassignedLetters = dashboardData.unassignedLetters as Letter[]
+  const recentRequests = dashboardData.recentRequests as Request[]
+
+  const completionRate = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0
   const roleLabel =
     session.user.role === 'SUPERADMIN'
-      ? '\u0421\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d'
+      ? 'Суперадмин'
       : session.user.role === 'ADMIN'
-        ? '\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440'
-        : '\u0421\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a'
+        ? 'Администратор'
+        : 'Сотрудник'
   const isAdmin = session.user.role === 'ADMIN' || session.user.role === 'SUPERADMIN'
 
   return (
@@ -215,7 +133,7 @@ export default function HomePage() {
 
         {/* Stats Widgets */}
         <div className="mb-8">
-          <StatsWidgets summary={statsSummary} loading={loading} />
+          <StatsWidgets summary={statsSummary} loading={false} />
         </div>
 
         {/* Progress + Status breakdown */}
@@ -238,22 +156,21 @@ export default function HomePage() {
                 />
               </div>
               <div className="mt-3 flex justify-between text-xs text-slate-500">
-                <span>{stats?.completed || 0} выполнено</span>
-                <span>{stats?.active || 0} в работе</span>
+                <span>{stats.completed} выполнено</span>
+                <span>{stats.active} в работе</span>
               </div>
-              {/* Детальная разбивка */}
               <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Всего писем</span>
-                  <span className="font-medium text-white">{stats?.total || 0}</span>
+                  <span className="font-medium text-white">{stats.total}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Просрочено</span>
-                  <span className="font-medium text-red-400">{stats?.overdue || 0}</span>
+                  <span className="font-medium text-red-400">{stats.overdue}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Срочные</span>
-                  <span className="font-medium text-amber-400">{stats?.urgent || 0}</span>
+                  <span className="font-medium text-amber-400">{stats.urgent}</span>
                 </div>
               </div>
             </div>
@@ -265,42 +182,39 @@ export default function HomePage() {
               <h3 className="font-semibold text-white">По статусам</h3>
               <BarChart3 className="h-5 w-5 text-slate-400" />
             </div>
-            {stats?.byStatus && Object.keys(stats.byStatus).length > 0 ? (
-              <>
-                {/* Визуализация в виде горизонтальных баров */}
-                <div className="space-y-3">
-                  {[
-                    { key: 'NOT_REVIEWED', label: 'Не рассмотрено', color: 'bg-slate-400' },
-                    { key: 'ACCEPTED', label: 'Принято', color: 'bg-sky-400' },
-                    { key: 'IN_PROGRESS', label: 'В работе', color: 'bg-amber-400' },
-                    { key: 'CLARIFICATION', label: 'На уточнении', color: 'bg-cyan-400' },
-                    { key: 'READY', label: 'Готово', color: 'bg-emerald-400' },
-                    { key: 'DONE', label: 'Выполнено', color: 'bg-teal-400' },
-                  ].map(({ key, label, color }) => {
-                    const count = stats.byStatus[key as LetterStatus] || 0
-                    const percent = stats.total ? Math.round((count / stats.total) * 100) : 0
-                    return (
-                      <Link key={key} href={`/letters?status=${key}`} className="group block">
-                        <div className="mb-1 flex items-center justify-between text-sm">
-                          <span className="text-slate-300 transition group-hover:text-white">
-                            {label}
-                          </span>
-                          <span className="text-slate-400">
-                            <span className="font-semibold text-white">{count}</span>
-                            <span className="ml-1 text-xs">({percent}%)</span>
-                          </span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className={`h-full rounded-full ${color} transition-all duration-500 group-hover:opacity-80`}
-                            style={{ width: `${percent}%` }}
-                          />
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </>
+            {stats.byStatus && Object.keys(stats.byStatus).length > 0 ? (
+              <div className="space-y-3">
+                {[
+                  { key: 'NOT_REVIEWED', label: 'Не рассмотрено', color: 'bg-slate-400' },
+                  { key: 'ACCEPTED', label: 'Принято', color: 'bg-sky-400' },
+                  { key: 'IN_PROGRESS', label: 'В работе', color: 'bg-amber-400' },
+                  { key: 'CLARIFICATION', label: 'На уточнении', color: 'bg-cyan-400' },
+                  { key: 'READY', label: 'Готово', color: 'bg-emerald-400' },
+                  { key: 'DONE', label: 'Выполнено', color: 'bg-teal-400' },
+                ].map(({ key, label, color }) => {
+                  const count = stats.byStatus[key as LetterStatus] || 0
+                  const percent = stats.total ? Math.round((count / stats.total) * 100) : 0
+                  return (
+                    <Link key={key} href={`/letters?status=${key}`} className="group block">
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="text-slate-300 transition group-hover:text-white">
+                          {label}
+                        </span>
+                        <span className="text-slate-400">
+                          <span className="font-semibold text-white">{count}</span>
+                          <span className="ml-1 text-xs">({percent}%)</span>
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className={`h-full rounded-full ${color} transition-all duration-500 group-hover:opacity-80`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
             ) : (
               <div className="flex h-32 items-center justify-center text-slate-500">
                 Нет данных по статусам
@@ -311,7 +225,6 @@ export default function HomePage() {
 
         {/* Lists */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Overdue Letters */}
           {overdueLetters.length > 0 && (
             <div className="panel panel-glass rounded-2xl border-l-4 border-l-red-500">
               <div className="flex items-center justify-between border-b border-white/10 p-4">
@@ -356,7 +269,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Unassigned Letters (Admin) */}
           {isAdmin && unassignedLetters.length > 0 && (
             <div className="panel panel-glass rounded-2xl border-l-4 border-l-sky-500">
               <div className="flex items-center justify-between border-b border-white/10 p-4">
@@ -396,7 +308,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Urgent Letters */}
           {urgentLetters.length > 0 && (
             <div className="panel panel-glass rounded-2xl border-l-4 border-l-amber-500">
               <div className="flex items-center justify-between border-b border-white/10 p-4">
@@ -441,7 +352,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Recent Letters */}
           <div className="panel panel-glass rounded-2xl">
             <div className="flex items-center justify-between border-b border-white/10 p-4">
               <div className="flex items-center gap-2">
@@ -482,7 +392,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Recent Requests */}
           <div className="panel panel-glass rounded-2xl">
             <div className="flex items-center justify-between border-b border-white/10 p-4">
               <div className="flex items-center gap-2">
@@ -531,7 +440,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="panel panel-glass rounded-2xl p-6 lg:col-span-2">
             <h3 className="mb-4 flex items-center gap-2 font-semibold text-white">
               <Activity className="h-5 w-5 text-teal-400" />

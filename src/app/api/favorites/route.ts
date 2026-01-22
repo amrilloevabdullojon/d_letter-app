@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
+import { invalidateLettersCache } from '@/lib/list-cache'
 
 // GET /api/favorites - получить избранные письма пользователя
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
         where: { id: existing.id },
       })
 
+      await invalidateLettersCache()
       return NextResponse.json({
         success: true,
         isFavorite: false,
@@ -108,6 +110,7 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      await invalidateLettersCache()
       return NextResponse.json({
         success: true,
         isFavorite: true,

@@ -8,6 +8,7 @@ import { dispatchNotification } from '@/lib/notification-dispatcher'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
+import { invalidateLettersCache } from '@/lib/list-cache'
 import { z } from 'zod'
 
 const commentSchema = z.object({
@@ -306,6 +307,7 @@ ${text}`
       )
     }
 
+    await invalidateLettersCache()
     return NextResponse.json({ success: true, comment })
   } catch (error) {
     logger.error('POST /api/letters/[id]/comments', error)
@@ -391,6 +393,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }),
     ])
 
+    await invalidateLettersCache()
     return NextResponse.json({ success: true, comment: updated, edit })
   } catch (error) {
     logger.error('PATCH /api/letters/[id]/comments', error)
@@ -458,6 +461,7 @@ export async function DELETE(
       where: { id: { in: idsToDelete } },
     })
 
+    await invalidateLettersCache()
     return NextResponse.json({ success: true, deleted: idsToDelete.length })
   } catch (error) {
     logger.error('DELETE /api/letters/[id]/comments', error)

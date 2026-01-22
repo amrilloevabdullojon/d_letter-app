@@ -1,6 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
 
 const Particles = dynamic(() => import('@/components/Particles').then((mod) => mod.Particles), {
   ssr: false,
@@ -18,11 +20,19 @@ const OfflineIndicator = dynamic(
 )
 
 export function ClientEffects() {
+  const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
+  const { preferences } = useUserPreferences()
+  const backgroundAnimations = preferences?.backgroundAnimations ?? false
+  const snowfallEnabled = preferences?.snowfall ?? false
+  const particlesEnabled = preferences?.particles ?? false
+  const showSnowfall = (newYearVibe || snowfallEnabled) && backgroundAnimations
+  const showParticles = backgroundAnimations && particlesEnabled
+
   return (
     <>
-      <NewYearBanner />
-      <Particles />
-      <Snowfall />
+      {newYearVibe ? <NewYearBanner /> : null}
+      {showParticles ? <Particles /> : null}
+      {showSnowfall ? <Snowfall /> : null}
       <OfflineIndicator />
     </>
   )

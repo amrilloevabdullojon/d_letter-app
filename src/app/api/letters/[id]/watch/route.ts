@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
+import { invalidateLettersCache } from '@/lib/list-cache'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       update: {},
     })
 
+    await invalidateLettersCache()
     return NextResponse.json({ isWatching: true })
   } catch (error) {
     logger.error('POST /api/letters/[id]/watch', error)
@@ -81,6 +83,7 @@ export async function DELETE(
       where: { letterId: id, userId: session.user.id },
     })
 
+    await invalidateLettersCache()
     return NextResponse.json({ isWatching: false })
   } catch (error) {
     logger.error('DELETE /api/letters/[id]/watch', error)

@@ -7,6 +7,7 @@ import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { z } from 'zod'
 import { sendRequestCommentEmail } from '@/lib/request-email'
+import { invalidateRequestsCache } from '@/lib/list-cache'
 
 const createCommentSchema = z.object({
   text: z.string().min(1, 'Комментарий не может быть пустым').max(5000),
@@ -154,6 +155,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       logger.error('POST /api/requests/[id]/comments', 'Failed to send email', err)
     })
 
+    await invalidateRequestsCache()
     return NextResponse.json({ comment }, { status: 201 })
   } catch (error) {
     logger.error('POST /api/requests/[id]/comments', error)

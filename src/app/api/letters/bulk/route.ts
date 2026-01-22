@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
-import type { LetterStatus } from '@prisma/client'
+import type { LetterStatus, Prisma } from '@prisma/client'
 import { isDoneStatus, addWorkingDays, parseDateValue, sanitizeInput } from '@/lib/utils'
 import { logger } from '@/lib/logger.server'
 import { DEFAULT_DEADLINE_WORKING_DAYS } from '@/lib/constants'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
+import { invalidateLettersCache } from '@/lib/list-cache'
 import { z } from 'zod'
 
 // Схема валидации для массового создания
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'status':
         const newStatus = value as LetterStatus
-        const updateData: any = { status: newStatus }
+        const updateData: Prisma.LetterUpdateManyMutationInput = { status: newStatus }
 
         // Если статус "готово", установить дату закрытия
         if (isDoneStatus(newStatus)) {
@@ -140,6 +141,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
+    await invalidateLettersCache()
     return NextResponse.json({ success: true, updated })
   } catch (error) {
     logger.error('POST /api/letters/bulk', error)
@@ -287,6 +289,7 @@ async function handleBulkCreate(
     return results
   })
 
+  await invalidateLettersCache()
   return NextResponse.json(
     {
       success: true,
