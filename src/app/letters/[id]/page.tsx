@@ -183,11 +183,14 @@ const isEditableElement = (target: EventTarget | null) => {
   return element.isContentEditable
 }
 
+type CommentTreeUpdateResult = { items: CommentItem[]; updated: boolean }
+type CommentTreeRemoveResult = { items: CommentItem[]; removed: boolean }
+
 const updateCommentInTree = (
   items: CommentItem[],
   commentId: string,
   updater: (comment: CommentItem) => CommentItem
-) => {
+): CommentTreeUpdateResult => {
   let updated = false
   const nextItems = items.map((comment) => {
     if (comment.id === commentId) {
@@ -206,7 +209,10 @@ const updateCommentInTree = (
   return { items: updated ? nextItems : items, updated }
 }
 
-const removeCommentFromTree = (items: CommentItem[], commentId: string) => {
+const removeCommentFromTree = (
+  items: CommentItem[],
+  commentId: string
+): CommentTreeRemoveResult => {
   let removed = false
   const nextItems: CommentItem[] = []
   for (const comment of items) {
