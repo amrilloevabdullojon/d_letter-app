@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { requestQuerySchema } from '@/lib/schemas'
 import type { RequestQueryInput } from '@/lib/schemas'
+import type { RequestCategory, RequestPriority, RequestStatus } from '@prisma/client'
 import RequestsPageClient from './RequestsPageClient'
 import { buildRequestsParams, getRequestsListCached } from '@/lib/list-cache'
 import { PAGE_SIZE } from '@/lib/constants'
@@ -15,6 +16,15 @@ const defaultFilters: RequestQueryInput = {
 
 type SearchParams = Record<string, string | string[] | undefined>
 type PageProps = { searchParams?: Promise<SearchParams> }
+type InitialFilters = {
+  page: number
+  limit: number
+  status: RequestStatus | ''
+  priority: RequestPriority | ''
+  category: RequestCategory | ''
+  search: string
+  sortOrder: 'asc' | 'desc'
+}
 
 function parseSearchParams(searchParams: SearchParams): RequestQueryInput {
   const raw: Record<string, string> = {}
@@ -57,12 +67,12 @@ export default async function RequestsPage({ searchParams }: PageProps) {
   const data = await getRequestsListCached(normalizedQuery, session.user.role)
   const initialCacheKey = buildRequestsParams(normalizedQuery).toString()
 
-  const initialFilters = {
+  const initialFilters: InitialFilters = {
     page: normalizedQuery.page ?? 1,
     limit: normalizedQuery.limit ?? PAGE_SIZE,
-    status: normalizedQuery.status?.[0] ?? '',
-    priority: normalizedQuery.priority ?? '',
-    category: normalizedQuery.category ?? '',
+    status: (normalizedQuery.status?.[0] ?? '') as RequestStatus | '',
+    priority: (normalizedQuery.priority ?? '') as RequestPriority | '',
+    category: (normalizedQuery.category ?? '') as RequestCategory | '',
     search: normalizedQuery.search ?? '',
     sortOrder: 'desc' as const,
   }
