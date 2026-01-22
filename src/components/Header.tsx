@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import {
@@ -18,6 +18,7 @@ import {
   User,
   ChevronDown,
   Plus,
+  Search,
 } from 'lucide-react'
 import { Notifications } from './Notifications'
 import { ThemeToggle } from './ThemeToggle'
@@ -43,6 +44,21 @@ export function Header() {
   )
   const backgroundAnimations = personalization?.backgroundAnimations ?? true
   const isAdminRole = session?.user.role === 'ADMIN' || session?.user.role === 'SUPERADMIN'
+  const pageMeta = useMemo(() => {
+    if (pathname?.startsWith('/letters'))
+      return { label: '\u041f\u0438\u0441\u044c\u043c\u0430', icon: FileText }
+    if (pathname?.startsWith('/requests'))
+      return { label: '\u0417\u0430\u044f\u0432\u043a\u0438', icon: Inbox }
+    if (pathname?.startsWith('/reports'))
+      return { label: '\u041e\u0442\u0447\u0435\u0442\u044b', icon: BarChart3 }
+    if (pathname?.startsWith('/settings'))
+      return { label: '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438', icon: Settings }
+    if (pathname?.startsWith('/profile'))
+      return { label: '\u041f\u0440\u043e\u0444\u0438\u043b\u044c', icon: User }
+    if (pathname === '/') return { label: '\u0413\u043b\u0430\u0432\u043d\u0430\u044f', icon: Home }
+    return { label: 'DMED', icon: Home }
+  }, [pathname])
+  const PageIcon = pageMeta.icon
   const roleLabel =
     session?.user.role === 'SUPERADMIN'
       ? '\u0421\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d'
@@ -53,6 +69,8 @@ export function Header() {
   // Закрыть мобильное меню при переходе на другую страницу
   useEffect(() => {
     setMobileMenuOpen(false)
+    setQuickCreateOpen(false)
+    setSyncMenuOpen(false)
   }, [pathname])
 
   // Закрыть меню при клике вне и блокировка скролла
@@ -133,6 +151,15 @@ export function Header() {
 
   const navLinkClass = 'app-nav-link app-nav-link-refined whitespace-nowrap text-sm'
 
+  const openSearch = useCallback(() => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+    })
+    document.dispatchEvent(event)
+  }, [])
+
   useEffect(() => {
     if (!mobileMenuOpen) return
 
@@ -149,8 +176,22 @@ export function Header() {
     }
   }, [mobileMenuOpen, closeMobileMenu])
 
+  useEffect(() => {
+    if (!quickCreateOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setQuickCreateOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [quickCreateOpen])
+
   return (
-    <header className="app-header app-header-refined relative sticky top-0 z-[120]">
+    <header className="app-header app-header-refined app-header-safe relative sticky top-0 z-[120]">
       {/* Christmas lights */}
       {newYearVibe && backgroundAnimations && (
         <div className="pointer-events-none absolute left-0 right-0 top-0 hidden justify-around overflow-hidden sm:flex">
@@ -170,7 +211,10 @@ export function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between sm:h-16">
           {/* Logo */}
-          <Link href="/" className="flex shrink-0 items-center gap-3 transition-transform hover:scale-105">
+          <Link
+            href="/"
+            className="flex shrink-0 items-center gap-3 transition-transform hover:scale-105"
+          >
             <div className="relative h-10 w-10 overflow-hidden rounded-xl shadow-lg shadow-teal-500/30 sm:h-11 sm:w-11">
               <Image src="/logo-mark.svg" alt="DMED" fill className="object-contain" priority />
             </div>
@@ -180,6 +224,10 @@ export function Header() {
             </div>
             <span className="text-sm font-semibold text-white sm:hidden">DMED</span>
           </Link>
+          <div className="ml-2 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-200/80 sm:hidden">
+            <PageIcon className="h-3.5 w-3.5 text-slate-300" />
+            <span className="max-w-[120px] truncate">{pageMeta.label}</span>
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden items-center gap-1 md:flex">
@@ -346,6 +394,60 @@ export function Header() {
           {/* Mobile right section */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <div className="flex items-center gap-2 md:hidden">
+              <button
+                onClick={() => {
+                  hapticLight()
+                  openSearch()
+                }}
+                aria-label="\u041f\u043e\u0438\u0441\u043a"
+                className="tap-highlight touch-target app-icon-button"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    hapticLight()
+                    setQuickCreateOpen(!quickCreateOpen)
+                  }}
+                  className="tap-highlight app-icon-button app-icon-cta h-9 w-9"
+                  aria-label="\u0421\u043e\u0437\u0434\u0430\u0442\u044c"
+                >
+                  <Plus className={`h-5 w-5 transition ${quickCreateOpen ? 'rotate-45' : ''}`} />
+                </button>
+                {quickCreateOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setQuickCreateOpen(false)} />
+                    <div className="panel panel-glass animate-scaleIn absolute right-0 top-full z-50 mt-2 min-w-48 origin-top-right rounded-xl shadow-xl">
+                      <Link
+                        href="/letters/new"
+                        className="tap-highlight flex w-full items-center gap-2 rounded-t-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white"
+                        onClick={() => {
+                          hapticLight()
+                          setQuickCreateOpen(false)
+                        }}
+                      >
+                        <FileText className="h-4 w-4 text-blue-400" />
+                        {'\u041d\u043e\u0432\u043e\u0435 \u043f\u0438\u0441\u044c\u043c\u043e'}
+                      </Link>
+                      <div className="border-t border-white/10" />
+                      <Link
+                        href="/request"
+                        className="tap-highlight flex w-full items-center gap-2 rounded-b-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white"
+                        onClick={() => {
+                          hapticLight()
+                          setQuickCreateOpen(false)
+                        }}
+                      >
+                        <Inbox className="h-4 w-4 text-emerald-400" />
+                        {
+                          '\u041f\u043e\u0434\u0430\u0442\u044c \u0437\u0430\u044f\u0432\u043a\u0443'
+                        }
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
               <ThemeToggle />
               {session?.user && <Notifications />}
               <SheetTrigger asChild>
