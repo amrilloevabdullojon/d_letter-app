@@ -6,6 +6,13 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const nextConfig = {
   reactStrictMode: true,
 
+  // Оптимизация модульных импортов (tree-shaking для lucide-react)
+  modularizeImports: {
+    'lucide-react': {
+      transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
+    },
+  },
+
   // Оптимизация изображений
   images: {
     formats: ['image/avif', 'image/webp'],

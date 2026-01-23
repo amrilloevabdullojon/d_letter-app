@@ -11,13 +11,25 @@ import { useState, ReactNode } from 'react'
 import { fetchWithRetry, FetchError } from './fetch-utils'
 
 /**
+ * Stale time constants for different data types
+ */
+export const STALE_TIMES = {
+  letters: 30 * 1000, // 30 seconds - letters change frequently
+  letterDetail: 60 * 1000, // 1 minute - individual letter details
+  users: 5 * 60 * 1000, // 5 minutes - users rarely change
+  stats: 60 * 1000, // 1 minute - dashboard stats
+  templates: 10 * 60 * 1000, // 10 minutes - templates are static
+  notifications: 30 * 1000, // 30 seconds - notifications need to be fresh
+} as const
+
+/**
  * Default query client options
  */
 const defaultQueryClientOptions = {
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000, // 30 seconds
-      gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+      staleTime: STALE_TIMES.letters, // Default to letters stale time
+      gcTime: 10 * 60 * 1000, // 10 minutes (increased from 5 for better caching)
       retry: 2,
       retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
       refetchOnWindowFocus: false,
@@ -121,6 +133,7 @@ export function useLetter(id: string | null) {
     queryKey: queryKeys.letters.detail(id || ''),
     queryFn: () => queryFetcher<{ letter: unknown }>(`/api/letters/${id}`),
     enabled: !!id,
+    staleTime: STALE_TIMES.letterDetail,
   })
 }
 
@@ -131,7 +144,7 @@ export function useLetterStats() {
   return useQuery({
     queryKey: queryKeys.letters.stats(),
     queryFn: () => queryFetcher<{ stats: unknown }>('/api/stats'),
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: STALE_TIMES.stats,
   })
 }
 
@@ -200,6 +213,7 @@ export function useUsers(filters: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: queryKeys.users.list(filters),
     queryFn: () => queryFetcher<{ users: unknown[] }>(`/api/users?${searchParams}`),
+    staleTime: STALE_TIMES.users,
   })
 }
 
@@ -210,7 +224,7 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: queryKeys.users.current(),
     queryFn: () => queryFetcher<{ user: unknown }>('/api/users/me'),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: STALE_TIMES.users,
   })
 }
 
@@ -269,6 +283,7 @@ export function usePrefetch() {
       queryClient.prefetchQuery({
         queryKey: queryKeys.letters.detail(id),
         queryFn: () => queryFetcher(`/api/letters/${id}`),
+        staleTime: STALE_TIMES.letterDetail,
       })
     },
     prefetchLetters: (filters: Record<string, unknown> = {}) => {
@@ -281,6 +296,7 @@ export function usePrefetch() {
       queryClient.prefetchQuery({
         queryKey: queryKeys.letters.list(filters),
         queryFn: () => queryFetcher(`/api/letters?${searchParams}`),
+        staleTime: STALE_TIMES.letters,
       })
     },
   }

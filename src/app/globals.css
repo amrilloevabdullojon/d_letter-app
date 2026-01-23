@@ -120,7 +120,10 @@ body::after {
     50% 110%,
     50% 50%;
   animation: wallpaper-drift 28s ease-in-out infinite;
-  will-change: background-position, transform;
+  will-change: transform;
+  /* GPU acceleration without expensive blur filter */
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 html[data-wallpaper-style='nebula'] body::after {
@@ -171,17 +174,8 @@ html[data-wallpaper-style='cosmic'] body::after {
       95% 5%,
       50% 110%,
       50% 50%;
-    transform: translate3d(0, 0, 0) scale(1);
-    filter: blur(0px) brightness(1);
-  }
-  25% {
-    background-position:
-      8% 2%,
-      92% 8%,
-      52% 105%,
-      49% 48%;
-    transform: translate3d(0.5%, -0.5%, 0) scale(1.02);
-    filter: blur(1px) brightness(1.05);
+    transform: translate3d(0, 0, 0);
+    opacity: var(--wallpaper-opacity, 0.6);
   }
   50% {
     background-position:
@@ -189,17 +183,16 @@ html[data-wallpaper-style='cosmic'] body::after {
       88% -2%,
       55% 95%,
       48% 45%;
-    transform: translate3d(1%, -1%, 0) scale(1.04);
-    filter: blur(2px) brightness(1.1);
+    transform: translate3d(1%, -1%, 0);
+    opacity: calc(var(--wallpaper-opacity, 0.6) * 1.15);
   }
-  75% {
-    background-position:
-      8% 2%,
-      92% 8%,
-      52% 105%,
-      49% 48%;
-    transform: translate3d(0.5%, -0.5%, 0) scale(1.02);
-    filter: blur(1px) brightness(1.05);
+}
+
+/* Optimized wallpaper for low-power devices */
+@media (prefers-reduced-motion: no-preference) and (hover: none) {
+  /* Touch devices - use simpler animation */
+  body::after {
+    animation-duration: 45s;
   }
 }
 

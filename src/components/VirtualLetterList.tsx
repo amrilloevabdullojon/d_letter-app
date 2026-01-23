@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef, useMemo, useCallback } from 'react'
+import { useRef, useMemo, useCallback, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { LetterCard } from './LetterCard'
 import { StatusBadge } from './StatusBadge'
 import type { LetterStatus } from '@/types/prisma'
 import { ArrowDown, ArrowUp, ArrowUpDown, CheckSquare, Eye, Square } from 'lucide-react'
 import { formatDate, getWorkingDaysUntilDeadline, isDoneStatus, pluralizeDays } from '@/lib/utils'
+import { usePrefetch } from '@/lib/react-query'
 
 interface Letter {
   id: string
@@ -31,6 +32,49 @@ interface Letter {
 
 type SortField = 'created' | 'deadline' | 'date' | 'number' | 'org' | 'status' | 'priority'
 
+// Memoized card wrapper to prevent unnecessary re-renders
+interface CardWrapperProps {
+  letter: Letter
+  isSelected: boolean
+  onToggleSelect: (id: string) => void
+  onToggleFavorite?: (id: string) => void
+  onPrefetch?: (id: string) => void
+}
+
+const CardWrapper = memo(function CardWrapper({
+  letter,
+  isSelected,
+  onToggleSelect,
+  onToggleFavorite,
+  onPrefetch,
+}: CardWrapperProps) {
+  return (
+    <div className="relative" onMouseEnter={() => onPrefetch?.(letter.id)}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleSelect(letter.id)
+        }}
+        className={`absolute left-3 top-3 z-10 rounded p-2 ${
+          isSelected
+            ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/30'
+            : 'bg-white/10 text-slate-300 opacity-100 md:opacity-0 md:group-hover:opacity-100'
+        }`}
+        aria-label={`Выбрать письмо ${letter.number}`}
+      >
+        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+      <LetterCard letter={letter} onToggleFavorite={onToggleFavorite} />
+    </div>
+  )
+})
+
 interface VirtualLetterListProps {
   letters: Letter[]
   selectedIds: Set<string>
@@ -45,6 +89,7 @@ export function VirtualLetterList({
   onToggleFavorite,
 }: VirtualLetterListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const { prefetchLetter } = usePrefetch()
 
   // Calculate column count based on width (memoized to prevent recalculation on every render)
   const columnCount = useMemo(() => {
@@ -87,29 +132,14 @@ export function VirtualLetterList({
             >
               <div className="stagger-animation grid grid-cols-1 gap-4 px-0 sm:gap-5 sm:px-2 md:grid-cols-2 lg:grid-cols-3">
                 {rowLetters.map((letter) => (
-                  <div key={letter.id} className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onToggleSelect(letter.id)
-                      }}
-                      className={`absolute left-3 top-3 z-10 rounded p-2 ${
-                        selectedIds.has(letter.id)
-                          ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/30'
-                          : 'bg-white/10 text-slate-300 opacity-100 md:opacity-0 md:group-hover:opacity-100'
-                      }`}
-                      aria-label={`??????? ?????? ${letter.number}`}
-                    >
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                    <LetterCard letter={letter} onToggleFavorite={onToggleFavorite} />
-                  </div>
+                  <CardWrapper
+                    key={letter.id}
+                    letter={letter}
+                    isSelected={selectedIds.has(letter.id)}
+                    onToggleSelect={onToggleSelect}
+                    onToggleFavorite={onToggleFavorite}
+                    onPrefetch={prefetchLetter}
+                  />
                 ))}
               </div>
             </div>
@@ -119,6 +149,91 @@ export function VirtualLetterList({
     </div>
   )
 }
+
+// Memoized table row
+interface TableRowProps {
+  letter: Letter
+  isSelected: boolean
+  isFocused: boolean
+  deadlineInfo: { text: string; className: string }
+  onToggleSelect: (id: string) => void
+  onRowClick: (id: string) => void
+  onPreview: (id: string) => void
+  onPrefetch?: (id: string) => void
+  style: React.CSSProperties
+}
+
+const TableRow = memo(function TableRow({
+  letter,
+  isSelected,
+  isFocused,
+  deadlineInfo,
+  onToggleSelect,
+  onRowClick,
+  onPreview,
+  onPrefetch,
+  style,
+}: TableRowProps) {
+  return (
+    <div
+      className={`virtual-row app-row group relative grid cursor-pointer grid-cols-[40px_140px_minmax(240px,1fr)_120px_180px_140px_140px_160px] gap-2 border-b border-white/5 px-4 py-3 pr-12 text-sm ${
+        isSelected ? 'app-row-selected' : ''
+      } ${isFocused ? 'ring-2 ring-inset ring-teal-400/40' : ''}`}
+      style={style}
+      onClick={() => onRowClick(letter.id)}
+      onMouseEnter={() => onPrefetch?.(letter.id)}
+    >
+      <div className="flex items-center">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleSelect(letter.id)
+          }}
+          className={`rounded p-1 ${isSelected ? 'text-teal-300' : 'text-slate-400 hover:text-white'}`}
+          aria-label={`Выбрать письмо ${letter.number}`}
+        >
+          {isSelected ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5" />}
+        </button>
+      </div>
+      <div className="truncate font-mono text-teal-300">#{letter.number}</div>
+      <div className="truncate text-white">{letter.org}</div>
+      <div className="text-sm text-slate-300/70">{formatDate(letter.date)}</div>
+      <div>
+        <div className="text-sm">
+          <div className="text-slate-300/70">{formatDate(letter.deadlineDate)}</div>
+          <div className={`text-xs ${deadlineInfo.className}`}>{deadlineInfo.text}</div>
+        </div>
+      </div>
+      <div>
+        <StatusBadge status={letter.status} size="sm" />
+      </div>
+      <div className="min-w-0">
+        {letter.type && (
+          <span
+            className="data-pill inline-flex max-w-[140px] truncate rounded-full px-2 py-1 text-xs"
+            title={letter.type}
+          >
+            {letter.type}
+          </span>
+        )}
+      </div>
+      <div className="truncate text-sm text-slate-300/70">
+        {letter.owner?.name || letter.owner?.email?.split('@')[0] || '-'}
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onPreview(letter.id)
+        }}
+        className="absolute right-4 top-1/2 -translate-y-1/2 rounded-lg bg-white/5 p-2 text-slate-400 opacity-100 transition hover:text-white md:opacity-0 md:group-hover:opacity-100"
+        title="Быстрый просмотр"
+        aria-label="Быстрый просмотр"
+      >
+        <Eye className="h-4 w-4" />
+      </button>
+    </div>
+  )
+})
 
 // Virtualized table
 interface VirtualLetterTableProps {
@@ -147,6 +262,7 @@ export function VirtualLetterTable({
   onPreview,
 }: VirtualLetterTableProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const { prefetchLetter } = usePrefetch()
 
   const rowVirtualizer = useVirtualizer({
     count: letters.length,
@@ -254,76 +370,23 @@ export function VirtualLetterTable({
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const letter = letters[virtualRow.index]
             const deadlineInfo = getDeadlineInfo(letter)
-            const isSelected = selectedIds.has(letter.id)
-            const isFocused = virtualRow.index === focusedIndex
 
             return (
-              <div
+              <TableRow
                 key={virtualRow.key}
-                className={`virtual-row app-row group relative grid cursor-pointer grid-cols-[40px_140px_minmax(240px,1fr)_120px_180px_140px_140px_160px] gap-2 border-b border-white/5 px-4 py-3 pr-12 text-sm ${
-                  isSelected ? 'app-row-selected' : ''
-                } ${isFocused ? 'ring-2 ring-inset ring-teal-400/40' : ''}`}
+                letter={letter}
+                isSelected={selectedIds.has(letter.id)}
+                isFocused={virtualRow.index === focusedIndex}
+                deadlineInfo={deadlineInfo}
+                onToggleSelect={onToggleSelect}
+                onRowClick={onRowClick}
+                onPreview={onPreview}
+                onPrefetch={prefetchLetter}
                 style={{
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
-                onClick={() => onRowClick(letter.id)}
-              >
-                <div className="flex items-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onToggleSelect(letter.id)
-                    }}
-                    className={`rounded p-1 ${
-                      isSelected ? 'text-teal-300' : 'text-slate-400 hover:text-white'
-                    }`}
-                    aria-label={`??????? ?????? ${letter.number}`}
-                  >
-                    {isSelected ? (
-                      <CheckSquare className="h-5 w-5" />
-                    ) : (
-                      <Square className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-                <div className="truncate font-mono text-teal-300">#{letter.number}</div>
-                <div className="truncate text-white">{letter.org}</div>
-                <div className="text-sm text-slate-300/70">{formatDate(letter.date)}</div>
-                <div>
-                  <div className="text-sm">
-                    <div className="text-slate-300/70">{formatDate(letter.deadlineDate)}</div>
-                    <div className={`text-xs ${deadlineInfo.className}`}>{deadlineInfo.text}</div>
-                  </div>
-                </div>
-                <div>
-                  <StatusBadge status={letter.status} size="sm" />
-                </div>
-                <div className="min-w-0">
-                  {letter.type && (
-                    <span
-                      className="data-pill inline-flex max-w-[140px] truncate rounded-full px-2 py-1 text-xs"
-                      title={letter.type}
-                    >
-                      {letter.type}
-                    </span>
-                  )}
-                </div>
-                <div className="truncate text-sm text-slate-300/70">
-                  {letter.owner?.name || letter.owner?.email?.split('@')[0] || '-'}
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onPreview(letter.id)
-                  }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-lg bg-white/5 p-2 text-slate-400 opacity-100 transition hover:text-white md:opacity-0 md:group-hover:opacity-100"
-                  title="\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440"
-                  aria-label="\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440"
-                >
-                  <Eye className="h-4 w-4" />
-                </button>
-              </div>
+              />
             )
           })}
         </div>
@@ -331,5 +394,3 @@ export function VirtualLetterTable({
     </div>
   )
 }
-
-

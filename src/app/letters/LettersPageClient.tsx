@@ -10,7 +10,7 @@ import { useKeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp'
 import { LettersBulkActions } from '@/components/letters/LettersBulkActions'
 import dynamic from 'next/dynamic'
 
-// Lazy load heavy components that are conditionally rendered
+// Lazy load heavy components
 const LetterPreview = dynamic(
   () => import('@/components/LetterPreview').then((mod) => ({ default: mod.LetterPreview })),
   {
@@ -42,6 +42,29 @@ const LetterKanban = dynamic(
     ),
   }
 )
+
+// Extracted components
+import { LettersQuickFilters, QUICK_FILTERS } from './LettersQuickFilters'
+import { LettersViewToggle } from './LettersViewToggle'
+import { LettersSavedViews } from './LettersSavedViews'
+import { LettersSearchSuggestions } from './LettersSearchSuggestions'
+import { LettersPagination } from './LettersPagination'
+import {
+  type Letter,
+  type User,
+  type Pagination,
+  type ViewMode,
+  type SortField,
+  type SavedView,
+  type SearchSuggestion,
+  type InitialFilters,
+  type LettersInitialData,
+  STATUSES,
+  LETTERS_CACHE_TTL,
+  USERS_CACHE_TTL,
+  pluralizeLetters,
+} from './letters-types'
+
 import { useKeyboard } from '@/hooks/useKeyboard'
 import { useDebouncedCallback } from '@/hooks/useDebounce'
 import { usePagination } from '@/hooks/usePagination'
@@ -49,155 +72,28 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useEffect, useState, useRef, useCallback, useMemo, Suspense, startTransition } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { LetterStatus } from '@/types/prisma'
-import { STATUS_LABELS, getWorkingDaysUntilDeadline, pluralizeDays } from '@/lib/utils'
+import { STATUS_LABELS } from '@/lib/utils'
 import { LETTER_TYPES } from '@/lib/constants'
 import {
   Search,
   Filter,
   Plus,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
-  LayoutGrid,
-  List,
-  AlertTriangle,
-  Clock,
-  CheckCircle,
   XCircle,
   X,
   Download,
   Keyboard,
   FileText,
   Users,
-  Star,
   ListPlus,
-  Kanban,
-  Bookmark,
-  ChevronDown,
-  UserCheck,
-  UserMinus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/components/Toast'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
-
-interface Letter {
-  id: string
-  number: string
-  org: string
-  date: string
-  deadlineDate: string
-  status: LetterStatus
-  type: string | null
-  content: string | null
-  priority: number
-  owner: {
-    id: string
-    name: string | null
-    email: string | null
-  } | null
-  _count: {
-    comments: number
-    watchers: number
-  }
-}
-
-interface User {
-  id: string
-  name: string | null
-  email: string | null
-}
-
-interface Pagination {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
-}
-
-type InitialFilters = {
-  page: number
-  limit: number
-  status: LetterStatus | 'all'
-  quickFilter: string
-  owner: string
-  type: string
-  sortBy: SortField
-  sortOrder: 'asc' | 'desc'
-  search: string
-}
-
-type LettersInitialData = {
-  letters: Letter[]
-  pagination: Pagination | null
-  users: User[]
-  filters: InitialFilters
-  canManageUsers: boolean
-  initialCacheKey?: string
-}
+import { usePrefetch } from '@/lib/react-query'
 
 type LettersPageClientProps = {
   initialData?: LettersInitialData
-}
-
-const STATUSES: (LetterStatus | 'all')[] = [
-  'all',
-  'NOT_REVIEWED',
-  'ACCEPTED',
-  'IN_PROGRESS',
-  'CLARIFICATION',
-  'READY',
-  'DONE',
-]
-
-const FILTERS = [
-  { value: '', label: 'Все письма', icon: List },
-  { value: 'mine', label: 'Мои письма', icon: UserCheck },
-  { value: 'unassigned', label: 'Без исполнителя', icon: UserMinus },
-  { value: 'favorites', label: 'Избранные', icon: Star },
-  { value: 'overdue', label: 'Просроченные', icon: AlertTriangle },
-  { value: 'urgent', label: 'Срочно (3 раб. дня)', icon: Clock },
-  { value: 'active', label: 'В работе', icon: XCircle },
-  { value: 'done', label: 'Завершённые', icon: CheckCircle },
-]
-
-const LETTERS_CACHE_TTL = 15 * 1000
-const USERS_CACHE_TTL = 5 * 60 * 1000
-
-type ViewMode = 'cards' | 'table' | 'kanban'
-type SortField = 'created' | 'deadline' | 'date' | 'number' | 'org' | 'status' | 'priority'
-
-type SavedView = {
-  id: string
-  name: string
-  filters: {
-    search: string
-    status: LetterStatus | 'all'
-    quickFilter: string
-    owner: string
-    type: string
-    sortBy: SortField
-    sortOrder: 'asc' | 'desc'
-    viewMode: ViewMode
-  }
-}
-
-type SearchSuggestion = {
-  id: string
-  number: string
-  org: string
-  status: LetterStatus
-  deadlineDate: string
-}
-
-const pluralizeLetters = (count: number) => {
-  const value = Math.abs(count) % 100
-  const lastDigit = value % 10
-
-  if (value > 10 && value < 20) return 'писем'
-  if (lastDigit === 1) return 'письмо'
-  if (lastDigit > 1 && lastDigit < 5) return 'письма'
-  return 'писем'
 }
 
 function LettersPageContent({ initialData }: LettersPageClientProps) {
@@ -205,10 +101,13 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   useAuthRedirect(authStatus)
   const toast = useToast()
   const toastRef = useRef(toast)
+  const { prefetchLetters } = usePrefetch()
   const initialCacheKey = initialData?.initialCacheKey
+
   useEffect(() => {
     toastRef.current = toast
   }, [toast])
+
   useEffect(() => {
     if (!initialData) return
     if (initialCacheKey && !lettersCacheRef.current.has(initialCacheKey)) {
@@ -222,8 +121,10 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       usersCacheRef.current = { data: initialData.users, storedAt: Date.now() }
     }
   }, [initialData, initialCacheKey])
+
   const searchParams = useSearchParams()
   const router = useRouter()
+
   const initialFilters = useMemo<InitialFilters>(() => {
     if (initialData?.filters) return initialData.filters
     const pageParam = Number(searchParams.get('page') || 1)
@@ -240,13 +141,17 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       search: '',
     }
   }, [initialData, searchParams])
+
   const canManageUsers = initialData?.canManageUsers ?? true
 
+  // Core state
   const [letters, setLetters] = useState<Letter[]>(initialData?.letters ?? [])
   const [users, setUsers] = useState<User[]>(initialData?.users ?? [])
   const [pagination, setPagination] = useState<Pagination | null>(initialData?.pagination ?? null)
   const [loading, setLoading] = useState(!initialData)
   const [isSearching, setIsSearching] = useState(false)
+
+  // Filter state
   const [search, setSearch] = useState(initialFilters.search)
   const searchRef = useRef(search)
   const querySyncRef = useRef<string | null>(searchParams.toString())
@@ -257,18 +162,21 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const [viewMode, setViewMode] = useLocalStorage<ViewMode>('letters-view-mode', 'table')
   const [sortBy, setSortBy] = useState<SortField>(initialFilters.sortBy)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(initialFilters.sortOrder)
+
+  // Saved views
   const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>('letters-saved-views', [])
-  const [viewsOpen, setViewsOpen] = useState(false)
-  const [newViewName, setNewViewName] = useState('')
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
-  const savedViewsRef = useRef<HTMLDivElement>(null)
   const applyingViewRef = useRef(false)
+
+  // Search suggestions
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([])
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const suggestionsAbortRef = useRef<AbortController | null>(null)
+
+  // Pagination
   const { page, limit, totalPages, nextPage, prevPage, goToPage, hasNext, hasPrev } = usePagination(
     {
       total: pagination?.total || 0,
@@ -276,6 +184,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       initialLimit: initialFilters.limit,
     }
   )
+
+  // UI state
   const [isMobile, setIsMobile] = useState(false)
   const isInitialLoading = loading && letters.length === 0
   const filtersDisabled = isInitialLoading
@@ -290,7 +200,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     KeyboardShortcutsDialog,
   } = useKeyboardShortcutsHelp()
 
-  // Массовый выбор
+  // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkAction, setBulkAction] = useState<'status' | 'owner' | 'delete' | null>(null)
   const [bulkValue, setBulkValue] = useState('')
@@ -317,7 +227,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       return new Set(letters.map((l) => l.id))
     })
   }, [letters])
-  // Горячие клавиши и быстрый просмотр
+
+  // Quick preview & keyboard
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -355,6 +266,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     [search, statusFilter, quickFilter, ownerFilter, typeFilter, sortBy, sortOrder, viewMode]
   )
 
+  // Saved views handlers
   const applySavedView = useCallback(
     (view: SavedView) => {
       applyingViewRef.current = true
@@ -368,32 +280,29 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       setViewMode(view.filters.viewMode)
       setIsSearching(!!view.filters.search)
       setActiveViewId(view.id)
-      setViewsOpen(false)
       goToPage(1)
     },
     [goToPage, setViewMode]
   )
 
-  const saveCurrentView = useCallback(() => {
-    const name = newViewName.trim()
-    if (!name) return
+  const saveCurrentView = useCallback(
+    (name: string) => {
+      const id =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
-    const id =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      const newView: SavedView = {
+        id,
+        name,
+        filters: currentViewFilters(),
+      }
 
-    const newView: SavedView = {
-      id,
-      name,
-      filters: currentViewFilters(),
-    }
-
-    setSavedViews((prev) => [newView, ...prev])
-    setNewViewName('')
-    setActiveViewId(id)
-    setViewsOpen(false)
-  }, [currentViewFilters, newViewName, setSavedViews])
+      setSavedViews((prev) => [newView, ...prev])
+      setActiveViewId(id)
+    },
+    [currentViewFilters, setSavedViews]
+  )
 
   const deleteSavedView = useCallback(
     (id: string) => {
@@ -405,18 +314,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     [activeViewId, setSavedViews]
   )
 
-  useEffect(() => {
-    if (!viewsOpen) return
-    const handleClick = (event: MouseEvent) => {
-      if (!savedViewsRef.current) return
-      if (!savedViewsRef.current.contains(event.target as Node)) {
-        setViewsOpen(false)
-      }
-    }
-    window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
-  }, [viewsOpen])
-
+  // Reset active view when filters change
   useEffect(() => {
     if (applyingViewRef.current) {
       applyingViewRef.current = false
@@ -425,7 +323,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     setActiveViewId(null)
   }, [search, statusFilter, quickFilter, ownerFilter, typeFilter, sortBy, sortOrder, viewMode])
 
-  // Горячие клавиши
+  // Keyboard shortcuts
   useKeyboard({
     onDown: useCallback(() => {
       setFocusedIndex((prev) => Math.min(prev + 1, letters.length - 1))
@@ -466,6 +364,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     enabled: !previewId && !showBulkCreate && !shortcutsOpen,
   })
 
+  // Mobile detection
   useEffect(() => {
     if (typeof window === 'undefined') return
     const media = window.matchMedia('(max-width: 767px)')
@@ -475,6 +374,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     return () => media.removeEventListener('change', update)
   }, [])
 
+  // Recent searches
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
@@ -518,29 +418,12 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     }
   }, [])
 
-  const renderHighlightedText = useCallback((value: string, query: string) => {
-    const trimmed = query.trim()
-    if (!trimmed) return value
-    const lowerValue = value.toLowerCase()
-    const lowerQuery = trimmed.toLowerCase()
-    const index = lowerValue.indexOf(lowerQuery)
-    if (index === -1) return value
-    const before = value.slice(0, index)
-    const match = value.slice(index, index + trimmed.length)
-    const after = value.slice(index + trimmed.length)
-    return (
-      <>
-        {before}
-        <span className="text-emerald-200">{match}</span>
-        {after}
-      </>
-    )
-  }, [])
-
+  // Filters open state
   useEffect(() => {
     setFiltersOpen(!isMobile)
   }, [isMobile])
 
+  // Bulk create modal escape
   useEffect(() => {
     if (!showBulkCreate) {
       document.body.style.overflow = ''
@@ -562,10 +445,12 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     }
   }, [showBulkCreate])
 
+  // Search ref sync
   useEffect(() => {
     searchRef.current = search
   }, [search])
 
+  // URL sync
   useEffect(() => {
     const params = new URLSearchParams()
     if (statusFilter !== 'all') params.set('status', statusFilter)
@@ -582,6 +467,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     router.replace(nextQuery ? `/letters?${nextQuery}` : '/letters')
   }, [statusFilter, quickFilter, ownerFilter, typeFilter, sortBy, sortOrder, page, router])
 
+  // Data loading
   const loadLetters = useCallback(
     async (options: { showLoading?: boolean; force?: boolean } = {}) => {
       const { showLoading = true, force = false } = options
@@ -749,11 +635,42 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     setPreviewId(id)
   }, [])
 
+  const handlePrefetchPage = useCallback(
+    (targetPage: number) => {
+      const filters: Record<string, unknown> = {
+        page: targetPage,
+        limit,
+        sortBy,
+        sortOrder,
+      }
+      if (statusFilter !== 'all') filters.status = statusFilter
+      if (quickFilter) filters.filter = quickFilter
+      if (ownerFilter) filters.owner = ownerFilter
+      if (typeFilter) filters.type = typeFilter
+      if (searchRef.current) filters.search = searchRef.current
+      prefetchLetters(filters)
+    },
+    [limit, sortBy, sortOrder, statusFilter, quickFilter, ownerFilter, typeFilter, prefetchLetters]
+  )
+
   const handleBulkCreateSuccess = useCallback(() => {
     setShowBulkCreate(false)
     loadLetters({ force: true })
   }, [loadLetters])
 
+  const handleQuickFilterChange = useCallback(
+    (value: string) => {
+      setQuickFilter(value)
+      setStatusFilter('all')
+      if (value === 'mine' || value === 'unassigned') {
+        setOwnerFilter('')
+      }
+      goToPage(1)
+    },
+    [goToPage]
+  )
+
+  // Initial load
   useEffect(() => {
     if (session) {
       if (skipInitialLoadRef.current) {
@@ -906,6 +823,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     runBulkAction()
   }, [bulkAction, bulkValue, confirmDialog, runBulkAction, selectedIds, users])
 
+  // Auth loading
   if (authStatus === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-transparent">
@@ -990,32 +908,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
         />
 
         {/* Quick Filters */}
-        <div className="panel-soft panel-glass mb-4 rounded-2xl p-2">
-          <ScrollIndicator className="no-scrollbar flex gap-2 sm:flex-wrap" showArrows={true}>
-            {FILTERS.map((filter) => {
-              const Icon = filter.icon
-              return (
-                <button
-                  key={filter.value}
-                  onClick={() => {
-                    setQuickFilter(filter.value)
-                    setStatusFilter('all')
-                    if (filter.value === 'mine' || filter.value === 'unassigned') {
-                      setOwnerFilter('')
-                    }
-                    goToPage(1)
-                  }}
-                  className={`app-chip tap-highlight touch-target-sm inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm transition focus-visible:ring-2 focus-visible:ring-teal-400/50 md:px-3 md:py-1.5 ${quickFilter === filter.value ? 'app-chip-active' : ''}`}
-                  aria-pressed={quickFilter === filter.value}
-                  aria-label={filter.label}
-                >
-                  <Icon className="h-4 w-4" />
-                  {filter.label}
-                </button>
-              )
-            })}
-          </ScrollIndicator>
-        </div>
+        <LettersQuickFilters value={quickFilter} onChange={handleQuickFilterChange} />
 
         {/* Filters Row */}
         <div className="panel panel-soft panel-glass relative z-20 mb-6 flex flex-col gap-4 rounded-2xl p-4 lg:sticky lg:top-20 lg:z-30 lg:flex-row lg:flex-wrap lg:items-center">
@@ -1066,92 +959,17 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
               {(suggestionsOpen ||
                 suggestionsLoading ||
                 (isSearchFocused && !search.trim() && recentSearches.length > 0)) && (
-                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-slate-800/70 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur">
-                  <div className="flex items-center justify-between border-b border-slate-800/70 px-3 py-2 text-xs text-slate-400">
-                    <span>{search.trim() ? 'Подсказки' : 'Последние поиски'}</span>
-                    {suggestionsLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  </div>
-                  <div className="max-h-64 overflow-auto">
-                    {!search.trim() ? (
-                      recentSearches.length === 0 ? (
-                        <div className="px-3 py-4 text-xs text-slate-500">
-                          {'Пока нет истории поиска'}
-                        </div>
-                      ) : (
-                        <div className="space-y-1 px-3 py-2">
-                          {recentSearches.map((item) => (
-                            <button
-                              key={item}
-                              type="button"
-                              onMouseDown={(event) => {
-                                event.preventDefault()
-                                setSearch(item)
-                                setSuggestionsOpen(false)
-                              }}
-                              className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm text-slate-200 transition hover:bg-slate-900/60"
-                            >
-                              <span className="truncate">{item}</span>
-                              <span className="text-[10px] text-slate-500">{'Поиск'}</span>
-                            </button>
-                          ))}
-                          <button
-                            type="button"
-                            onMouseDown={(event) => {
-                              event.preventDefault()
-                              clearRecentSearches()
-                            }}
-                            className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-[11px] text-slate-500 transition hover:text-slate-200"
-                          >
-                            {'Очистить историю'}
-                          </button>
-                        </div>
-                      )
-                    ) : searchSuggestions.length === 0 ? (
-                      <div className="px-3 py-4 text-xs text-slate-500">
-                        <div>{'Ничего не найдено'}</div>
-                        <div className="mt-2 text-[11px] text-slate-600">
-                          {'Попробуйте: номер, организация, Jira'}
-                        </div>
-                      </div>
-                    ) : (
-                      searchSuggestions.map((item) => {
-                        const daysLeft = getWorkingDaysUntilDeadline(item.deadlineDate)
-                        const tone =
-                          daysLeft < 0
-                            ? 'text-red-400'
-                            : daysLeft <= 2
-                              ? 'text-yellow-400'
-                              : 'text-emerald-300'
-
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onMouseDown={(event) => {
-                              event.preventDefault()
-                              router.push(`/letters/${item.id}`)
-                              setSuggestionsOpen(false)
-                            }}
-                            className="flex w-full flex-col gap-1 border-b border-slate-900/60 px-3 py-2 text-left text-sm transition hover:bg-slate-900/70"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-teal-300">№-{item.number}</span>
-                              <span className={`text-[11px] ${tone}`}>
-                                {daysLeft} раб. {pluralizeDays(daysLeft)}
-                              </span>
-                            </div>
-                            <div className="truncate text-xs text-slate-300">
-                              {renderHighlightedText(item.org, search)}
-                            </div>
-                            <div className="text-[11px] text-slate-500">
-                              {STATUS_LABELS[item.status]}
-                            </div>
-                          </button>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
+                <LettersSearchSuggestions
+                  search={search}
+                  suggestions={searchSuggestions}
+                  recentSearches={recentSearches}
+                  isLoading={suggestionsLoading}
+                  onSelectRecent={(value) => {
+                    setSearch(value)
+                    setSuggestionsOpen(false)
+                  }}
+                  onClearRecent={clearRecentSearches}
+                />
               )}
             </div>
 
@@ -1174,7 +992,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
             <div className="flex w-full flex-wrap gap-2 sm:hidden">
               {search && (
                 <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-200">
-                  {'Поиск'}: {search}
+                  Поиск: {search}
                 </span>
               )}
               {statusFilter !== 'all' && (
@@ -1184,12 +1002,12 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
               )}
               {quickFilter && (
                 <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-200">
-                  {FILTERS.find((item) => item.value === quickFilter)?.label || quickFilter}
+                  {QUICK_FILTERS.find((item) => item.value === quickFilter)?.label || quickFilter}
                 </span>
               )}
               {ownerFilter && (
                 <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-200">
-                  {'Исполнитель'}:{' '}
+                  Исполнитель:{' '}
                   {users.find((user) => user.id === ownerFilter)?.name ||
                     users.find((user) => user.id === ownerFilter)?.email ||
                     ownerFilter}
@@ -1197,8 +1015,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
               )}
               {typeFilter && (
                 <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-200">
-                  {'Тип'}:{' '}
-                  {LETTER_TYPES.find((item) => item.value === typeFilter)?.label || typeFilter}
+                  Тип: {LETTER_TYPES.find((item) => item.value === typeFilter)?.label || typeFilter}
                 </span>
               )}
               <button
@@ -1206,7 +1023,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                 className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-300 transition hover:text-white"
                 aria-label="Сбросить фильтры"
               >
-                {'Сбросить'}
+                Сбросить
               </button>
             </div>
           )}
@@ -1297,108 +1114,16 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
 
           <div className="hidden w-full flex-wrap items-center gap-2 sm:ml-auto sm:flex sm:w-auto">
             {/* Saved views */}
-            <div ref={savedViewsRef} className="relative hidden sm:block">
-              <button
-                onClick={() => setViewsOpen((prev) => !prev)}
-                className={`inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm transition ${
-                  viewsOpen
-                    ? 'bg-white/10 text-white'
-                    : 'bg-white/5 text-slate-300 hover:text-white'
-                }`}
-                aria-expanded={viewsOpen}
-              >
-                <Bookmark className="h-4 w-4" />
-                Виды
-                <ChevronDown className="h-4 w-4" />
-              </button>
-
-              {viewsOpen && (
-                <div className="absolute right-0 z-30 mt-2 w-64 overflow-hidden rounded-xl border border-slate-800/70 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur">
-                  <div className="border-b border-slate-800/70 px-3 py-2 text-xs text-slate-400">
-                    Сохранённые виды
-                  </div>
-                  <div className="max-h-64 overflow-auto">
-                    {savedViews.length === 0 ? (
-                      <div className="px-3 py-4 text-xs text-slate-500">Нет сохранённых видов</div>
-                    ) : (
-                      savedViews.map((view) => (
-                        <div
-                          key={view.id}
-                          className="flex items-center gap-2 border-b border-slate-900/60 px-3 py-2"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => applySavedView(view)}
-                            className="flex-1 truncate text-left text-sm text-slate-200 transition hover:text-white"
-                          >
-                            {view.name}
-                          </button>
-                          {activeViewId === view.id && (
-                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
-                              Активен
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              deleteSavedView(view.id)
-                            }}
-                            className="text-slate-500 transition hover:text-red-300"
-                            aria-label="Удалить вид"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="border-t border-slate-800/70 px-3 py-3">
-                    <input
-                      value={newViewName}
-                      onChange={(e) => setNewViewName(e.target.value)}
-                      placeholder="Название вида"
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white placeholder-slate-500"
-                    />
-                    <button
-                      onClick={saveCurrentView}
-                      disabled={!newViewName.trim()}
-                      className="mt-2 w-full rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-200 transition hover:bg-emerald-500/30 disabled:opacity-50"
-                    >
-                      Сохранить текущий вид
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <LettersSavedViews
+              views={savedViews}
+              activeViewId={activeViewId}
+              onApply={applySavedView}
+              onSave={saveCurrentView}
+              onDelete={deleteSavedView}
+            />
 
             {/* View toggle */}
-            <div className="panel-soft panel-glass hidden rounded-xl p-1 sm:flex">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`rounded-lg p-2 transition focus-visible:ring-2 focus-visible:ring-teal-400/50 ${viewMode === 'table' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white'}`}
-                title="Таблица"
-                aria-label="Табличный вид"
-              >
-                <List className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`rounded-lg p-2 transition focus-visible:ring-2 focus-visible:ring-teal-400/50 ${viewMode === 'cards' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white'}`}
-                title="Карточки"
-                aria-label="Карточный вид"
-              >
-                <LayoutGrid className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('kanban')}
-                className={`rounded-lg p-2 transition focus-visible:ring-2 focus-visible:ring-teal-400/50 ${viewMode === 'kanban' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white'}`}
-                title="Канбан"
-                aria-label="Канбан"
-              >
-                <Kanban className="h-5 w-5" />
-              </button>
-            </div>
+            <LettersViewToggle value={viewMode} onChange={setViewMode} />
 
             {/* Keyboard shortcuts help */}
             <div className="relative hidden sm:block">
@@ -1415,7 +1140,6 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
         </div>
 
         {/* Content */}
-
         {loading ? (
           effectiveViewMode === 'cards' ? (
             <CardsSkeleton count={9} />
@@ -1456,33 +1180,18 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
         )}
 
         {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="mt-6 flex flex-col items-center justify-between gap-3 sm:flex-row">
-            <div className="text-sm text-slate-300/70">{`Показано ${(page - 1) * limit + 1}-${Math.min(page * limit, pagination.total)} из ${pagination.total}`}</div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={prevPage}
-                disabled={!hasPrev}
-                className="tap-highlight touch-target rounded-lg border border-white/10 bg-white/5 p-2 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Предыдущая страница"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-
-              <span className="px-2 text-slate-300/70">
-                {page} / {totalPages}
-              </span>
-
-              <button
-                onClick={nextPage}
-                disabled={!hasNext}
-                className="tap-highlight touch-target rounded-lg border border-white/10 bg-white/5 p-2 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Следующая страница"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
+        {pagination && (
+          <LettersPagination
+            pagination={pagination}
+            page={page}
+            limit={limit}
+            totalPages={totalPages}
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={prevPage}
+            onNext={nextPage}
+            onPrefetchPage={handlePrefetchPage}
+          />
         )}
       </main>
 
