@@ -59,7 +59,7 @@ type LetterForSubstitution = {
     name?: string | null
     email?: string | null
   } | null
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**
@@ -114,10 +114,7 @@ const STATUS_LABELS: Record<string, string> = {
  * @param letter - Объект письма
  * @returns Текст с заменёнными переменными
  */
-export function substituteLetterVariables(
-  text: string,
-  letter: LetterForSubstitution
-): string {
+export function substituteLetterVariables(text: string, letter: LetterForSubstitution): string {
   let result = text
 
   // Создаём карту замен
@@ -127,7 +124,7 @@ export function substituteLetterVariables(
     'letter.org': letter.org || '',
     'letter.date': formatDate(letter.date),
     'letter.deadlineDate': formatDate(letter.deadlineDate),
-    'letter.status': letter.status ? (STATUS_LABELS[letter.status] || letter.status) : '',
+    'letter.status': letter.status ? STATUS_LABELS[letter.status] || letter.status : '',
     'letter.type': letter.type || '',
     'letter.content': letter.content || '',
     'letter.zordoc': letter.zordoc || '',
@@ -192,9 +189,7 @@ export function validateTemplateVariables(text: string): {
 } {
   const usedVariables = extractTemplateVariables(text)
   const knownVariables = Object.keys(LETTER_TEMPLATE_VARIABLES)
-  const unknownVariables = usedVariables.filter(
-    (v) => !knownVariables.includes(v)
-  )
+  const unknownVariables = usedVariables.filter((v) => !knownVariables.includes(v))
 
   return {
     valid: unknownVariables.length === 0,

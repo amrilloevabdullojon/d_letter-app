@@ -137,7 +137,6 @@ export default function RequestPage() {
         // Ignore invalid JSON
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Save draft to localStorage

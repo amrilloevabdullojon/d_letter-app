@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Users,
   UserPlus,
@@ -93,7 +94,6 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
     editingId,
     editData,
     savingId,
-    setEditData,
     startEdit,
     cancelEdit,
     saveEdit,
@@ -895,10 +895,13 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
                     <td className="bg-white/5 px-3 py-3 align-middle group-hover:bg-white/10">
                       <div className="flex items-center gap-3">
                         {user.image ? (
-                          <img
+                          <Image
                             src={user.image}
                             alt={user.name || user.email || 'User'}
+                            width={36}
+                            height={36}
                             className="h-9 w-9 rounded-full object-cover"
+                            unoptimized
                           />
                         ) : (
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xs text-slate-200">

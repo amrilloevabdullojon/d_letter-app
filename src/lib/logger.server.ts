@@ -103,7 +103,6 @@ const isDev = process.env.NODE_ENV === 'development'
  * }
  * ```
  */
-/* eslint-disable no-console */
 export const logger = {
   debug: (context: string, message: string, meta?: Record<string, unknown>) => {
     if (!isDev) return
@@ -145,7 +144,12 @@ export const logger = {
   /**
    * Log performance metrics
    */
-  performance: (context: string, operation: string, startTime: number, meta?: Record<string, unknown>) => {
+  performance: (
+    context: string,
+    operation: string,
+    startTime: number,
+    meta?: Record<string, unknown>
+  ) => {
     const duration = performance.now() - startTime
     const entry = createLogEntry('info', context, `${operation} completed`, {
       ...meta,
@@ -162,4 +166,3 @@ export const logger = {
     return duration
   },
 }
-/* eslint-enable no-console */

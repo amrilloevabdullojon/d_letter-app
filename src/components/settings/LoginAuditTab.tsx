@@ -113,7 +113,7 @@ export function LoginAuditTab({ onError }: LoginAuditTabProps) {
         clearTimeout(debounceRef.current)
       }
     }
-  }, [loginAuditStatus, loginAuditQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loginAuditStatus, loginAuditQuery, loadLoginAudits])
 
   const resetFilters = useCallback(() => {
     setLoginAuditStatus('all')

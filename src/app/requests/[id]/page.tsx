@@ -30,7 +30,13 @@ import {
 
 type RequestStatus = 'NEW' | 'IN_REVIEW' | 'DONE' | 'SPAM' | 'CANCELLED'
 type RequestPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
-type RequestCategory = 'CONSULTATION' | 'TECHNICAL' | 'DOCUMENTATION' | 'COMPLAINT' | 'SUGGESTION' | 'OTHER'
+type RequestCategory =
+  | 'CONSULTATION'
+  | 'TECHNICAL'
+  | 'DOCUMENTATION'
+  | 'COMPLAINT'
+  | 'SUGGESTION'
+  | 'OTHER'
 
 interface RequestFile {
   id: string
@@ -190,7 +196,6 @@ export default function RequestDetailPage() {
     }
 
     loadRequest()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, requestId])
 
   const updateRequest = async (payload: {
@@ -240,9 +245,7 @@ export default function RequestDetailPage() {
         throw new Error(data.error || 'Failed to add comment')
       }
 
-      setRequest((prev) =>
-        prev ? { ...prev, comments: [...prev.comments, data.comment] } : prev
-      )
+      setRequest((prev) => (prev ? { ...prev, comments: [...prev.comments, data.comment] } : prev))
       setCommentText('')
       toastSuccess('Комментарий добавлен')
     } catch (error) {
@@ -282,8 +285,8 @@ export default function RequestDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen app-shell flex items-center justify-center bg-gray-900">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      <div className="app-shell flex min-h-screen items-center justify-center bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
   }
@@ -292,9 +295,9 @@ export default function RequestDetailPage() {
 
   if (!request) {
     return (
-      <div className="min-h-screen app-shell bg-gray-900">
+      <div className="app-shell min-h-screen bg-gray-900">
         <Header />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="panel panel-glass rounded-2xl p-6 text-slate-300">
             {'Заявка не найдена.'}
           </div>
@@ -335,15 +338,15 @@ export default function RequestDetailPage() {
   ]
 
   return (
-    <div className="min-h-screen app-shell bg-gray-900">
+    <div className="app-shell min-h-screen bg-gray-900">
       <Header />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Link
           href="/requests"
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition"
+          className="mb-6 inline-flex items-center gap-2 text-gray-400 transition hover:text-white"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="h-5 w-5" />
           {'К списку заявок'}
         </Link>
 
@@ -355,19 +358,21 @@ export default function RequestDetailPage() {
             <p className="mt-2 text-sm text-slate-300">
               {`Создано ${formatDateTime(request.createdAt)}`}
             </p>
-            <div className="flex flex-wrap items-center gap-2 mt-3">
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${PRIORITY_STYLES[request.priority]}`}>
-                <Flag className="w-3 h-3" />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${PRIORITY_STYLES[request.priority]}`}
+              >
+                <Flag className="h-3 w-3" />
                 {PRIORITY_LABELS[request.priority]}
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-purple-500/20 text-purple-300">
-                <Tag className="w-3 h-3" />
+              <span className="inline-flex items-center gap-1 rounded bg-purple-500/20 px-2 py-1 text-xs font-medium text-purple-300">
+                <Tag className="h-3 w-3" />
                 {CATEGORY_LABELS[request.category]}
               </span>
             </div>
           </div>
           <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[request.status]}`}
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[request.status]}`}
           >
             {STATUS_LABELS[request.status]}
           </span>
@@ -376,7 +381,9 @@ export default function RequestDetailPage() {
         {/* Mobile Sticky Status Bar */}
         <div className="sticky top-14 z-10 mb-4 rounded-lg border border-gray-700/60 bg-gray-800/95 p-3 backdrop-blur-md md:hidden">
           <div className="flex items-center justify-between gap-3">
-            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${STATUS_STYLES[request.status]}`}>
+            <span
+              className={`inline-flex items-center rounded px-2 py-1 text-xs font-medium ${STATUS_STYLES[request.status]}`}
+            >
               {STATUS_LABELS[request.status]}
             </span>
             <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -388,43 +395,33 @@ export default function RequestDetailPage() {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
-            <div className="panel panel-glass rounded-2xl p-4 hover-lift md:p-6">
-              <h2 className="mb-4 text-lg font-semibold text-white md:text-xl">
-                {'Описание'}
-              </h2>
-              <p className="whitespace-pre-wrap text-sm text-slate-300">
-                {request.description}
-              </p>
+            <div className="panel panel-glass hover-lift rounded-2xl p-4 md:p-6">
+              <h2 className="mb-4 text-lg font-semibold text-white md:text-xl">{'Описание'}</h2>
+              <p className="whitespace-pre-wrap text-sm text-slate-300">{request.description}</p>
             </div>
 
-            <div className="panel panel-glass rounded-2xl p-4 hover-lift md:p-6">
-              <h2 className="mb-4 text-lg font-semibold text-white md:text-xl">
-                {'Вложения'}
-              </h2>
+            <div className="panel panel-glass hover-lift rounded-2xl p-4 md:p-6">
+              <h2 className="mb-4 text-lg font-semibold text-white md:text-xl">{'Вложения'}</h2>
               {request.files.length === 0 ? (
-                <p className="text-sm text-slate-400">
-                  {'Вложений нет.'}
-                </p>
+                <p className="text-sm text-slate-400">{'Вложений нет.'}</p>
               ) : (
                 <div className="space-y-2">
                   {request.files.map((file) => (
                     <div
                       key={file.id}
-                      className="flex items-center justify-between gap-3 px-3 py-2 bg-gray-800/60 border border-gray-700 rounded-lg"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm text-white truncate">{file.name}</p>
-                        <p className="text-xs text-slate-400">
-                          {formatFileSize(file.size)}
-                        </p>
+                        <p className="truncate text-sm text-white">{file.name}</p>
+                        <p className="text-xs text-slate-400">{formatFileSize(file.size)}</p>
                       </div>
                       <a
                         href={file.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-emerald-300 hover:text-emerald-200 transition"
+                        className="inline-flex items-center gap-1 text-sm text-emerald-300 transition hover:text-emerald-200"
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        <ExternalLink className="h-4 w-4" />
                         {'Открыть'}
                       </a>
                     </div>
@@ -434,7 +431,7 @@ export default function RequestDetailPage() {
             </div>
 
             {/* Комментарии */}
-            <div className="panel panel-glass rounded-2xl p-4 hover-lift md:p-6">
+            <div className="panel panel-glass hover-lift rounded-2xl p-4 md:p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-white md:text-xl">
                   <MessageSquare className="h-5 w-5" />
@@ -446,15 +443,13 @@ export default function RequestDetailPage() {
               </div>
 
               {request.comments.length === 0 ? (
-                <p className="text-sm text-slate-400 mb-4">
-                  {'Комментариев пока нет.'}
-                </p>
+                <p className="mb-4 text-sm text-slate-400">{'Комментариев пока нет.'}</p>
               ) : (
-                <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
+                <div className="mb-4 max-h-96 space-y-4 overflow-y-auto">
                   {request.comments.map((comment) => (
                     <div
                       key={comment.id}
-                      className="bg-gray-800/60 border border-gray-700 rounded-lg p-4"
+                      className="rounded-lg border border-gray-700 bg-gray-800/60 p-4"
                     >
                       <div className="flex items-start gap-3">
                         {comment.author.image ? (
@@ -463,16 +458,16 @@ export default function RequestDetailPage() {
                             alt=""
                             width={32}
                             height={32}
-                            className="w-8 h-8 rounded-full"
+                            className="h-8 w-8 rounded-full"
                             unoptimized
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-300 text-sm font-medium">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-medium text-emerald-300">
                             {(comment.author.name || comment.author.email || '?')[0].toUpperCase()}
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center gap-2">
                             <span className="text-sm font-medium text-white">
                               {comment.author.name || comment.author.email}
                             </span>
@@ -480,7 +475,7 @@ export default function RequestDetailPage() {
                               {formatDateTime(comment.createdAt)}
                             </span>
                           </div>
-                          <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                          <p className="whitespace-pre-wrap text-sm text-slate-300">
                             {comment.text}
                           </p>
                         </div>
@@ -497,17 +492,17 @@ export default function RequestDetailPage() {
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Написать комментарий..."
                   disabled={submittingComment}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                  className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
                 />
                 <button
                   type="submit"
                   disabled={submittingComment || !commentText.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {submittingComment ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Send className="w-4 h-4" />
+                    <Send className="h-4 w-4" />
                   )}
                 </button>
               </form>
@@ -515,7 +510,7 @@ export default function RequestDetailPage() {
 
             {/* История изменений */}
             {request._count.history > 0 && (
-              <div className="panel panel-glass rounded-2xl p-4 hover-lift md:p-6">
+              <div className="panel panel-glass hover-lift rounded-2xl p-4 md:p-6">
                 <button
                   type="button"
                   onClick={toggleHistory}
@@ -535,20 +530,20 @@ export default function RequestDetailPage() {
                   <div className="mt-4">
                     {historyLoading ? (
                       <div className="flex justify-center py-4">
-                        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
                       </div>
                     ) : history.length === 0 ? (
                       <p className="text-sm text-slate-400">{'История пуста.'}</p>
                     ) : (
-                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                      <div className="max-h-64 space-y-3 overflow-y-auto">
                         {history.map((entry) => (
                           <div
                             key={entry.id}
-                            className="flex items-start gap-3 text-sm border-l-2 border-gray-700 pl-3"
+                            className="flex items-start gap-3 border-l-2 border-gray-700 pl-3 text-sm"
                           >
                             <div className="flex-1">
                               <p className="text-slate-300">
-                                <span className="text-white font-medium">
+                                <span className="font-medium text-white">
                                   {entry.user.name || entry.user.email}
                                 </span>
                                 {' изменил(а) '}
@@ -558,13 +553,15 @@ export default function RequestDetailPage() {
                                 {entry.oldValue && (
                                   <>
                                     {' с '}
-                                    <span className="text-red-300 line-through">{entry.oldValue}</span>
+                                    <span className="text-red-300 line-through">
+                                      {entry.oldValue}
+                                    </span>
                                   </>
                                 )}
                                 {' на '}
                                 <span className="text-green-300">{entry.newValue || '—'}</span>
                               </p>
-                              <p className="text-xs text-slate-500 mt-1">
+                              <p className="mt-1 text-xs text-slate-500">
                                 {formatDateTime(entry.createdAt)}
                               </p>
                             </div>
@@ -578,22 +575,18 @@ export default function RequestDetailPage() {
             )}
           </div>
 
-          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-            <div className="panel panel-glass space-y-4 rounded-2xl p-4 hover-lift md:p-6">
-              <h2 className="text-lg font-semibold text-white md:text-xl">
-                {'Управление'}
-              </h2>
+          <div className="space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto">
+            <div className="panel panel-glass hover-lift space-y-4 rounded-2xl p-4 md:p-6">
+              <h2 className="text-lg font-semibold text-white md:text-xl">{'Управление'}</h2>
               <div>
-                <label className="mb-2 block text-sm text-gray-300/90">
-                  {'Статус'}
-                </label>
+                <label className="mb-2 block text-sm text-gray-300/90">{'Статус'}</label>
                 <select
                   value={request.status}
                   onChange={(event) =>
                     updateRequest({ status: event.target.value as RequestStatus })
                   }
                   disabled={updating}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                 >
                   {Object.entries(STATUS_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -603,16 +596,14 @@ export default function RequestDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm text-gray-300/90">
-                  {'Приоритет'}
-                </label>
+                <label className="mb-2 block text-sm text-gray-300/90">{'Приоритет'}</label>
                 <select
                   value={request.priority}
                   onChange={(event) =>
                     updateRequest({ priority: event.target.value as RequestPriority })
                   }
                   disabled={updating}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                 >
                   {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -622,16 +613,14 @@ export default function RequestDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm text-gray-300/90">
-                  {'Категория'}
-                </label>
+                <label className="mb-2 block text-sm text-gray-300/90">{'Категория'}</label>
                 <select
                   value={request.category}
                   onChange={(event) =>
                     updateRequest({ category: event.target.value as RequestCategory })
                   }
                   disabled={updating}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                 >
                   {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -641,18 +630,16 @@ export default function RequestDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm text-gray-300/90">
-                  {'Ответственный'}
-                </label>
-                <p className="text-sm text-white mb-3">{assignedLabel}</p>
+                <label className="mb-2 block text-sm text-gray-300/90">{'Ответственный'}</label>
+                <p className="mb-3 text-sm text-white">{assignedLabel}</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => updateRequest({ assignedToId: session.user.id })}
                     disabled={updating}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-white transition hover:bg-white/20 disabled:opacity-50"
                   >
-                    <UserPlus className="w-4 h-4" />
+                    <UserPlus className="h-4 w-4" />
                     {'Назначить на меня'}
                   </button>
                   {request.assignedTo && (
@@ -660,22 +647,18 @@ export default function RequestDetailPage() {
                       type="button"
                       onClick={() => updateRequest({ assignedToId: null })}
                       disabled={updating}
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-white transition hover:bg-white/20 disabled:opacity-50"
                     >
-                      <UserX className="w-4 h-4" />
-                      {assignedToMe
-                        ? 'Снять с себя'
-                        : 'Снять назначение'}
+                      <UserX className="h-4 w-4" />
+                      {assignedToMe ? 'Снять с себя' : 'Снять назначение'}
                     </button>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="panel panel-glass space-y-4 rounded-2xl p-4 hover-lift md:p-6">
-              <h2 className="text-lg font-semibold text-white md:text-xl">
-                {'Контакты'}
-              </h2>
+            <div className="panel panel-glass hover-lift space-y-4 rounded-2xl p-4 md:p-6">
+              <h2 className="text-lg font-semibold text-white md:text-xl">{'Контакты'}</h2>
               <div className="space-y-2 text-sm text-slate-300">
                 <p>{`Имя: ${request.contactName}`}</p>
                 <p>{`Телефон: ${request.contactPhone}`}</p>
@@ -684,15 +667,13 @@ export default function RequestDetailPage() {
               </div>
             </div>
 
-            <div className="panel panel-glass space-y-2 rounded-2xl p-4 text-sm text-gray-400/80 hover-lift md:p-6">
+            <div className="panel panel-glass hover-lift space-y-2 rounded-2xl p-4 text-sm text-gray-400/80 md:p-6">
               <div className="flex items-center gap-2">
                 <Paperclip className="h-4 w-4" />
                 {`Файлов: ${request.files.length}`}
               </div>
               <div>{`Создано: ${formatDate(request.createdAt)}`}</div>
-              {request.source && (
-                <div>{`Источник: ${request.source}`}</div>
-              )}
+              {request.source && <div>{`Источник: ${request.source}`}</div>}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import {
@@ -194,8 +195,14 @@ export function ActivityFeed({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   {item.user.image ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={item.user.image} alt="" className="h-5 w-5 rounded-full" />
+                    <Image
+                      src={item.user.image}
+                      alt={item.user.name || 'User'}
+                      width={20}
+                      height={20}
+                      className="h-5 w-5 rounded-full"
+                      unoptimized
+                    />
                   ) : (
                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-600 text-xs text-white">
                       {item.user.name?.[0] || '?'}

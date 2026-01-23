@@ -23,7 +23,7 @@ export function PWAInstallPrompt() {
     const checkStandalone = () => {
       const standalone =
         window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone ||
+        Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone) ||
         document.referrer.includes('android-app://')
       setIsStandalone(standalone)
     }
@@ -135,30 +135,26 @@ export function PWAInstallPrompt() {
           </div>
 
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-white">
-              Установите DMED Letters
-            </h3>
-            <p className="mt-1 text-xs text-gray-300">
-              Используйте приложение как нативное:
-            </p>
+            <h3 className="text-sm font-semibold text-white">Установите DMED Letters</h3>
+            <p className="mt-1 text-xs text-gray-300">Используйте приложение как нативное:</p>
             <ol className="mt-2 space-y-1 text-xs text-gray-400">
               <li className="flex items-center gap-2">
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-teal-500/20 text-[10px] text-teal-400">
                   1
                 </span>
-                Нажмите на кнопку "Поделиться"
+                Нажмите на кнопку &quot;Поделиться&quot;
               </li>
               <li className="flex items-center gap-2">
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-teal-500/20 text-[10px] text-teal-400">
                   2
                 </span>
-                Выберите "На экран Домой"
+                Выберите &quot;На экран Домой&quot;
               </li>
               <li className="flex items-center gap-2">
                 <span className="flex h-4 w-4 items-center justify-center rounded-full bg-teal-500/20 text-[10px] text-teal-400">
                   3
                 </span>
-                Нажмите "Добавить"
+                Нажмите &quot;Добавить&quot;
               </li>
             </ol>
           </div>
@@ -189,9 +185,7 @@ export function PWAInstallPrompt() {
           </div>
 
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-white">
-              Установите DMED Letters
-            </h3>
+            <h3 className="text-sm font-semibold text-white">Установите DMED Letters</h3>
             <p className="mt-1 text-xs text-gray-300">
               Быстрый доступ, офлайн режим и push уведомления
             </p>

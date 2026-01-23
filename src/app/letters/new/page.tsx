@@ -110,7 +110,6 @@ export default function NewLetterPage() {
     } catch {
       // Ignore localStorage errors
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
   // Save draft on form change

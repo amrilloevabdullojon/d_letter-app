@@ -486,14 +486,12 @@ export function startSyncWorker(intervalMs = 30000) {
     return // Уже запущен
   }
 
-  // eslint-disable-next-line no-console
   console.log(`[SyncWorker] Starting with interval ${intervalMs}ms`)
 
   syncInterval = setInterval(async () => {
     try {
       const result = await processPendingChanges()
       if (result.processed > 0) {
-        // eslint-disable-next-line no-console
         console.log(
           `[SyncWorker] Processed: ${result.processed}, Synced: ${result.synced}, Failed: ${result.failed}`
         )
@@ -508,7 +506,6 @@ export function stopSyncWorker() {
   if (syncInterval) {
     clearInterval(syncInterval)
     syncInterval = null
-    // eslint-disable-next-line no-console
     console.log('[SyncWorker] Stopped')
   }
 }

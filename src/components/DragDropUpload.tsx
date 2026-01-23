@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, DragEvent, ChangeEvent, ReactNode } from 'react'
+import Image from 'next/image'
 import { Upload, X, File, Image as ImageIcon, FileText, Video, Music, Archive } from 'lucide-react'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
@@ -71,7 +72,7 @@ export function DragDropUpload({
   const animationsEnabled = preferences?.animations ?? true
 
   const [isDragging, setIsDragging] = useState(false)
-  const [dragCounter, setDragCounter] = useState(0)
+  const [_dragCounter, setDragCounter] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropZoneRef = useRef<HTMLDivElement>(null)
 
@@ -213,9 +214,9 @@ export function DragDropUpload({
         onClick={handleClick}
         className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-all ${
           isDragging
-            ? 'border-teal-400 bg-teal-500/10 scale-[1.02]'
+            ? 'scale-[1.02] border-teal-400 bg-teal-500/10'
             : disabled
-              ? 'border-gray-700/50 bg-gray-800/30 cursor-not-allowed opacity-50'
+              ? 'cursor-not-allowed border-gray-700/50 bg-gray-800/30 opacity-50'
               : 'border-gray-600/50 bg-gray-800/20 hover:border-gray-500/70 hover:bg-gray-800/30'
         } ${animationsEnabled ? 'duration-200' : ''}`}
       >
@@ -246,14 +247,10 @@ export function DragDropUpload({
             <>
               <div className="text-center">
                 <p className="text-base font-medium text-white">
-                  {isDragging
-                    ? 'Отпустите файлы'
-                    : 'Перетащите файлы или нажмите для выбора'}
+                  {isDragging ? 'Отпустите файлы' : 'Перетащите файлы или нажмите для выбора'}
                 </p>
                 <p className="mt-1 text-sm text-gray-400">
-                  {accept
-                    ? `Поддерживаемые форматы: ${accept}`
-                    : 'Любые файлы'}
+                  {accept ? `Поддерживаемые форматы: ${accept}` : 'Любые файлы'}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
                   Максимум: {formatFileSize(maxSize)} · До {maxFiles} файлов
@@ -289,10 +286,13 @@ export function DragDropUpload({
                   {/* Preview or Icon */}
                   <div className="flex-shrink-0">
                     {isImage && uploadedFile.preview ? (
-                      <img
+                      <Image
                         src={uploadedFile.preview}
                         alt={uploadedFile.file.name}
+                        width={48}
+                        height={48}
                         className="h-12 w-12 rounded object-cover"
+                        unoptimized
                       />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-700/50">
@@ -318,15 +318,14 @@ export function DragDropUpload({
                   </div>
 
                   {/* Progress Bar */}
-                  {uploadedFile.status === 'uploading' &&
-                    uploadedFile.progress !== undefined && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden rounded-b-lg bg-gray-700/30">
-                        <div
-                          className="h-full bg-teal-500 transition-all duration-300"
-                          style={{ width: `${uploadedFile.progress}%` }}
-                        />
-                      </div>
-                    )}
+                  {uploadedFile.status === 'uploading' && uploadedFile.progress !== undefined && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden rounded-b-lg bg-gray-700/30">
+                      <div
+                        className="h-full bg-teal-500 transition-all duration-300"
+                        style={{ width: `${uploadedFile.progress}%` }}
+                      />
+                    </div>
+                  )}
 
                   {/* Remove Button */}
                   {onFileRemove && uploadedFile.status !== 'uploading' && (

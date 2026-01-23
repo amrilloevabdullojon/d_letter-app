@@ -23,7 +23,11 @@ export function TRPCExample() {
   const { data: stats, isLoading: statsLoading } = trpc.letters.stats.useQuery()
 
   // Query с параметрами
-  const { data: lettersData, isLoading: lettersLoading, refetch } = trpc.letters.getAll.useQuery({
+  const {
+    data: lettersData,
+    isLoading: lettersLoading,
+    refetch,
+  } = trpc.letters.getAll.useQuery({
     status: 'IN_PROGRESS',
     limit: 5,
   })
@@ -36,14 +40,6 @@ export function TRPCExample() {
     },
     onError: (error) => {
       toast.error(`Ошибка: ${error.message}`)
-    },
-  })
-
-  // Mutation - обновление письма
-  const updateMutation = trpc.letters.update.useMutation({
-    onSuccess: () => {
-      toast.success('Письмо обновлено!')
-      refetch()
     },
   })
 
@@ -72,7 +68,7 @@ export function TRPCExample() {
         <CardContent className="space-y-4">
           {/* Статистика */}
           <div>
-            <h3 className="text-sm font-medium mb-2">Статистика писем</h3>
+            <h3 className="mb-2 text-sm font-medium">Статистика писем</h3>
             {statsLoading ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -82,7 +78,9 @@ export function TRPCExample() {
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">Всего: {stats.total}</Badge>
                 {Object.entries(stats.byStatus).map(([status, count]) => (
-                  <Badge key={status}>{status}: {count}</Badge>
+                  <Badge key={status}>
+                    {status}: {count}
+                  </Badge>
                 ))}
               </div>
             ) : (
@@ -92,7 +90,7 @@ export function TRPCExample() {
 
           {/* Список писем */}
           <div>
-            <h3 className="text-sm font-medium mb-2">Письма в работе</h3>
+            <h3 className="mb-2 text-sm font-medium">Письма в работе</h3>
             {lettersLoading ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -103,7 +101,7 @@ export function TRPCExample() {
                 {lettersData.letters.slice(0, 3).map((letter) => (
                   <div
                     key={letter.id}
-                    className="flex items-center justify-between p-2 rounded-md bg-muted"
+                    className="flex items-center justify-between rounded-md bg-muted p-2"
                   >
                     <div className="flex-1">
                       <p className="text-sm font-medium">{letter.number}</p>
@@ -119,11 +117,8 @@ export function TRPCExample() {
           </div>
 
           {/* Действия */}
-          <div className="flex gap-2 pt-4 border-t">
-            <Button
-              onClick={handleCreateLetter}
-              disabled={createMutation.isPending}
-            >
+          <div className="flex gap-2 border-t pt-4">
+            <Button onClick={handleCreateLetter} disabled={createMutation.isPending}>
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -147,23 +142,37 @@ export function TRPCExample() {
         </CardHeader>
         <CardContent className="prose prose-sm dark:prose-invert">
           <ul>
-            <li>✅ <strong>End-to-end типобезопасность</strong> - TypeScript типы автоматически между клиентом и сервером</li>
-            <li>✅ <strong>Автокомплит</strong> - IDE знает все доступные endpoints и их параметры</li>
-            <li>✅ <strong>Нет кодогенерации</strong> - типы выводятся напрямую из кода</li>
-            <li>✅ <strong>Zod валидация</strong> - используйте существующие схемы</li>
-            <li>✅ <strong>React Query интеграция</strong> - кеширование, refetching, optimistic updates</li>
-            <li>✅ <strong>superjson</strong> - поддержка Date, Map, Set, undefined и других типов</li>
+            <li>
+              ✅ <strong>End-to-end типобезопасность</strong> - TypeScript типы автоматически между
+              клиентом и сервером
+            </li>
+            <li>
+              ✅ <strong>Автокомплит</strong> - IDE знает все доступные endpoints и их параметры
+            </li>
+            <li>
+              ✅ <strong>Нет кодогенерации</strong> - типы выводятся напрямую из кода
+            </li>
+            <li>
+              ✅ <strong>Zod валидация</strong> - используйте существующие схемы
+            </li>
+            <li>
+              ✅ <strong>React Query интеграция</strong> - кеширование, refetching, optimistic
+              updates
+            </li>
+            <li>
+              ✅ <strong>superjson</strong> - поддержка Date, Map, Set, undefined и других типов
+            </li>
           </ul>
 
-          <div className="mt-4 p-4 rounded-md bg-muted">
-            <p className="text-xs font-mono">
-              // Пример типобезопасного вызова:<br />
-              const {'{'} data {'}'} = trpc.letters.getAll.useQuery({'{'}<br />
-              {'  '}status: 'IN_PROGRESS', // ✅ автокомплит<br />
-              {'  '}limit: 10,<br />
-              {'}'})<br />
-              // data автоматически типизирован! 🎉
-            </p>
+          <div className="mt-4 rounded-md bg-muted p-4">
+            <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
+              {`// Пример типобезопасного вызова:
+const { data } = trpc.letters.getAll.useQuery({
+  status: 'IN_PROGRESS', // ✅ автокомплит
+  limit: 10,
+})
+// data автоматически типизирован! 🎉`}
+            </pre>
           </div>
         </CardContent>
       </Card>

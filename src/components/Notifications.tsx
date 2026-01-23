@@ -654,7 +654,6 @@ export function Notifications() {
   ]
 
   const checkHasActiveSnoozes = () => {
-    // eslint-disable-next-line react-hooks/purity
     const now = Date.now()
     return Object.values(snoozedDeadlines).some((until) => new Date(until).getTime() > now)
   }
@@ -738,7 +737,11 @@ export function Notifications() {
     const prevCount = localStorage.getItem('prev-notification-count')
     const currentCount = totalCount.toString()
 
-    if (prevCount && Number.parseInt(prevCount, 10) < totalCount && notificationSettings.soundNotifications) {
+    if (
+      prevCount &&
+      Number.parseInt(prevCount, 10) < totalCount &&
+      notificationSettings.soundNotifications
+    ) {
       const hasDeadlines = counts.deadlines > 0
       playNotificationSound(hasDeadlines ? 'deadline' : 'message')
     }

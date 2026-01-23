@@ -3,7 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import {
   Menu,
@@ -34,7 +34,6 @@ export function Header() {
   const { data: session } = useSession()
   const toast = useToast()
   const pathname = usePathname()
-  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncMenuOpen, setSyncMenuOpen] = useState(false)
@@ -95,6 +94,23 @@ export function Header() {
     }
     return null
   }, [pathname])
+  const quickCreateItems = useMemo(
+    () => [
+      {
+        href: '/letters/new',
+        label: 'Новое письмо',
+        icon: FileText,
+        iconClassName: 'text-blue-400',
+      },
+      {
+        href: '/request',
+        label: 'Подать заявку',
+        icon: Inbox,
+        iconClassName: 'text-emerald-400',
+      },
+    ],
+    []
+  )
   const roleLabel =
     session?.user.role === 'SUPERADMIN'
       ? '\u0421\u0443\u043f\u0435\u0440\u0430\u0434\u043c\u0438\u043d'
@@ -103,12 +119,16 @@ export function Header() {
         : '\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c'
 
   // Закрыть мобильное меню при переходе на другую страницу
-  useEffect(() => {
-    setMobileMenuOpen(false)
+  const closeAuxMenus = useCallback(() => {
     setQuickCreateOpen(false)
     setSyncMenuOpen(false)
     setRecentMenuOpen(false)
-  }, [pathname])
+  }, [])
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+    closeAuxMenus()
+  }, [pathname, closeAuxMenus])
 
   // Закрыть меню при клике вне и блокировка скролла
   useEffect(() => {
@@ -196,32 +216,54 @@ export function Header() {
 
   const navLinkClass = 'app-nav-link app-nav-link-refined whitespace-nowrap text-sm'
   const handleNavClick = useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    (event: React.MouseEvent<HTMLAnchorElement>, options?: { closeMobile?: boolean }) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return
       }
-      event.preventDefault()
-      event.stopPropagation()
       hapticLight()
-      setSyncMenuOpen(false)
-      setQuickCreateOpen(false)
-      setRecentMenuOpen(false)
-
-      const currentPath = window.location.pathname
-      try {
-        router.push(href)
-      } catch {
-        window.location.assign(href)
-        return
+      closeAuxMenus()
+      if (options?.closeMobile) {
+        setMobileMenuOpen(false)
       }
-      window.setTimeout(() => {
-        if (window.location.pathname === currentPath) {
-          window.location.assign(href)
-        }
-      }, 450)
     },
-    [router]
+    [closeAuxMenus]
   )
+
+  const toggleQuickCreate = useCallback(() => {
+    hapticLight()
+    setQuickCreateOpen((prev) => {
+      const next = !prev
+      if (next) {
+        setSyncMenuOpen(false)
+        setRecentMenuOpen(false)
+      }
+      return next
+    })
+  }, [])
+
+  const toggleSyncMenu = useCallback(() => {
+    hapticLight()
+    setSyncMenuOpen((prev) => {
+      const next = !prev
+      if (next) {
+        setQuickCreateOpen(false)
+        setRecentMenuOpen(false)
+      }
+      return next
+    })
+  }, [])
+
+  const toggleRecentMenu = useCallback(() => {
+    hapticLight()
+    setRecentMenuOpen((prev) => {
+      const next = !prev
+      if (next) {
+        setQuickCreateOpen(false)
+        setSyncMenuOpen(false)
+      }
+      return next
+    })
+  }, [])
 
   const openSearch = useCallback(() => {
     const event = new KeyboardEvent('keydown', {
@@ -465,7 +507,7 @@ export function Header() {
               className={navLinkClass}
               data-active={isActive('/')}
               aria-current={isActive('/') ? 'page' : undefined}
-              onClick={(event) => handleNavClick(event, '/')}
+              onClick={handleNavClick}
             >
               <Home className="h-4 w-4" />
               {'\u0413\u043b\u0430\u0432\u043d\u0430\u044f'}
@@ -475,7 +517,7 @@ export function Header() {
               className={navLinkClass}
               data-active={isActive('/letters')}
               aria-current={isActive('/letters') ? 'page' : undefined}
-              onClick={(event) => handleNavClick(event, '/letters')}
+              onClick={handleNavClick}
             >
               <FileText className="h-4 w-4" />
               {'\u041f\u0438\u0441\u044c\u043c\u0430'}
@@ -485,7 +527,7 @@ export function Header() {
               className={navLinkClass}
               data-active={isActive('/requests')}
               aria-current={isActive('/requests') ? 'page' : undefined}
-              onClick={(event) => handleNavClick(event, '/requests')}
+              onClick={handleNavClick}
             >
               <Inbox className="h-4 w-4" />
               {'\u0417\u0430\u044f\u0432\u043a\u0438'}
@@ -495,7 +537,7 @@ export function Header() {
               className={navLinkClass}
               data-active={isActive('/reports')}
               aria-current={isActive('/reports') ? 'page' : undefined}
-              onClick={(event) => handleNavClick(event, '/reports')}
+              onClick={handleNavClick}
             >
               <BarChart3 className="h-4 w-4" />
               {'\u041e\u0442\u0447\u0435\u0442\u044b'}
@@ -504,7 +546,7 @@ export function Header() {
             {isAdminRole && (
               <div className="relative">
                 <button
-                  onClick={() => setSyncMenuOpen(!syncMenuOpen)}
+                  onClick={toggleSyncMenu}
                   disabled={syncing}
                   aria-haspopup="menu"
                   aria-expanded={syncMenuOpen}
@@ -518,15 +560,12 @@ export function Header() {
                 </button>
                 {syncMenuOpen && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setSyncMenuOpen(false)} />
+                    <div className="fixed inset-0 z-40" onClick={closeAuxMenus} />
                     <div className="panel panel-glass animate-scaleIn absolute right-0 top-full z-50 mt-2 min-w-48 origin-top-right rounded-xl shadow-xl">
                       <Link
                         href="/settings"
                         className="tap-highlight flex w-full items-center gap-2 rounded-t-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white"
-                        onClick={() => {
-                          hapticLight()
-                          setSyncMenuOpen(false)
-                        }}
+                        onClick={handleNavClick}
                       >
                         <Settings className="h-4 w-4" />
                         {'Настройки'}
@@ -567,6 +606,7 @@ export function Header() {
               <Link
                 href={primaryAction.href}
                 className="btn-primary inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white transition"
+                onClick={handleNavClick}
               >
                 <primaryAction.icon className="h-4 w-4" />
                 {primaryAction.label}
@@ -575,10 +615,7 @@ export function Header() {
             {/* Quick Create Button */}
             <div className="relative">
               <button
-                onClick={() => {
-                  hapticLight()
-                  setQuickCreateOpen(!quickCreateOpen)
-                }}
+                onClick={toggleQuickCreate}
                 className="tap-highlight app-icon-button app-icon-cta h-8 w-8"
                 title="Создать"
               >
@@ -586,31 +623,26 @@ export function Header() {
               </button>
               {quickCreateOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setQuickCreateOpen(false)} />
+                  <div className="fixed inset-0 z-40" onClick={closeAuxMenus} />
                   <div className="panel panel-glass animate-scaleIn absolute right-0 top-full z-50 mt-2 min-w-48 origin-top-right rounded-xl shadow-xl">
-                    <Link
-                      href="/letters/new"
-                      className="tap-highlight flex w-full items-center gap-2 rounded-t-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white"
-                      onClick={() => {
-                        hapticLight()
-                        setQuickCreateOpen(false)
-                      }}
-                    >
-                      <FileText className="h-4 w-4 text-blue-400" />
-                      {'Новое письмо'}
-                    </Link>
-                    <div className="border-t border-white/10" />
-                    <Link
-                      href="/request"
-                      className="tap-highlight flex w-full items-center gap-2 rounded-b-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white"
-                      onClick={() => {
-                        hapticLight()
-                        setQuickCreateOpen(false)
-                      }}
-                    >
-                      <Inbox className="h-4 w-4 text-emerald-400" />
-                      {'Подать заявку'}
-                    </Link>
+                    {quickCreateItems.map((item, index) => {
+                      const Icon = item.icon
+                      const isFirst = index === 0
+                      const isLast = index === quickCreateItems.length - 1
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`tap-highlight flex w-full items-center gap-2 px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white ${
+                            isFirst ? 'rounded-t-lg' : ''
+                          } ${isLast ? 'rounded-b-lg' : 'border-b border-white/10'}`}
+                          onClick={handleNavClick}
+                        >
+                          <Icon className={`h-4 w-4 ${item.iconClassName}`} />
+                          {item.label}
+                        </Link>
+                      )
+                    })}
                   </div>
                 </>
               )}
@@ -618,10 +650,7 @@ export function Header() {
             {recentItems.length > 0 && (
               <div className="relative">
                 <button
-                  onClick={() => {
-                    hapticLight()
-                    setRecentMenuOpen(!recentMenuOpen)
-                  }}
+                  onClick={toggleRecentMenu}
                   className="tap-highlight app-icon-button p-2"
                   aria-haspopup="menu"
                   aria-expanded={recentMenuOpen}
@@ -631,7 +660,7 @@ export function Header() {
                 </button>
                 {recentMenuOpen && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setRecentMenuOpen(false)} />
+                    <div className="fixed inset-0 z-40" onClick={closeAuxMenus} />
                     <div className="panel panel-glass animate-scaleIn absolute right-0 top-full z-50 mt-2 w-60 origin-top-right rounded-xl shadow-xl">
                       <div className="px-4 py-2 text-xs uppercase tracking-wide text-slate-400/80">
                         {'\u041d\u0435\u0434\u0430\u0432\u043d\u043e\u0435'}
@@ -642,10 +671,7 @@ export function Header() {
                           <Link
                             key={item.href}
                             href={item.href}
-                            onClick={() => {
-                              hapticLight()
-                              setRecentMenuOpen(false)
-                            }}
+                            onClick={handleNavClick}
                             className="tap-highlight flex w-full items-center gap-2 px-4 py-3 text-sm text-slate-200/80 transition hover:bg-white/5 hover:text-white"
                           >
                             {item.kind === 'letter' ? (
@@ -708,7 +734,15 @@ export function Header() {
           </div>
 
           {/* Mobile right section */}
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <Sheet
+            open={mobileMenuOpen}
+            onOpenChange={(open) => {
+              setMobileMenuOpen(open)
+              if (open) {
+                closeAuxMenus()
+              }
+            }}
+          >
             <div className="flex items-center gap-2 md:hidden">
               <button
                 onClick={() => {
@@ -723,7 +757,7 @@ export function Header() {
               {primaryAction && (
                 <Link
                   href={primaryAction.href}
-                  onClick={() => hapticLight()}
+                  onClick={handleNavClick}
                   className="tap-highlight app-icon-button app-icon-cta h-9 w-9"
                   aria-label={primaryAction.label}
                 >
@@ -732,10 +766,7 @@ export function Header() {
               )}
               <div className="relative">
                 <button
-                  onClick={() => {
-                    hapticLight()
-                    setQuickCreateOpen(!quickCreateOpen)
-                  }}
+                  onClick={toggleQuickCreate}
                   className="tap-highlight app-icon-button app-icon-cta h-9 w-9"
                   aria-label="\u0421\u043e\u0437\u0434\u0430\u0442\u044c"
                 >
@@ -743,33 +774,26 @@ export function Header() {
                 </button>
                 {quickCreateOpen && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setQuickCreateOpen(false)} />
+                    <div className="fixed inset-0 z-40" onClick={closeAuxMenus} />
                     <div className="panel panel-glass animate-scaleIn absolute right-0 top-full z-50 mt-2 min-w-48 origin-top-right rounded-xl shadow-xl">
-                      <Link
-                        href="/letters/new"
-                        className="tap-highlight flex w-full items-center gap-2 rounded-t-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white"
-                        onClick={() => {
-                          hapticLight()
-                          setQuickCreateOpen(false)
-                        }}
-                      >
-                        <FileText className="h-4 w-4 text-blue-400" />
-                        {'\u041d\u043e\u0432\u043e\u0435 \u043f\u0438\u0441\u044c\u043c\u043e'}
-                      </Link>
-                      <div className="border-t border-white/10" />
-                      <Link
-                        href="/request"
-                        className="tap-highlight flex w-full items-center gap-2 rounded-b-lg px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white"
-                        onClick={() => {
-                          hapticLight()
-                          setQuickCreateOpen(false)
-                        }}
-                      >
-                        <Inbox className="h-4 w-4 text-emerald-400" />
-                        {
-                          '\u041f\u043e\u0434\u0430\u0442\u044c \u0437\u0430\u044f\u0432\u043a\u0443'
-                        }
-                      </Link>
+                      {quickCreateItems.map((item, index) => {
+                        const Icon = item.icon
+                        const isFirst = index === 0
+                        const isLast = index === quickCreateItems.length - 1
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`tap-highlight flex w-full items-center gap-2 px-4 py-3 text-slate-200/80 transition hover:bg-white/5 hover:text-white ${
+                              isFirst ? 'rounded-t-lg' : ''
+                            } ${isLast ? 'rounded-b-lg' : 'border-b border-white/10'}`}
+                            onClick={handleNavClick}
+                          >
+                            <Icon className={`h-4 w-4 ${item.iconClassName}`} />
+                            {item.label}
+                          </Link>
+                        )
+                      })}
                     </div>
                   </>
                 )}
@@ -778,7 +802,10 @@ export function Header() {
               {session?.user && <Notifications />}
               <SheetTrigger asChild>
                 <button
-                  onClick={() => hapticLight()}
+                  onClick={() => {
+                    hapticLight()
+                    closeAuxMenus()
+                  }}
                   aria-label={
                     mobileMenuOpen
                       ? '\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e'
@@ -821,28 +848,20 @@ export function Header() {
                     style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
                   >
                     <div className="grid grid-cols-2 gap-3">
-                      <Link
-                        href="/letters/new"
-                        onClick={closeMobileMenu}
-                        className="tap-highlight touch-target flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
-                      >
-                        <FileText className="h-5 w-5 text-blue-400" />
-                        <span className="leading-tight">
-                          {'\u041d\u043e\u0432\u043e\u0435 \u043f\u0438\u0441\u044c\u043c\u043e'}
-                        </span>
-                      </Link>
-                      <Link
-                        href="/request"
-                        onClick={closeMobileMenu}
-                        className="tap-highlight touch-target flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
-                      >
-                        <Inbox className="h-5 w-5 text-emerald-400" />
-                        <span className="leading-tight">
-                          {
-                            '\u041f\u043e\u0434\u0430\u0442\u044c \u0437\u0430\u044f\u0432\u043a\u0443'
-                          }
-                        </span>
-                      </Link>
+                      {quickCreateItems.map((item) => {
+                        const Icon = item.icon
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={(event) => handleNavClick(event, { closeMobile: true })}
+                            className="tap-highlight touch-target flex flex-col items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80 transition hover:bg-white/10"
+                          >
+                            <Icon className={`h-5 w-5 ${item.iconClassName}`} />
+                            <span className="leading-tight">{item.label}</span>
+                          </Link>
+                        )
+                      })}
                     </div>
                     {recentItems.length > 0 && (
                       <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
@@ -854,7 +873,7 @@ export function Header() {
                             <Link
                               key={item.href}
                               href={item.href}
-                              onClick={closeMobileMenu}
+                              onClick={(event) => handleNavClick(event, { closeMobile: true })}
                               className="tap-highlight flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-200/80 transition hover:bg-white/10 hover:text-white"
                             >
                               {item.kind === 'letter' ? (
@@ -898,7 +917,7 @@ export function Header() {
                         </div>
                         <Link
                           href="/profile"
-                          onClick={closeMobileMenu}
+                          onClick={(event) => handleNavClick(event, { closeMobile: true })}
                           className="tap-highlight inline-flex shrink-0 items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1.5 text-xs text-teal-200 transition hover:bg-teal-500/20"
                         >
                           <User className="h-3.5 w-3.5" />
@@ -909,7 +928,7 @@ export function Header() {
 
                     <Link
                       href="/"
-                      onClick={closeMobileMenu}
+                      onClick={(event) => handleNavClick(event, { closeMobile: true })}
                       className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
                         isActive('/')
                           ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
@@ -923,7 +942,7 @@ export function Header() {
 
                     <Link
                       href="/letters"
-                      onClick={closeMobileMenu}
+                      onClick={(event) => handleNavClick(event, { closeMobile: true })}
                       className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
                         isActive('/letters')
                           ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
@@ -937,7 +956,7 @@ export function Header() {
 
                     <Link
                       href="/requests"
-                      onClick={closeMobileMenu}
+                      onClick={(event) => handleNavClick(event, { closeMobile: true })}
                       className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
                         isActive('/requests')
                           ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
@@ -951,7 +970,7 @@ export function Header() {
 
                     <Link
                       href="/reports"
-                      onClick={closeMobileMenu}
+                      onClick={(event) => handleNavClick(event, { closeMobile: true })}
                       className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
                         isActive('/reports')
                           ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'
@@ -1000,7 +1019,7 @@ export function Header() {
 
                         <Link
                           href="/settings"
-                          onClick={closeMobileMenu}
+                          onClick={(event) => handleNavClick(event, { closeMobile: true })}
                           className={`tap-highlight touch-target flex items-center gap-3 rounded-lg px-4 py-3 transition ${
                             isActive('/settings')
                               ? 'border border-teal-400/20 bg-teal-400/15 text-teal-200'

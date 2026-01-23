@@ -57,7 +57,6 @@ const getSentry = (): SentryLike | null => {
 
   try {
     // Dynamic import for optional dependency
-    // eslint-disable-next-line no-eval
     SentryModule = eval('require')('@sentry/nextjs') as SentryLike
   } catch {
     SentryModule = null
@@ -74,7 +73,6 @@ const getLogger = () => {
   }
 
   try {
-    // eslint-disable-next-line no-eval
     cachedLogger = (eval('require')('./logger.server') as { logger: LoggerLike }).logger
   } catch {
     cachedLogger = null
@@ -123,7 +121,6 @@ export function captureException(error: Error, context?: SentryContext) {
     if (devLogger) {
       devLogger.error('Sentry', error, context)
     } else {
-      // eslint-disable-next-line no-console
       console.error('[Sentry]', error, context)
     }
   }
@@ -151,7 +148,6 @@ export function captureMessage(
   }
 
   if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
     console.log(`[Sentry:${level}]`, message, context)
   }
 }

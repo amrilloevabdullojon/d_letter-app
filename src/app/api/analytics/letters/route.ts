@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Получаем данные по типу
-    let result: any = {}
+    const result: Record<string, unknown> = {}
 
     if (type === 'stats' || type === 'all') {
       result.stats = await getLetterStats(filters)
