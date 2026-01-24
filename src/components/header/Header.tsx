@@ -108,134 +108,136 @@ export function Header() {
   }, [])
 
   return (
-    <header
-      className={`sticky top-0 z-[180] border-b border-white/5 bg-slate-900/80 backdrop-blur-xl transition-all ${
-        compactHeader ? 'shadow-lg shadow-black/10' : ''
-      }`}
-      data-compact={compactHeader}
-    >
-      {/* Decorative gradient line */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-500/50 to-transparent" />
+    <>
+      <header
+        className={`sticky top-0 z-50 border-b border-white/5 bg-slate-900/80 backdrop-blur-xl transition-all ${
+          compactHeader ? 'shadow-lg shadow-black/10' : ''
+        }`}
+        data-compact={compactHeader}
+      >
+        {/* Decorative gradient line */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-500/50 to-transparent" />
 
-      {/* Christmas lights */}
-      {newYearVibe && backgroundAnimations && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 hidden justify-around overflow-hidden sm:flex">
-          {Array.from({ length: 15 }).map((_, i) => {
-            const colors = ['#ef4444', '#22c55e', '#f59e0b', '#3b82f6']
-            const color = colors[i % colors.length]
-            return (
-              <span
-                key={i}
-                className="inline-block h-2.5 w-2.5 animate-pulse rounded-full"
-                style={{
-                  backgroundColor: color,
-                  boxShadow: `0 0 8px ${color}`,
-                  animationDelay: `${i * 0.1}s`,
-                }}
-              />
-            )
-          })}
-        </div>
-      )}
-
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div
-          className={`flex items-center justify-between transition-all ${
-            compactHeader ? 'h-12 sm:h-14' : 'h-14 sm:h-16'
-          }`}
-        >
-          {/* Logo */}
-          <HeaderLogo compact={compactHeader} pageMeta={pageMeta} />
-
-          {/* Desktop Navigation */}
-          <HeaderNav
-            isAdmin={isAdmin}
-            syncing={syncing}
-            syncMenuOpen={syncMenuOpen}
-            onToggleSyncMenu={toggleSyncMenu}
-            onCloseMenus={closeAllMenus}
-            onSync={handleSync}
-          />
-
-          {/* Desktop Right Section */}
-          <div className="hidden items-center gap-2 md:flex">
-            {/* Quick Create */}
-            <HeaderQuickCreate
-              isOpen={quickCreateOpen}
-              onToggle={toggleQuickCreate}
-              onClose={closeAllMenus}
-            />
-
-            {/* Recent Items */}
-            <HeaderRecentItems
-              items={recentItems}
-              isOpen={recentMenuOpen}
-              onToggle={toggleRecentMenu}
-              onClose={closeAllMenus}
-              onUpdateItems={setRecentItems}
-            />
-
-            {/* User Menu */}
-            <HeaderUserMenu
-              user={session?.user}
-              primaryAction={primaryAction}
-              onCloseMenus={closeAllMenus}
-            />
+        {/* Christmas lights */}
+        {newYearVibe && backgroundAnimations && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 hidden justify-around overflow-hidden sm:flex">
+            {Array.from({ length: 15 }).map((_, i) => {
+              const colors = ['#ef4444', '#22c55e', '#f59e0b', '#3b82f6']
+              const color = colors[i % colors.length]
+              return (
+                <span
+                  key={i}
+                  className="inline-block h-2.5 w-2.5 animate-pulse rounded-full"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow: `0 0 8px ${color}`,
+                    animationDelay: `${i * 0.1}s`,
+                  }}
+                />
+              )
+            })}
           </div>
+        )}
 
-          {/* Mobile Right Section */}
-          <div className="flex items-center gap-1.5 md:hidden">
-            <HeaderMobileActions
-              user={session?.user}
-              primaryAction={primaryAction}
-              onOpenSearch={openSearch}
-              onCloseMenus={closeAllMenus}
-            />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div
+            className={`flex items-center justify-between transition-all ${
+              compactHeader ? 'h-12 sm:h-14' : 'h-14 sm:h-16'
+            }`}
+          >
+            {/* Logo */}
+            <HeaderLogo compact={compactHeader} pageMeta={pageMeta} />
 
-            {/* Quick Create (Mobile) */}
-            <HeaderQuickCreate
-              isOpen={quickCreateOpen}
-              onToggle={toggleQuickCreate}
-              onClose={closeAllMenus}
-              size="sm"
-            />
-
-            {/* Mobile Menu */}
-            <HeaderMobileSheet
-              isOpen={mobileMenuOpen}
-              onOpenChange={(open) => {
-                if (open) {
-                  closeAllMenus()
-                }
-                if (!open) {
-                  closeMobileMenu()
-                } else {
-                  toggleMobileMenu()
-                }
-              }}
-              onClose={closeMobileMenu}
-              user={session?.user}
+            {/* Desktop Navigation */}
+            <HeaderNav
               isAdmin={isAdmin}
               syncing={syncing}
-              recentItems={recentItems}
+              syncMenuOpen={syncMenuOpen}
+              onToggleSyncMenu={toggleSyncMenu}
+              onCloseMenus={closeAllMenus}
               onSync={handleSync}
             />
+
+            {/* Desktop Right Section */}
+            <div className="hidden items-center gap-2 md:flex">
+              {/* Quick Create */}
+              <HeaderQuickCreate
+                isOpen={quickCreateOpen}
+                onToggle={toggleQuickCreate}
+                onClose={closeAllMenus}
+              />
+
+              {/* Recent Items */}
+              <HeaderRecentItems
+                items={recentItems}
+                isOpen={recentMenuOpen}
+                onToggle={toggleRecentMenu}
+                onClose={closeAllMenus}
+                onUpdateItems={setRecentItems}
+              />
+
+              {/* User Menu */}
+              <HeaderUserMenu
+                user={session?.user}
+                primaryAction={primaryAction}
+                onCloseMenus={closeAllMenus}
+              />
+            </div>
+
+            {/* Mobile Right Section */}
+            <div className="flex items-center gap-1.5 md:hidden">
+              <HeaderMobileActions
+                user={session?.user}
+                primaryAction={primaryAction}
+                onOpenSearch={openSearch}
+                onCloseMenus={closeAllMenus}
+              />
+
+              {/* Quick Create (Mobile) */}
+              <HeaderQuickCreate
+                isOpen={quickCreateOpen}
+                onToggle={toggleQuickCreate}
+                onClose={closeAllMenus}
+                size="sm"
+              />
+
+              {/* Mobile Menu */}
+              <HeaderMobileSheet
+                isOpen={mobileMenuOpen}
+                onOpenChange={(open) => {
+                  if (open) {
+                    closeAllMenus()
+                  }
+                  if (!open) {
+                    closeMobileMenu()
+                  } else {
+                    toggleMobileMenu()
+                  }
+                }}
+                onClose={closeMobileMenu}
+                user={session?.user}
+                isAdmin={isAdmin}
+                syncing={syncing}
+                recentItems={recentItems}
+                onSync={handleSync}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Route transition progress */}
-      {routeTransitioning && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden">
-          <div className="animate-progress h-full w-full bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-500" />
-        </div>
-      )}
+        {/* Route transition progress */}
+        {routeTransitioning && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden">
+            <div className="animate-progress h-full w-full bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-500" />
+          </div>
+        )}
+      </header>
 
-      {/* Mobile Bottom Nav */}
+      {/* Mobile Bottom Nav - rendered outside header to avoid stacking context issues */}
       <MobileBottomNav isAdmin={isAdmin} hidden={mobileMenuOpen} />
 
-      {/* Global Search */}
+      {/* Global Search - rendered outside header, uses portal internally */}
       <GlobalSearch />
-    </header>
+    </>
   )
 }

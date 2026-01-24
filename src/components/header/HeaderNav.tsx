@@ -87,8 +87,8 @@ export const HeaderNav = memo(function HeaderNav({
 
           {syncMenuOpen && (
             <>
-              <div className="fixed inset-0 z-40" onClick={onCloseMenus} />
-              <div className="absolute right-0 top-full z-50 mt-2 min-w-52 origin-top-right animate-in fade-in-0 zoom-in-95 slide-in-from-top-2">
+              <div className="fixed inset-0 z-[60]" onClick={onCloseMenus} />
+              <div className="absolute right-0 top-full z-[70] mt-2 min-w-52 origin-top-right animate-in fade-in-0 zoom-in-95 slide-in-from-top-2">
                 <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 shadow-xl shadow-black/20 backdrop-blur-xl">
                   <Link
                     href="/settings"

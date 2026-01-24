@@ -124,8 +124,8 @@ export const HeaderRecentItems = memo(function HeaderRecentItems({
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={onClose} />
-          <div className="absolute right-0 top-full z-50 mt-2 w-64 origin-top-right animate-in fade-in-0 zoom-in-95 slide-in-from-top-2">
+          <div className="fixed inset-0 z-[60]" onClick={onClose} />
+          <div className="absolute right-0 top-full z-[70] mt-2 w-64 origin-top-right animate-in fade-in-0 zoom-in-95 slide-in-from-top-2">
             <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 shadow-xl shadow-black/20 backdrop-blur-xl">
               <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
                 <Clock className="h-4 w-4 text-slate-500" />

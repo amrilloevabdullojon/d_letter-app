@@ -44,8 +44,8 @@ export const HeaderQuickCreate = memo(function HeaderQuickCreate({
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={onClose} />
-          <div className="absolute right-0 top-full z-50 mt-2 min-w-52 origin-top-right animate-in fade-in-0 zoom-in-95 slide-in-from-top-2">
+          <div className="fixed inset-0 z-[60]" onClick={onClose} />
+          <div className="absolute right-0 top-full z-[70] mt-2 min-w-52 origin-top-right animate-in fade-in-0 zoom-in-95 slide-in-from-top-2">
             <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 p-1.5 shadow-xl shadow-black/20 backdrop-blur-xl">
               <div className="mb-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
                 Быстрое создание
