@@ -44,7 +44,7 @@ export function Snowfall() {
       {snowflakes.map((flake) => (
         <div
           key={flake.id}
-          className="animate-snowfall absolute"
+          className="animate-snowfall pointer-events-none absolute"
           style={
             {
               left: `${flake.x}%`,

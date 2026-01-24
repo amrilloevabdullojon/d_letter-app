@@ -26,11 +26,11 @@ export function Particles() {
     if (typeof window === 'undefined') return []
     const particleCount = window.innerWidth < 768 ? 12 : 25
     const colors = [
-      'rgba(16, 185, 129, 0.6)',   // emerald
-      'rgba(59, 130, 246, 0.6)',   // blue
-      'rgba(139, 92, 246, 0.6)',   // purple
-      'rgba(251, 191, 36, 0.6)',   // amber
-      'rgba(236, 72, 153, 0.6)',   // pink
+      'rgba(16, 185, 129, 0.6)', // emerald
+      'rgba(59, 130, 246, 0.6)', // blue
+      'rgba(139, 92, 246, 0.6)', // purple
+      'rgba(251, 191, 36, 0.6)', // amber
+      'rgba(236, 72, 153, 0.6)', // pink
     ]
 
     return Array.from({ length: particleCount }, (_, i) => ({
@@ -52,7 +52,7 @@ export function Particles() {
       {particles.map((particle) => (
         <div
           key={particle.id}
-          className="animate-float-up absolute rounded-full blur-[1px]"
+          className="animate-float-up pointer-events-none absolute rounded-full blur-[1px]"
           style={
             {
               left: `${particle.x}%`,
