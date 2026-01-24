@@ -518,7 +518,7 @@ export function useLetterComments({
     setCommentHistory({})
     setHistoryLoading({})
     setHistoryError({})
-    setExpandedHistoryIds({})
+    setExpandedHistoryIds([])
     pendingDeleteRef.current.forEach((t) => clearTimeout(t))
     pendingDeleteRef.current.clear()
     resetCache()
