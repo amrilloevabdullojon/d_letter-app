@@ -172,6 +172,7 @@ model UserPreferences {
 enum ThemeMode {
   LIGHT
   DARK
+  VIOLET
   AUTO
 }
 

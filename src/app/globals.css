@@ -62,6 +62,151 @@
     );
 }
 
+/* Violet theme colors - Deep purple aesthetic */
+.violet {
+  --app-bg: 15 10 25;
+  --app-bg-2: 20 14 35;
+  --panel: 28 20 48;
+  --panel-2: 35 26 58;
+  --panel-border: 75 55 115;
+  --text-primary: 237 233 254;
+  --text-muted: 192 180 220;
+  --accent: 167 139 250;
+  --accent-2: 236 72 153;
+  --danger: 251 113 133;
+  --warning: 251 191 36;
+  --shadow-1: 0 8px 20px rgba(15, 10, 30, 0.45);
+  --shadow-2: 0 16px 36px rgba(15, 10, 30, 0.55);
+  --shadow-3: 0 24px 48px rgba(15, 10, 30, 0.65);
+  --wallpaper-opacity: 0.7;
+}
+
+.violet body {
+  background:
+    radial-gradient(1200px 600px at 8% -20%, rgba(139, 92, 246, 0.25), transparent 60%),
+    radial-gradient(900px 520px at 92% 0%, rgba(236, 72, 153, 0.18), transparent 55%),
+    linear-gradient(180deg, rgb(var(--app-bg)) 0%, rgb(var(--app-bg-2)) 100%);
+}
+
+.violet body::before {
+  background-image: radial-gradient(rgba(167, 139, 250, 0.08) 1px, transparent 1px);
+  opacity: 0.22;
+}
+
+.violet body::after {
+  background:
+    radial-gradient(1200px 640px at 12% -10%, rgba(139, 92, 246, 0.28), transparent 62%),
+    radial-gradient(900px 520px at 92% 0%, rgba(236, 72, 153, 0.22), transparent 62%),
+    radial-gradient(900px 600px at 50% 110%, rgba(168, 85, 247, 0.18), transparent 68%),
+    conic-gradient(
+      from 180deg at 50% 50%,
+      rgba(139, 92, 246, 0.12),
+      transparent 50%,
+      rgba(236, 72, 153, 0.12)
+    );
+}
+
+/* Violet theme component overrides */
+.violet .panel {
+  background: linear-gradient(160deg, rgba(var(--panel) / 0.98), rgba(var(--panel-2) / 0.92));
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow:
+    0 14px 28px rgba(15, 10, 30, 0.35),
+    inset 0 1px 0 rgba(167, 139, 250, 0.1);
+}
+
+.violet .panel-glass {
+  background: linear-gradient(160deg, rgba(var(--panel) / 0.85), rgba(var(--panel-2) / 0.75));
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.violet .app-chip-active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(139, 92, 246, 0.15));
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.25);
+}
+
+.violet .btn-primary {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(168, 85, 247, 0.8));
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 12px 30px rgba(139, 92, 246, 0.35);
+}
+
+.violet .btn-primary:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 1), rgba(168, 85, 247, 0.9));
+  box-shadow: 0 16px 40px rgba(139, 92, 246, 0.45);
+}
+
+.violet .app-nav-link[data-active='true'] {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(139, 92, 246, 0.15));
+  border-color: rgba(139, 92, 246, 0.55);
+  box-shadow: 0 10px 24px rgba(139, 92, 246, 0.25);
+}
+
+.violet .app-header {
+  background: linear-gradient(135deg, rgba(var(--panel) / 0.95), rgba(var(--app-bg-2) / 0.98));
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.violet input:focus,
+.violet textarea:focus,
+.violet select:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.violet ::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+}
+
+.violet ::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+/* Violet theme text color adjustments */
+.violet .text-teal-300,
+.violet .text-teal-400,
+.violet .text-emerald-300,
+.violet .text-emerald-400 {
+  color: #a78bfa;
+}
+
+.violet .text-teal-200 {
+  color: #c4b5fd;
+}
+
+.violet .border-teal-400\/20,
+.violet .border-teal-400\/30,
+.violet .border-emerald-400\/50 {
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.violet .bg-teal-500\/15,
+.violet .bg-teal-400\/15,
+.violet .bg-emerald-500\/15 {
+  background-color: rgba(139, 92, 246, 0.15);
+}
+
+.violet .shadow-teal-500\/25,
+.violet .shadow-emerald-500\/25 {
+  --tw-shadow-color: rgba(139, 92, 246, 0.25);
+}
+
+.violet .from-teal-500,
+.violet .from-emerald-500 {
+  --tw-gradient-from: #8b5cf6;
+}
+
+.violet .to-teal-600,
+.violet .to-emerald-600 {
+  --tw-gradient-to: #7c3aed;
+}
+
+.violet .ring-teal-500\/30,
+.violet .ring-emerald-500\/30 {
+  --tw-ring-color: rgba(139, 92, 246, 0.3);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
@@ -1098,6 +1243,164 @@ h4 {
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
   border-color: rgba(15, 23, 42, 0.12);
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+}
+
+/* Additional light theme fixes for gradient backgrounds */
+.light .bg-gradient-to-br {
+  --tw-gradient-from: rgba(248, 250, 252, 0.9);
+  --tw-gradient-to: rgba(241, 245, 249, 0.85);
+}
+
+.light .from-slate-800\/80,
+.light .from-slate-800\/60,
+.light .from-slate-800 {
+  --tw-gradient-from: rgba(255, 255, 255, 0.95) !important;
+}
+
+.light .to-slate-800\/60,
+.light .to-slate-900\/80,
+.light .to-slate-800 {
+  --tw-gradient-to: rgba(248, 250, 252, 0.9) !important;
+}
+
+.light .via-slate-800\/60 {
+  --tw-gradient-via: rgba(248, 250, 252, 0.85) !important;
+}
+
+/* Light theme gradient panels */
+.light [class*='from-slate-800'][class*='to-slate-'] {
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.98),
+    rgba(248, 250, 252, 0.95)
+  ) !important;
+}
+
+/* Light theme shadows */
+.light .shadow-teal-500\/25,
+.light .shadow-emerald-500\/25 {
+  --tw-shadow-color: rgba(20, 184, 166, 0.15) !important;
+}
+
+.light .shadow-purple-500\/25,
+.light .shadow-violet-500\/25 {
+  --tw-shadow-color: rgba(139, 92, 246, 0.15) !important;
+}
+
+.light .shadow-blue-500\/25 {
+  --tw-shadow-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Light theme ring colors */
+.light .ring-slate-700\/50,
+.light .ring-slate-600\/50 {
+  --tw-ring-color: rgba(203, 213, 225, 0.6) !important;
+}
+
+/* Light theme input focus */
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: rgba(20, 184, 166, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12) !important;
+}
+
+/* Light theme placeholders */
+.light input::placeholder,
+.light textarea::placeholder {
+  color: rgba(100, 116, 139, 0.7) !important;
+}
+
+/* Light theme buttons */
+.light .btn-primary {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.95), rgba(16, 185, 129, 0.9)) !important;
+  box-shadow: 0 8px 20px rgba(20, 184, 166, 0.25) !important;
+}
+
+.light .btn-primary:hover {
+  box-shadow: 0 12px 28px rgba(20, 184, 166, 0.35) !important;
+}
+
+/* Light theme select dropdown styling */
+.light select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+/* Light theme status colors - more vibrant */
+.light .bg-red-500\/10,
+.light .bg-red-500\/15 {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+}
+
+.light .bg-green-500\/10,
+.light .bg-green-500\/15,
+.light .bg-emerald-500\/10,
+.light .bg-emerald-500\/15 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+}
+
+.light .bg-yellow-500\/10,
+.light .bg-yellow-500\/15,
+.light .bg-amber-500\/10,
+.light .bg-amber-500\/15 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+.light .bg-blue-500\/10,
+.light .bg-blue-500\/15 {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+.light .bg-purple-500\/10,
+.light .bg-purple-500\/15,
+.light .bg-violet-500\/10,
+.light .bg-violet-500\/15 {
+  background-color: rgba(139, 92, 246, 0.12) !important;
+}
+
+/* Light theme code/kbd */
+.light kbd {
+  background: rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  color: #334155;
+}
+
+/* Light scrollbar */
+.light ::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+/* Light theme card hover effects */
+.light .card-hover:hover {
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Light theme table */
+.light table thead {
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.light table tbody tr:hover {
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.light table th {
+  color: #475569;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+.light table td {
+  border-color: rgba(15, 23, 42, 0.08);
 }
 
 .progress-0 {

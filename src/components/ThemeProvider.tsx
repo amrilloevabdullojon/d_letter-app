@@ -12,7 +12,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const theme = preferences?.theme || 'DARK'
 
       // Удаляем все классы темы
-      root.classList.remove('light', 'dark')
+      root.classList.remove('light', 'dark', 'violet')
 
       if (theme === 'AUTO') {
         // Используем системную тему

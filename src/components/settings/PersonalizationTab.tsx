@@ -6,7 +6,7 @@ import { SettingsToggle } from './SettingsToggle'
 import { toast } from 'sonner'
 
 interface PersonalizationSettings {
-  theme: 'LIGHT' | 'DARK' | 'AUTO'
+  theme: 'LIGHT' | 'DARK' | 'VIOLET' | 'AUTO'
   language: string
   density: 'COMPACT' | 'COMFORTABLE' | 'SPACIOUS'
   animations: boolean
@@ -142,63 +142,93 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
 
         <div>
           <label className="mb-3 block text-sm font-medium text-white">Цветовая схема</label>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <button
               onClick={() => updateSetting('theme', 'LIGHT')}
-              className={`flex items-center gap-3 rounded-xl border p-4 transition ${
+              className={`group relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
                 settings.theme === 'LIGHT'
-                  ? 'border-emerald-400/50 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]'
-                  : 'border-white/10 bg-white/5 hover:bg-white/10'
+                  ? 'border-sky-400/50 bg-gradient-to-br from-sky-500/15 to-blue-500/10 shadow-lg shadow-sky-500/20'
+                  : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
               }`}
             >
-              <div className="rounded-full bg-white p-2 text-slate-900">
-                <Monitor className="h-4 w-4" />
+              {settings.theme === 'LIGHT' && (
+                <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-sky-400 shadow-lg shadow-sky-400/50" />
+              )}
+              <div className="rounded-xl bg-gradient-to-br from-sky-100 to-white p-3 text-sky-600 shadow-md">
+                <Monitor className="h-5 w-5" />
               </div>
-              <div className="text-left">
+              <div className="text-center">
                 <div className="text-sm font-semibold text-white">Светлая</div>
-                <div className="text-xs text-gray-400">Светлый интерфейс</div>
+                <div className="text-xs text-gray-400">Дневной режим</div>
               </div>
             </button>
 
             <button
               onClick={() => updateSetting('theme', 'DARK')}
-              className={`flex items-center gap-3 rounded-xl border p-4 transition ${
+              className={`group relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
                 settings.theme === 'DARK'
-                  ? 'border-emerald-400/50 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]'
-                  : 'border-white/10 bg-white/5 hover:bg-white/10'
+                  ? 'border-teal-400/50 bg-gradient-to-br from-teal-500/15 to-emerald-500/10 shadow-lg shadow-teal-500/20'
+                  : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
               }`}
             >
-              <div className="rounded-full bg-slate-900 p-2 text-white">
-                <Monitor className="h-4 w-4" />
+              {settings.theme === 'DARK' && (
+                <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-teal-400 shadow-lg shadow-teal-400/50" />
+              )}
+              <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-3 text-teal-400 shadow-md">
+                <Monitor className="h-5 w-5" />
               </div>
-              <div className="text-left">
-                <div className="text-sm font-semibold text-white">Темная</div>
-                <div className="text-xs text-gray-400">Темный интерфейс</div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-white">Тёмная</div>
+                <div className="text-xs text-gray-400">Ночной режим</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => updateSetting('theme', 'VIOLET')}
+              className={`group relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
+                settings.theme === 'VIOLET'
+                  ? 'border-violet-400/50 bg-gradient-to-br from-violet-500/15 to-purple-500/10 shadow-lg shadow-violet-500/20'
+                  : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+              }`}
+            >
+              {settings.theme === 'VIOLET' && (
+                <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-violet-400 shadow-lg shadow-violet-400/50" />
+              )}
+              <div className="rounded-xl bg-gradient-to-br from-violet-600 to-purple-800 p-3 text-violet-200 shadow-md">
+                <Monitor className="h-5 w-5" />
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-white">Фиолетовая</div>
+                <div className="text-xs text-gray-400">Глубокий пурпур</div>
               </div>
             </button>
 
             <button
               onClick={() => updateSetting('theme', 'AUTO')}
-              className={`flex items-center gap-3 rounded-xl border p-4 transition ${
+              className={`group relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
                 settings.theme === 'AUTO'
-                  ? 'border-emerald-400/50 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]'
-                  : 'border-white/10 bg-white/5 hover:bg-white/10'
+                  ? 'border-amber-400/50 bg-gradient-to-br from-amber-500/15 to-orange-500/10 shadow-lg shadow-amber-500/20'
+                  : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
               }`}
             >
-              <div className="rounded-full bg-gradient-to-br from-white to-slate-900 p-2 text-white">
-                <Monitor className="h-4 w-4" />
+              {settings.theme === 'AUTO' && (
+                <div className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50" />
+              )}
+              <div className="rounded-xl bg-gradient-to-br from-amber-200 via-slate-400 to-slate-800 p-3 text-white shadow-md">
+                <Monitor className="h-5 w-5" />
               </div>
-              <div className="text-left">
+              <div className="text-center">
                 <div className="text-sm font-semibold text-white">Авто</div>
                 <div className="text-xs text-gray-400">По системе</div>
               </div>
             </button>
           </div>
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="mt-3 text-xs text-gray-400">
             {settings.theme === 'AUTO' &&
-              'Тема будет автоматически меняться в зависимости от системных настроек'}
-            {settings.theme === 'LIGHT' && 'Применена светлая тема оформления'}
-            {settings.theme === 'DARK' && 'Применена темная тема оформления'}
+              'Тема автоматически меняется в зависимости от системных настроек'}
+            {settings.theme === 'LIGHT' && 'Светлая тема с комфортными дневными цветами'}
+            {settings.theme === 'DARK' && 'Тёмная тема для комфортной работы в темноте'}
+            {settings.theme === 'VIOLET' && 'Глубокая фиолетовая тема с пурпурными акцентами'}
           </p>
         </div>
       </div>
@@ -349,7 +379,8 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
               <option value="COSMIC">Космос</option>
             </select>
             <p className="mt-1 text-xs text-gray-400">
-              Выберите характер фона: мягкая аврора, глубокая небула, чистое сияние или космическая атмосфера.
+              Выберите характер фона: мягкая аврора, глубокая небула, чистое сияние или космическая
+              атмосфера.
             </p>
           </div>
           <div>
