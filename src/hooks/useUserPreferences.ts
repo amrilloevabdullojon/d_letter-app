@@ -36,6 +36,38 @@ let hasLoaded = false
 
 const listeners = new Set<(state: PreferencesState) => void>()
 
+// BroadcastChannel для синхронизации между вкладками
+const PREFERENCES_CHANNEL = 'user-preferences-sync'
+let broadcastChannel: BroadcastChannel | null = null
+
+// Инициализируем BroadcastChannel на клиенте
+if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+  try {
+    broadcastChannel = new BroadcastChannel(PREFERENCES_CHANNEL)
+    broadcastChannel.onmessage = (event) => {
+      if (event.data?.type === 'preferences-updated' && event.data?.preferences) {
+        cachedPreferences = event.data.preferences
+        cachedError = null
+        hasLoaded = true
+        notify()
+      }
+    }
+  } catch {
+    // BroadcastChannel not supported
+  }
+}
+
+// Отправка обновлений в другие вкладки
+const broadcastUpdate = (preferences: UserPreferences | null) => {
+  if (broadcastChannel && preferences) {
+    try {
+      broadcastChannel.postMessage({ type: 'preferences-updated', preferences })
+    } catch {
+      // Ignore errors
+    }
+  }
+}
+
 const getState = (): PreferencesState => ({
   preferences: cachedPreferences,
   isLoading: Boolean(inFlight) || (!hasLoaded && !cachedError),
@@ -109,6 +141,8 @@ export function useUserPreferences() {
     cachedError = null
     hasLoaded = true
     notify()
+    // Отправляем обновление в другие вкладки
+    broadcastUpdate(next)
   }, [])
 
   return { ...state, refresh, setPreferences }

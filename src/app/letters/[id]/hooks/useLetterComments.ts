@@ -530,6 +530,22 @@ export function useLetterComments({
     void loadComments(1, false)
   }, [letterId, filter, includeReplies, loadComments])
 
+  // Обновление комментариев при возврате на вкладку (для синхронизации между пользователями)
+  useEffect(() => {
+    if (!letterId) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Очищаем кэш и перезагружаем комментарии при возврате на вкладку
+        resetCache()
+        void loadComments(1, false)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [letterId, loadComments, resetCache])
+
   // Cleanup
   useEffect(() => {
     return () => {

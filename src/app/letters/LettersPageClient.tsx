@@ -695,6 +695,32 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     loadUsers()
   }, [session, loadUsers, canManageUsers])
 
+  // Инвалидация кэша при возврате на страницу (popstate/back button)
+  // и при возвращении фокуса на вкладку
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Очищаем кэш и перезагружаем данные при возврате на вкладку
+        lettersCacheRef.current.clear()
+        loadLetters({ showLoading: false, force: true })
+      }
+    }
+
+    const handlePopState = () => {
+      // Очищаем кэш при навигации назад/вперед
+      lettersCacheRef.current.clear()
+      loadLetters({ showLoading: false, force: true })
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [loadLetters])
+
   useEffect(() => {
     if (!search.trim()) {
       setSearchSuggestions([])
