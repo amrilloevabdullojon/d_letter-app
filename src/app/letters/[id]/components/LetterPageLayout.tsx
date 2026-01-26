@@ -344,6 +344,7 @@ export const LetterPageLayout = memo(function LetterPageLayout({
               onPostponeDeadline={onPostponeDeadline}
               onEscalate={onEscalate}
               onNotifyOwner={onNotifyOwner}
+              onSaveField={onSaveField}
             />
 
             <LetterApplicant letter={letter} onSave={onSaveField} onUpdate={onLoadLetter} />

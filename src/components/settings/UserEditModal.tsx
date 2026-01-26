@@ -182,9 +182,7 @@ export function UserEditModal({
                     placeholder="Имя пользователя"
                     autoFocus
                   />
-                  {errors.name && (
-                    <p className="text-xs text-red-400">{errors.name.message}</p>
-                  )}
+                  {errors.name && <p className="text-xs text-red-400">{errors.name.message}</p>}
                 </div>
 
                 {/* Email */}
@@ -201,9 +199,7 @@ export function UserEditModal({
                     }`}
                     placeholder="email@example.com"
                   />
-                  {errors.email && (
-                    <p className="text-xs text-red-400">{errors.email.message}</p>
-                  )}
+                  {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
                 </div>
 
                 {/* Role */}
@@ -256,11 +252,15 @@ export function UserEditModal({
                   </label>
                   <select
                     {...register('canLogin', {
-                      setValueAs: (v) => v === 'true',
+                      setValueAs: (v) => {
+                        if (typeof v === 'boolean') return v
+                        return v === 'true'
+                      },
                     })}
                     id="edit-access"
                     disabled={accessChangeLocked}
                     className={`${fieldCompact} w-full px-3 py-2 disabled:opacity-60`}
+                    defaultValue={editData.canLogin ? 'true' : 'false'}
                   >
                     <option value="true">Открыт</option>
                     <option value="false">Закрыт</option>
@@ -300,11 +300,7 @@ export function UserEditModal({
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-300">
-                    <input
-                      {...register('notifyEmail')}
-                      type="checkbox"
-                      className={controlBase}
-                    />
+                    <input {...register('notifyEmail')} type="checkbox" className={controlBase} />
                     <Mail className="h-4 w-4 text-gray-500" />
                     Email
                   </label>
@@ -322,8 +318,8 @@ export function UserEditModal({
                     SMS
                   </label>
                   <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-300">
-                    <input {...register('notifyInApp')} type="checkbox" className={controlBase} />
-                    В системе
+                    <input {...register('notifyInApp')} type="checkbox" className={controlBase} />В
+                    системе
                   </label>
                 </div>
 
@@ -393,7 +389,7 @@ export function UserEditModal({
             </section>
 
             {/* Footer */}
-            <div className="flex items-center justify-between border-t border-white/10 bg-slate-900/50 p-4 -mx-6 -mb-6 mt-6 rounded-b-2xl">
+            <div className="-mx-6 -mb-6 mt-6 flex items-center justify-between rounded-b-2xl border-t border-white/10 bg-slate-900/50 p-4">
               <span className="text-xs text-gray-500">
                 {saving
                   ? 'Сохранение...'

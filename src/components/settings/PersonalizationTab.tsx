@@ -4,6 +4,7 @@ import { memo, useState, useEffect } from 'react'
 import { Palette, Globe, Sparkles, Monitor } from 'lucide-react'
 import { SettingsToggle } from './SettingsToggle'
 import { toast } from 'sonner'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
 
 interface PersonalizationSettings {
   theme: 'LIGHT' | 'DARK' | 'VIOLET' | 'AUTO'
@@ -25,6 +26,7 @@ interface PersonalizationSettings {
 }
 
 export const PersonalizationTab = memo(function PersonalizationTab() {
+  const { refresh: refreshGlobalPreferences } = useUserPreferences()
   const [settings, setSettings] = useState<PersonalizationSettings>({
     theme: 'DARK',
     language: 'ru',
@@ -102,6 +104,9 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
       if (!response.ok) {
         throw new Error('Failed to save setting')
       }
+
+      // Обновляем глобальный кэш настроек чтобы ThemeProvider получил новые данные
+      await refreshGlobalPreferences()
     } catch (error) {
       console.error('Failed to save setting:', error)
       // Откат изменений при ошибке

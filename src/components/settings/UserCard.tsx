@@ -383,13 +383,16 @@ export function UserCard({
               {user.canLogin ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
             </button>
           )}
-          <button
-            onClick={() => onEdit(user)}
-            aria-label="Редактировать"
-            className="p-2 text-gray-400 transition hover:text-white"
-          >
-            <Edit2 className="h-4 w-4" />
-          </button>
+          {/* Скрываем кнопку редактирования для admin/superadmin если текущий пользователь не superadmin */}
+          {(isSuperAdmin || (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) && (
+            <button
+              onClick={() => onEdit(user)}
+              aria-label="Редактировать"
+              className="p-2 text-gray-400 transition hover:text-white"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+          )}
           {user.id !== currentUserId && (
             <button
               onClick={handleDelete}

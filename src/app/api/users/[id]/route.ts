@@ -149,6 +149,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    // Защита superadmin - только другой superadmin может редактировать superadmin
+    if (currentUser.role === 'SUPERADMIN' && !isSuperAdmin) {
+      return NextResponse.json({ error: 'Only superadmin can edit a superadmin' }, { status: 403 })
+    }
+
+    // Защита admin - только superadmin может редактировать admin
+    if (currentUser.role === 'ADMIN' && !isSuperAdmin) {
+      return NextResponse.json({ error: 'Only superadmin can edit an admin' }, { status: 403 })
+    }
+
     const updateData: Partial<{
       role: Role
       name: string | null
@@ -394,7 +404,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 // DELETE /api/users/[id] - удалить пользователя (только админ)
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params
     const session = await getServerSession(authOptions)

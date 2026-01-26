@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 interface UserPreferences {
   id: string
   userId: string
-  theme: 'LIGHT' | 'DARK' | 'AUTO'
+  theme: 'LIGHT' | 'DARK' | 'VIOLET' | 'AUTO'
   language: string
   density: 'COMPACT' | 'COMFORTABLE' | 'SPACIOUS'
   animations: boolean
@@ -98,6 +98,9 @@ export function useUserPreferences() {
   }, [])
 
   const refresh = useCallback(async () => {
+    // Принудительно сбрасываем кэш для обновления данных
+    inFlight = null
+    hasLoaded = false
     await loadPreferences().catch(() => undefined)
   }, [])
 

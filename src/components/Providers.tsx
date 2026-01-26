@@ -7,28 +7,20 @@ import { ToastWrapper } from '@/components/Toast'
 import { TRPCProvider } from '@/lib/trpc'
 import { installCsrfFetch } from '@/lib/csrf-client'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
 
 installCsrfFetch()
 
-type PersonalizationSettings = {
-  backgroundAnimations?: boolean
-  wallpaperStyle?: 'aurora' | 'nebula' | 'glow'
-  wallpaperIntensity?: number
-}
-
 export function Providers({ children }: { children: ReactNode }) {
   const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
-  const [personalization] = useLocalStorage<PersonalizationSettings>('personalization-settings', {
-    backgroundAnimations: true,
-    wallpaperStyle: 'aurora',
-    wallpaperIntensity: 60,
-  })
-  const backgroundAnimations = personalization?.backgroundAnimations ?? true
-  const wallpaperStyle = personalization?.wallpaperStyle ?? 'aurora'
+  const { preferences } = useUserPreferences()
+
+  // Получаем настройки анимаций из preferences (API) с fallback на true
+  const backgroundAnimations = preferences?.backgroundAnimations ?? true
+  const animations = preferences?.animations ?? true
+  const wallpaperStyle = preferences?.wallpaperStyle?.toLowerCase() ?? 'aurora'
   const wallpaperIntensity =
-    typeof personalization?.wallpaperIntensity === 'number'
-      ? personalization.wallpaperIntensity
-      : 60
+    typeof preferences?.wallpaperIntensity === 'number' ? preferences.wallpaperIntensity : 60
 
   useEffect(() => {
     const root = document.documentElement
@@ -39,6 +31,7 @@ export function Providers({ children }: { children: ReactNode }) {
     }
   }, [newYearVibe])
 
+  // Применяем класс для отключения фоновых анимаций
   useEffect(() => {
     const root = document.documentElement
     if (!backgroundAnimations) {
@@ -48,18 +41,36 @@ export function Providers({ children }: { children: ReactNode }) {
     }
   }, [backgroundAnimations])
 
+  // Применяем класс для отключения всех анимаций
   useEffect(() => {
     const root = document.documentElement
+    if (!animations) {
+      root.classList.add('reduce-motion')
+    } else {
+      // Проверяем системные настройки
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (prefersReducedMotion) {
+        root.classList.add('reduce-motion')
+      } else {
+        root.classList.remove('reduce-motion')
+      }
+    }
+  }, [animations])
+
+  // Слушаем системные настройки reduced motion
+  useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     const updateReducedMotion = () => {
+      const root = document.documentElement
+      // Если пользователь отключил анимации в настройках, не снимаем класс
+      if (!animations) return
+
       if (media.matches) {
         root.classList.add('reduce-motion')
       } else {
         root.classList.remove('reduce-motion')
       }
     }
-
-    updateReducedMotion()
 
     if (media.addEventListener) {
       media.addEventListener('change', updateReducedMotion)
@@ -68,7 +79,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
     media.addListener(updateReducedMotion)
     return () => media.removeListener(updateReducedMotion)
-  }, [])
+  }, [animations])
 
   useEffect(() => {
     const root = document.documentElement

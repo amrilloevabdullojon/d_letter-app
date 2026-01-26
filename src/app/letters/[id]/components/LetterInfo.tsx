@@ -1,6 +1,6 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import {
   Calendar,
   Clock,
@@ -10,6 +10,9 @@ import {
   CheckCircle2,
   Bell,
   Loader2,
+  Edit3,
+  Check,
+  X,
 } from 'lucide-react'
 import { SLAIndicator } from '@/components/SLAIndicator'
 import {
@@ -28,6 +31,117 @@ interface LetterInfoProps {
   onPostponeDeadline: () => void
   onEscalate: () => void
   onNotifyOwner: () => void
+  onSaveField?: (field: string, value: string) => Promise<void>
+}
+
+// Компонент для редактирования даты
+function EditableDate({
+  label,
+  value,
+  field,
+  icon: Icon,
+  colorClass = 'text-white',
+  canEdit,
+  onSave,
+}: {
+  label: string
+  value: string
+  field: string
+  icon: React.ElementType
+  colorClass?: string
+  canEdit: boolean
+  onSave?: (field: string, value: string) => Promise<void>
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const startEditing = () => {
+    // Преобразуем дату в формат YYYY-MM-DD для input
+    const date = new Date(value)
+    const formatted = date.toISOString().split('T')[0]
+    setEditValue(formatted)
+    setIsEditing(true)
+  }
+
+  const cancelEditing = () => {
+    setIsEditing(false)
+    setEditValue('')
+  }
+
+  const saveDate = async () => {
+    if (!onSave || !editValue) return
+    setSaving(true)
+    try {
+      await onSave(field, new Date(editValue).toISOString())
+      setIsEditing(false)
+    } catch {
+      // Error handled by parent
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-3">
+        <Icon className="h-5 w-5 text-slate-500" />
+        <div className="flex-1">
+          <div className="text-xs text-slate-500">{label}</div>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="date"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="rounded-lg border border-slate-600 bg-slate-700/50 px-2 py-1 text-sm text-white focus:border-emerald-500 focus:outline-none"
+              autoFocus
+            />
+            <button
+              onClick={saveDate}
+              disabled={saving}
+              className="rounded-lg bg-emerald-500/20 p-1.5 text-emerald-400 transition hover:bg-emerald-500/30 disabled:opacity-50"
+              title="Сохранить"
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+            </button>
+            <button
+              onClick={cancelEditing}
+              disabled={saving}
+              className="rounded-lg bg-red-500/20 p-1.5 text-red-400 transition hover:bg-red-500/30 disabled:opacity-50"
+              title="Отмена"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="group flex items-center gap-3">
+      <Icon className="h-5 w-5 text-slate-500" />
+      <div className="flex-1">
+        <div className="text-xs text-slate-500">{label}</div>
+        <div className={`flex items-center gap-2 ${colorClass}`}>
+          <span>{formatDate(value)}</span>
+          {canEdit && onSave && (
+            <button
+              onClick={startEditing}
+              className="rounded p-1 opacity-0 transition hover:bg-white/10 group-hover:opacity-100"
+              title="Редактировать"
+            >
+              <Edit3 className="h-3.5 w-3.5 text-slate-400" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export const LetterInfo = memo(function LetterInfo({
@@ -38,6 +152,7 @@ export const LetterInfo = memo(function LetterInfo({
   onPostponeDeadline,
   onEscalate,
   onNotifyOwner,
+  onSaveField,
 }: LetterInfoProps) {
   const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
   const isDone = isDoneStatus(letter.status)
@@ -59,23 +174,24 @@ export const LetterInfo = memo(function LetterInfo({
       <h3 className="mb-4 font-semibold text-white">Информация</h3>
 
       <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Calendar className="h-5 w-5 text-slate-500" />
-          <div>
-            <div className="text-xs text-slate-500">Дата письма</div>
-            <div className="text-white">{formatDate(letter.date)}</div>
-          </div>
-        </div>
+        <EditableDate
+          label="Дата письма"
+          value={letter.date}
+          field="date"
+          icon={Calendar}
+          canEdit={canManageLetters}
+          onSave={onSaveField}
+        />
 
-        <div className="flex items-center gap-3">
-          <Clock className="h-5 w-5 text-slate-500" />
-          <div>
-            <div className="text-xs text-slate-500">Дедлайн</div>
-            <div className={isOverdue ? 'text-red-400' : isDone ? 'text-teal-400' : 'text-white'}>
-              {formatDate(letter.deadlineDate)}
-            </div>
-          </div>
-        </div>
+        <EditableDate
+          label="Дедлайн"
+          value={letter.deadlineDate}
+          field="deadlineDate"
+          icon={Clock}
+          colorClass={isOverdue ? 'text-red-400' : isDone ? 'text-teal-400' : 'text-white'}
+          canEdit={canManageLetters && !isDone}
+          onSave={onSaveField}
+        />
 
         <div className="border-t border-slate-700/50 pt-2">
           <SLAIndicator
@@ -146,13 +262,14 @@ export const LetterInfo = memo(function LetterInfo({
         </div>
 
         {letter.ijroDate && (
-          <div className="flex items-center gap-3">
-            <Send className="h-5 w-5 text-slate-500" />
-            <div>
-              <div className="text-xs text-slate-500">Дата ответа в IJRO</div>
-              <div className="text-white">{formatDate(letter.ijroDate)}</div>
-            </div>
-          </div>
+          <EditableDate
+            label="Дата ответа в IJRO"
+            value={letter.ijroDate}
+            field="ijroDate"
+            icon={Send}
+            canEdit={canManageLetters}
+            onSave={onSaveField}
+          />
         )}
 
         {letter.closeDate && (
