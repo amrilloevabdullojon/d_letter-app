@@ -26,7 +26,7 @@ interface PersonalizationSettings {
 }
 
 export const PersonalizationTab = memo(function PersonalizationTab() {
-  const { refresh: refreshGlobalPreferences } = useUserPreferences()
+  const { setPreferences: setGlobalPreferences } = useUserPreferences()
   const [settings, setSettings] = useState<PersonalizationSettings>({
     theme: 'DARK',
     language: 'ru',
@@ -105,8 +105,33 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
         throw new Error('Failed to save setting')
       }
 
-      // Обновляем глобальный кэш настроек чтобы ThemeProvider получил новые данные
-      await refreshGlobalPreferences()
+      // Используем ответ API для обновления локального и глобального состояния
+      const savedData = await response.json()
+
+      // Обновляем локальное состояние
+      setSettings((prev) => ({
+        ...prev,
+        theme: savedData.theme || prev.theme,
+        language: savedData.language || prev.language,
+        density: savedData.density || prev.density,
+        animations: savedData.animations ?? prev.animations,
+        backgroundAnimations: savedData.backgroundAnimations ?? prev.backgroundAnimations,
+        pageTransitions: savedData.pageTransitions ?? prev.pageTransitions,
+        microInteractions: savedData.microInteractions ?? prev.microInteractions,
+        listAnimations: savedData.listAnimations ?? prev.listAnimations,
+        modalAnimations: savedData.modalAnimations ?? prev.modalAnimations,
+        scrollAnimations: savedData.scrollAnimations ?? prev.scrollAnimations,
+        wallpaperStyle: savedData.wallpaperStyle || prev.wallpaperStyle,
+        wallpaperIntensity: savedData.wallpaperIntensity ?? prev.wallpaperIntensity,
+        snowfall: savedData.snowfall ?? prev.snowfall,
+        particles: savedData.particles ?? prev.particles,
+        soundNotifications: savedData.soundNotifications ?? prev.soundNotifications,
+        desktopNotifications: savedData.desktopNotifications ?? prev.desktopNotifications,
+      }))
+
+      // Обновляем глобальный кэш настроек напрямую (без повторного fetch)
+      // чтобы ThemeProvider сразу получил новые данные
+      setGlobalPreferences(savedData)
     } catch (error) {
       console.error('Failed to save setting:', error)
       // Откат изменений при ошибке
