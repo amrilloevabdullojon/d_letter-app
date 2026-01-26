@@ -5,7 +5,7 @@ import { Sun, Moon } from 'lucide-react'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
 import { hapticLight } from '@/lib/haptic'
 
-type ThemeMode = 'LIGHT' | 'DARK' | 'AUTO'
+type ThemeMode = 'LIGHT' | 'DARK' | 'VIOLET' | 'AUTO'
 
 export function ThemeToggle() {
   const { preferences, setPreferences } = useUserPreferences()
@@ -22,7 +22,7 @@ export function ThemeToggle() {
     return () => media.removeEventListener('change', update)
   }, [])
 
-  const isDark = theme === 'DARK' || (theme === 'AUTO' && prefersDark)
+  const isDark = theme === 'DARK' || theme === 'VIOLET' || (theme === 'AUTO' && prefersDark)
 
   const toggleTheme = async () => {
     const nextTheme: ThemeMode = isDark ? 'LIGHT' : 'DARK'
