@@ -50,6 +50,7 @@ interface UserEditModalProps {
   isSuperAdmin: boolean
   isLastAdmin: boolean
   isLastSuperAdmin: boolean
+  currentUserId: string
   onSave: (data: UserEditFormData) => void
   onCancel: () => void
 }
@@ -64,13 +65,17 @@ export function UserEditModal({
   isSuperAdmin,
   isLastAdmin,
   isLastSuperAdmin,
+  currentUserId,
   onSave,
   onCancel,
 }: UserEditModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
 
   const roleChangeLocked = !isSuperAdmin || isLastAdmin || isLastSuperAdmin
-  const accessChangeLocked = user.role === 'ADMIN' || user.role === 'SUPERADMIN'
+  const isAdminOrSuperAdmin = user.role === 'ADMIN' || user.role === 'SUPERADMIN'
+  const isSelf = user.id === currentUserId
+  const accessLockedByRole = !isSuperAdmin && isAdminOrSuperAdmin
+  const accessChangeLocked = isSelf || accessLockedByRole
 
   // React Hook Form с Zod валидацией
   const {
@@ -267,7 +272,9 @@ export function UserEditModal({
                   </select>
                   {accessChangeLocked && (
                     <p className="text-xs text-amber-400">
-                      Нельзя блокировать админа или суперадмина
+                      {isSelf
+                        ? '?????? ?????? ?????? ?????? ????'
+                        : '?????? ?????????? ????? ?????? ?????? ???????'}
                     </p>
                   )}
                 </div>

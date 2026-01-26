@@ -193,6 +193,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'canLogin') {
+      const adminTargets = targetUsers.filter((user) => user.role === 'ADMIN')
+      const superAdminTargets = targetUsers.filter((user) => user.role === 'SUPERADMIN')
+
+      if (!isSuperAdmin && (adminTargets.length > 0 || superAdminTargets.length > 0)) {
+        return NextResponse.json(
+          { error: 'Only superadmin can change access for admin accounts' },
+          { status: 403 }
+        )
+      }
+
       const canLogin = value === true || value === 'true' || value === 'enable'
       const changedUsers = targetUsers.filter((user) => user.canLogin !== canLogin)
       if (changedUsers.length > 0) {

@@ -875,11 +875,12 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
                 const status = getStatusMeta(user)
                 const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1
                 const isLastSuperAdmin = user.role === 'SUPERADMIN' && superAdminCount <= 1
+                const isAdminOrSuperAdmin = user.role === 'ADMIN' || user.role === 'SUPERADMIN'
                 const deleteLocked =
                   (user.role === 'ADMIN' && (!isSuperAdmin || isLastAdmin)) ||
                   (user.role === 'SUPERADMIN' && (!isSuperAdmin || isLastSuperAdmin))
                 const canToggleAccess =
-                  user.id !== session.user.id && user.role !== 'ADMIN' && user.role !== 'SUPERADMIN'
+                  user.id !== session.user.id && (!isAdminOrSuperAdmin || isSuperAdmin)
 
                 return (
                   <tr key={user.id} className="group">
@@ -1096,6 +1097,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
           isSuperAdmin={isSuperAdmin}
           isLastAdmin={editingUser.role === 'ADMIN' && adminCount <= 1}
           isLastSuperAdmin={editingUser.role === 'SUPERADMIN' && superAdminCount <= 1}
+          currentUserId={session.user.id}
           onSave={(data) => {
             saveEdit(editingUser.id, data)
           }}

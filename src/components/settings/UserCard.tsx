@@ -201,6 +201,9 @@ export function UserCard({
     (user.role === 'ADMIN' && (!isSuperAdmin || isLastAdmin)) ||
     (user.role === 'SUPERADMIN' && (!isSuperAdmin || isLastSuperAdmin))
 
+  const accessToggleDisabled =
+    !isSuperAdmin && (user.role === 'ADMIN' || user.role === 'SUPERADMIN')
+
   const hasAuditEntries = auditEntries.length > 0
 
   const handleDelete = () => {
@@ -368,15 +371,13 @@ export function UserCard({
             <button
               onClick={() => onToggleAccess(user)}
               aria-label={user.canLogin ? 'Заблокировать' : 'Разблокировать'}
-              disabled={user.role === 'ADMIN' || user.role === 'SUPERADMIN'}
+              disabled={accessToggleDisabled}
               title={
-                user.role === 'SUPERADMIN'
-                  ? 'Нельзя отключить суперадмина'
-                  : user.role === 'ADMIN'
-                    ? 'Нельзя отключить админа'
-                    : user.canLogin
-                      ? 'Закрыть доступ'
-                      : 'Открыть доступ'
+                accessToggleDisabled
+                  ? '?????? ?????????? ????? ?????? ?????? ???????'
+                  : user.canLogin
+                    ? '??????? ??????'
+                    : '??????? ??????'
               }
               className="p-2 text-gray-400 transition hover:text-emerald-300 disabled:opacity-60"
             >
