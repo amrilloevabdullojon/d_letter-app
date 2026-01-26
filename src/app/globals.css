@@ -1418,6 +1418,164 @@ h4 {
   box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12) !important;
 }
 
+/* Light theme - slate/gray background overrides for cleaner appearance */
+.light .bg-slate-700 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.light .bg-slate-700\/50 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.light .bg-slate-700\/40 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.light .bg-slate-600 {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+}
+
+.light .bg-slate-600\/50 {
+  background-color: rgba(248, 250, 252, 0.9) !important;
+}
+
+.light .bg-gray-700\/50 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.light .bg-gray-700\/40 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.light .bg-gray-600\/50 {
+  background-color: rgba(248, 250, 252, 0.9) !important;
+}
+
+/* Light theme - info blocks and cards */
+.light .bg-slate-800\/50 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.light .bg-slate-800\/40 {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.light .bg-slate-800\/30 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Light theme - navigation buttons */
+.light .bg-slate-700\/60 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Light theme - quick action buttons */
+.light .bg-slate-700\/80 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Light theme - borders for better contrast */
+.light .border-slate-600 {
+  border-color: rgba(203, 213, 225, 0.8) !important;
+}
+
+.light .border-slate-600\/50 {
+  border-color: rgba(203, 213, 225, 0.6) !important;
+}
+
+.light .border-slate-700 {
+  border-color: rgba(203, 213, 225, 0.7) !important;
+}
+
+.light .border-slate-700\/50 {
+  border-color: rgba(203, 213, 225, 0.5) !important;
+}
+
+/* Light theme - letter cards in kanban */
+.light .bg-gradient-to-br.from-slate-800\/80.to-slate-800\/60,
+.light [class*='from-slate-800'][class*='to-slate-800'] {
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.98),
+    rgba(248, 250, 252, 0.95)
+  ) !important;
+  border-color: rgba(203, 213, 225, 0.6) !important;
+}
+
+/* Light theme - better shadow for cards */
+.light .shadow-lg {
+  --tw-shadow:
+    0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.06) !important;
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+}
+
+/* Light theme - ring colors for kanban cards */
+.light .ring-red-500\/20 {
+  --tw-ring-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+.light .ring-amber-500\/20 {
+  --tw-ring-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+/* Light theme - info section cards and blocks */
+.light .bg-slate-800\/60 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.light .bg-slate-800\/20 {
+  background-color: rgba(248, 250, 252, 0.85) !important;
+}
+
+.light .bg-slate-700\/30 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Light theme - hover states for action buttons */
+.light .hover\:bg-slate-700\/50:hover {
+  background-color: rgba(226, 232, 240, 0.7) !important;
+}
+
+.light .hover\:bg-slate-800\/60:hover {
+  background-color: rgba(226, 232, 240, 0.6) !important;
+}
+
+.light .hover\:bg-slate-700:hover {
+  background-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+/* Light theme - keyboard hints */
+.light kbd {
+  background-color: rgba(248, 250, 252, 0.9) !important;
+  border-color: rgba(203, 213, 225, 0.6) !important;
+  color: #475569 !important;
+}
+
+/* Light theme - text color adjustments for dark backgrounds converted to light */
+.light .bg-slate-800\/30 .text-slate-300,
+.light .bg-slate-800\/40 .text-slate-300,
+.light .bg-slate-700\/50 .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light .bg-slate-800\/30 .text-slate-400,
+.light .bg-slate-800\/40 .text-slate-400,
+.light .bg-slate-700\/50 .text-slate-400 {
+  color: #64748b !important;
+}
+
+.light .bg-slate-800\/30 .text-slate-500,
+.light .bg-slate-800\/40 .text-slate-500,
+.light .bg-slate-700\/50 .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+/* Light theme - progress bar background */
+.light .bg-slate-700\/50[class*='rounded-full'] {
+  background-color: rgba(226, 232, 240, 0.8) !important;
+}
+
 /* Light theme table */
 .light table thead {
   background: rgba(248, 250, 252, 0.95);
