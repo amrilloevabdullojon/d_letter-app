@@ -1,4 +1,4 @@
-import { Home, FileText, Inbox, BarChart3, Settings, User } from 'lucide-react'
+import { Home, FileText, Inbox, BarChart3, Settings, User, TrendingUp } from 'lucide-react'
 import type { NavItem, QuickCreateItem, PageMeta, PrimaryAction } from './header-types'
 
 export const NAV_ITEMS: NavItem[] = [
@@ -26,6 +26,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: BarChart3,
     matchPath: '/reports',
   },
+  {
+    href: '/my-progress',
+    label: 'Мой прогресс',
+    icon: TrendingUp,
+    matchPath: '/my-progress',
+  },
 ]
 
 export const QUICK_CREATE_ITEMS: QuickCreateItem[] = [
@@ -48,6 +54,7 @@ export function getPageMeta(pathname: string | null): PageMeta {
   if (pathname?.startsWith('/requests') || pathname?.startsWith('/request'))
     return { label: 'Заявки', icon: Inbox }
   if (pathname?.startsWith('/reports')) return { label: 'Отчёты', icon: BarChart3 }
+  if (pathname?.startsWith('/my-progress')) return { label: 'Мой прогресс', icon: TrendingUp }
   if (pathname?.startsWith('/settings')) return { label: 'Настройки', icon: Settings }
   if (pathname?.startsWith('/profile')) return { label: 'Профиль', icon: User }
   if (pathname === '/') return { label: 'Главная', icon: Home }
