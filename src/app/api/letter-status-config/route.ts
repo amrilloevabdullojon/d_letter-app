@@ -17,12 +17,25 @@ const DEFAULT_STATUS_CONFIG = [
 // GET - получить все настройки статусов
 export async function GET() {
   try {
-    const configs = await prisma.letterStatusConfig.findMany({
-      orderBy: { order: 'asc' },
-    })
+    // Пробуем получить из БД, если таблица существует
+    let configs: any[] = []
+    let tableExists = true
 
-    // Если конфигураций нет - возвращаем дефолтные (без сохранения в БД)
-    if (configs.length === 0) {
+    try {
+      configs = await prisma.letterStatusConfig.findMany({
+        orderBy: { order: 'asc' },
+      })
+    } catch (dbError: any) {
+      // Если таблица не существует - возвращаем дефолтные
+      if (dbError?.code === 'P2021' || dbError?.message?.includes('does not exist')) {
+        tableExists = false
+      } else {
+        throw dbError
+      }
+    }
+
+    // Если конфигураций нет или таблица не существует - возвращаем дефолтные
+    if (!tableExists || configs.length === 0) {
       return NextResponse.json({
         configs: DEFAULT_STATUS_CONFIG.map((c, i) => ({
           id: `default-${i}`,
@@ -32,10 +45,11 @@ export async function GET() {
           updatedAt: new Date().toISOString(),
         })),
         isDefault: true,
+        tableExists,
       })
     }
 
-    return NextResponse.json({ configs, isDefault: false })
+    return NextResponse.json({ configs, isDefault: false, tableExists: true })
   } catch (error) {
     console.error('Failed to load status configs:', error)
     return NextResponse.json({ error: 'Не удалось загрузить настройки статусов' }, { status: 500 })

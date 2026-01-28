@@ -190,6 +190,7 @@ export function StatusConfigTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDefault, setIsDefault] = useState(false)
+  const [tableExists, setTableExists] = useState(true)
   const [initializing, setInitializing] = useState(false)
 
   // Загрузка конфигураций
@@ -202,6 +203,7 @@ export function StatusConfigTab() {
       if (data.error) throw new Error(data.error)
       setConfigs(data.configs || [])
       setIsDefault(data.isDefault || false)
+      setTableExists(data.tableExists !== false)
     } catch (err) {
       console.error('Failed to load configs:', err)
       setError('Не удалось загрузить настройки статусов')
@@ -309,8 +311,27 @@ export function StatusConfigTab() {
         )}
       </div>
 
-      {/* Info Banner */}
-      {isDefault && (
+      {/* Info Banner - Table not exists */}
+      {!tableExists && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
+            <div>
+              <div className="font-medium text-red-300">Таблица не создана в базе данных</div>
+              <div className="mt-1 text-sm text-red-400/80">
+                Необходимо выполнить миграцию базы данных. Выполните SQL запрос из файла{' '}
+                <code className="rounded bg-slate-700 px-1">
+                  prisma/migrations/manual/create_letter_status_config.sql
+                </code>{' '}
+                через Railway Dashboard или другой PostgreSQL клиент.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info Banner - Default settings */}
+      {isDefault && tableExists && (
         <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 shrink-0 text-yellow-400" />
