@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           number: true,
-          organization: true,
+          org: true,
           status: true,
           updatedAt: true,
           deadlineDate: true,
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
       letters: lettersToReturn.map((l) => ({
         id: l.id,
         number: l.number,
-        organization: l.organization,
+        organization: l.org,
         status: l.status,
         completedAt: l.updatedAt.toISOString(),
         deadlineDate: l.deadlineDate.toISOString(),
