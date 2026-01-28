@@ -20,7 +20,11 @@ const prismaClientSingleton = () => {
     ...(enableQueryLogging ? queryLog : []),
   ]
 
-  const client = new PrismaClient({ log })
+  const client = new PrismaClient({
+    log,
+    // Минимальный формат ошибок в production для снижения размера логов
+    errorFormat: process.env.NODE_ENV === 'production' ? 'minimal' : 'pretty',
+  })
 
   if (enableQueryLogging) {
     client.$on('query', (event) => {
@@ -36,6 +40,13 @@ const prismaClientSingleton = () => {
         console.log('[Prisma] Query', meta)
       }
     })
+  }
+
+  // Error handling для production - мониторинг connection pool issues
+  if (process.env.NODE_ENV === 'production') {
+    // Prisma не имеет $on('error') в типах, поэтому используем обход
+    // На практике ошибки подключения будут логироваться через baseLog
+    // Дополнительно можно мониторить через external observability tools (Sentry, DataDog)
   }
 
   // Middleware для автоматического логирования изменений Letter

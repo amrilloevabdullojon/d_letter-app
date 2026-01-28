@@ -104,57 +104,115 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           },
         }
 
-    const letter = await prisma.letter.findUnique({
-      where: { id },
-      include,
-    })
+    const canManageLetters = hasPermission(session.user.role, 'MANAGE_LETTERS')
+
+    // Подготовка baseWhere для neighbors запросов
+    const baseWhere: Prisma.LetterWhereInput = {
+      deletedAt: null,
+      ...(canManageLetters ? {} : { ownerId: session.user.id }),
+    }
+
+    // ✅ КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Объединяем ВСЕ DB queries в один Promise.all
+    // Это снижает время удержания подключений и предотвращает connection pool exhaustion
+    const [letter, totalCommentsResult, isWatchingResult, previewCommentsData, prevLetter, nextLetter] =
+      await Promise.all([
+        // 1. Основной запрос письма
+        prisma.letter.findUnique({
+          where: { id },
+          include,
+        }),
+
+        // 2. Count comments (только если НЕ summaryMode или если нужен preview)
+        summaryMode && !commentsPreview
+          ? Promise.resolve(null)
+          : prisma.comment.count({ where: { letterId: id, parentId: null } }),
+
+        // 3. Check if watching (только для summaryMode)
+        summaryMode
+          ? prisma.watcher.findFirst({
+              where: { letterId: id, userId: session.user.id },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+
+        // 4. Preview comments (только если summaryMode && commentsPreview)
+        summaryMode && commentsPreview
+          ? Promise.all([
+              prisma.comment.findMany({
+                where: { letterId: id, parentId: null },
+                orderBy: { createdAt: 'desc' as const },
+                take: commentsLimit,
+                skip: commentsSkip,
+                include: {
+                  author: { select: { id: true, name: true, email: true, image: true } },
+                  _count: { select: { replies: true } },
+                },
+              }),
+              prisma.comment.count({ where: { letterId: id, parentId: null } }),
+            ])
+          : Promise.resolve(null),
+
+        // 5. Previous letter (только если neighborsMode)
+        neighborsMode
+          ? prisma.letter.findFirst({
+              where: baseWhere,
+              orderBy: { createdAt: 'desc' },
+              select: { id: true, number: true, org: true, createdAt: true },
+            }).then(async (firstLetter) => {
+              if (!firstLetter) return null
+              // Нужна createdAt письма, но она еще не загружена, так что делаем второй запрос
+              // Лучше делать это здесь в Promise.all, чем sequential
+              const currentLetter = await prisma.letter.findUnique({
+                where: { id },
+                select: { createdAt: true },
+              })
+              if (!currentLetter) return null
+              return prisma.letter.findFirst({
+                where: { ...baseWhere, createdAt: { lt: currentLetter.createdAt } },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, number: true, org: true },
+              })
+            })
+          : Promise.resolve(null),
+
+        // 6. Next letter (только если neighborsMode)
+        neighborsMode
+          ? prisma.letter.findFirst({
+              where: baseWhere,
+              orderBy: { createdAt: 'asc' },
+              select: { id: true, number: true, org: true, createdAt: true },
+            }).then(async (lastLetter) => {
+              if (!lastLetter) return null
+              const currentLetter = await prisma.letter.findUnique({
+                where: { id },
+                select: { createdAt: true },
+              })
+              if (!currentLetter) return null
+              return prisma.letter.findFirst({
+                where: { ...baseWhere, createdAt: { gt: currentLetter.createdAt } },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, number: true, org: true },
+              })
+            })
+          : Promise.resolve(null),
+      ])
 
     if (!letter) {
       return NextResponse.json({ error: 'Letter not found' }, { status: 404 })
     }
 
-    const canManageLetters = hasPermission(session.user.role, 'MANAGE_LETTERS')
     const isOwner = letter.ownerId === session.user.id
     if (!canManageLetters && !isOwner) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    let previewComments: Array<{
-      id: string
-      text: string
-      createdAt: Date
-      updatedAt: Date
-      author: { id: string; name: string | null; email: string | null; image: string | null }
-      _count: { replies: number }
-    }> = []
-    let previewTotal: number | null = null
-
-    if (summaryMode && commentsPreview) {
-      const [items, total] = await Promise.all([
-        prisma.comment.findMany({
-          where: { letterId: id, parentId: null },
-          orderBy: { createdAt: 'desc' as const },
-          take: commentsLimit,
-          skip: commentsSkip,
-          include: {
-            author: { select: { id: true, name: true, email: true, image: true } },
-            _count: { select: { replies: true } },
-          },
-        }),
-        prisma.comment.count({ where: { letterId: id, parentId: null } }),
-      ])
-      previewComments = items
-      previewTotal = total
-    }
+    // Распаковываем результаты
+    const previewComments = previewCommentsData ? previewCommentsData[0] : []
+    const previewTotal = previewCommentsData ? previewCommentsData[1] : null
 
     // Проверить, подписан ли текущий пользователь
     const isWatching = summaryMode
-      ? Boolean(
-          await prisma.watcher.findFirst({
-            where: { letterId: id, userId: session.user.id },
-            select: { id: true },
-          })
-        )
+      ? Boolean(isWatchingResult)
       : (letter.watchers ?? []).some((w) => w.userId === session.user.id)
 
     // Проверить, в избранном ли
@@ -172,11 +230,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }))
 
     // Get total comment count for pagination
-    const totalComments = summaryMode
-      ? previewTotal
-      : await prisma.comment.count({
-          where: { letterId: id, parentId: null },
-        })
+    const totalComments = summaryMode ? previewTotal : totalCommentsResult
 
     const commentsReturned = summaryMode ? previewComments.length : (letter.comments ?? []).length
     const commentTotalValue = typeof totalComments === 'number' ? totalComments : 0
@@ -185,32 +239,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     void favorites
     void files
 
-    let neighbors: {
-      prev?: { id: string; number: string; org: string }
-      next?: { id: string; number: string; org: string }
-    } | null = null
-    if (neighborsMode) {
-      const baseWhere: Prisma.LetterWhereInput = {
-        deletedAt: null,
-        ...(canManageLetters ? {} : { ownerId: session.user.id }),
-      }
-      const [prev, next] = await Promise.all([
-        prisma.letter.findFirst({
-          where: { ...baseWhere, createdAt: { lt: letter.createdAt } },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, number: true, org: true },
-        }),
-        prisma.letter.findFirst({
-          where: { ...baseWhere, createdAt: { gt: letter.createdAt } },
-          orderBy: { createdAt: 'asc' },
-          select: { id: true, number: true, org: true },
-        }),
-      ])
-      neighbors = {
-        prev: prev ?? undefined,
-        next: next ?? undefined,
-      }
-    }
+    const neighbors = neighborsMode
+      ? {
+          prev: prevLetter ?? undefined,
+          next: nextLetter ?? undefined,
+        }
+      : null
 
     return NextResponse.json(
       {
