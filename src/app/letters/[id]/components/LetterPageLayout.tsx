@@ -92,6 +92,7 @@ interface LetterPageLayoutProps {
   onEscalate: () => void
   onRefresh: () => void
   onLoadLetter: () => void
+  onChangeOwner?: (ownerId: string | null) => Promise<void>
   comments: CommentItem[]
   commentFilter: CommentFilter
   includeReplies: boolean
@@ -149,6 +150,7 @@ export const LetterPageLayout = memo(function LetterPageLayout({
   onEscalate,
   onRefresh,
   onLoadLetter,
+  onChangeOwner,
   comments,
   commentFilter,
   includeReplies,
@@ -345,6 +347,7 @@ export const LetterPageLayout = memo(function LetterPageLayout({
               onEscalate={onEscalate}
               onNotifyOwner={onNotifyOwner}
               onSaveField={onSaveField}
+              onChangeOwner={onChangeOwner}
             />
 
             <LetterApplicant letter={letter} onSave={onSaveField} onUpdate={onLoadLetter} />

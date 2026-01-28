@@ -51,6 +51,7 @@ export default function LetterDetailPage() {
     notifyingOwner,
     updateField,
     saveField,
+    changeOwner,
     deleteLetter,
     duplicateLetter,
     toggleFavorite,
@@ -215,6 +216,7 @@ export default function LetterDetailPage() {
       onEscalate={escalate}
       onRefresh={handleRefresh}
       onLoadLetter={loadLetter}
+      onChangeOwner={changeOwner}
       // Comments props
       comments={comments}
       commentFilter={commentFilter}

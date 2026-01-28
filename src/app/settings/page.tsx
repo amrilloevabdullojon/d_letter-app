@@ -13,6 +13,7 @@ import {
   Bell,
   Palette,
   Settings,
+  Tags,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { hasPermission } from '@/lib/permissions'
@@ -116,6 +117,19 @@ const WorkflowTab = dynamic(
     ),
   }
 )
+const StatusConfigTab = dynamic(
+  () =>
+    import('@/components/settings/StatusConfigTab').then((mod) => ({
+      default: mod.StatusConfigTab,
+    })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+      </div>
+    ),
+  }
+)
 
 type TabType =
   | 'permissions'
@@ -125,6 +139,7 @@ type TabType =
   | 'notifications'
   | 'personalization'
   | 'workflow'
+  | 'statuses'
 
 export default function SettingsPage() {
   const { data: session, status: authStatus } = useSession()
@@ -219,6 +234,11 @@ export default function SettingsPage() {
       value: 'workflow' as TabType,
       label: 'Процесс',
       icon: <Settings className="h-5 w-5" />,
+    },
+    {
+      value: 'statuses' as TabType,
+      label: 'Статусы',
+      icon: <Tags className="h-5 w-5" />,
     },
   ]
   const handleMobileTabChange = (tab: string) => {
@@ -392,6 +412,21 @@ export default function SettingsPage() {
                 </div>
                 Рабочий процесс
               </button>
+              <button
+                onClick={() => handleTabChange('statuses')}
+                className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+                  activeTab === 'statuses'
+                    ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 text-cyan-300 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-500/30'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <div
+                  className={`rounded-lg p-1.5 ${activeTab === 'statuses' ? 'bg-cyan-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                >
+                  <Tags className="h-4 w-4" />
+                </div>
+                Статусы
+              </button>
             </ScrollIndicator>
           </div>
         )}
@@ -422,6 +457,12 @@ export default function SettingsPage() {
         {activeTab === 'personalization' && <PersonalizationTab />}
 
         {activeTab === 'workflow' && <WorkflowTab />}
+
+        {activeTab === 'statuses' && (
+          <div className="panel panel-glass rounded-2xl p-6">
+            <StatusConfigTab />
+          </div>
+        )}
       </main>
     </div>
   )

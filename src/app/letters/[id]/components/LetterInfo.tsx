@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useState } from 'react'
+import { memo, useState, useEffect } from 'react'
 import {
   Calendar,
   Clock,
@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { SLAIndicator } from '@/components/SLAIndicator'
+import { OwnerSelector, type OwnerOption } from '@/components/OwnerSelector'
 import {
   formatDate,
   getPriorityLabel,
@@ -32,6 +33,7 @@ interface LetterInfoProps {
   onEscalate: () => void
   onNotifyOwner: () => void
   onSaveField?: (field: string, value: string) => Promise<void>
+  onChangeOwner?: (ownerId: string | null) => Promise<void>
 }
 
 // Компонент для редактирования даты
@@ -153,7 +155,11 @@ export const LetterInfo = memo(function LetterInfo({
   onEscalate,
   onNotifyOwner,
   onSaveField,
+  onChangeOwner,
 }: LetterInfoProps) {
+  const [users, setUsers] = useState<OwnerOption[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+
   const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
   const isDone = isDoneStatus(letter.status)
   const isOverdue = !isDone && daysLeft < 0
@@ -168,6 +174,34 @@ export const LetterInfo = memo(function LetterInfo({
         : null
 
   const notifyDisabled = notifyingOwner || !!notifyDisabledReason
+
+  // Загрузка списка пользователей при монтировании
+  useEffect(() => {
+    if (!canManageLetters || !onChangeOwner) return
+
+    const loadUsers = async () => {
+      setLoadingUsers(true)
+      try {
+        const res = await fetch('/api/users')
+        const data = await res.json()
+        setUsers(data.users || [])
+      } catch (error) {
+        console.error('Failed to load users:', error)
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+
+    loadUsers()
+  }, [canManageLetters, onChangeOwner])
+
+  const currentOwner: OwnerOption | null = letter.owner
+    ? {
+        id: letter.owner.id,
+        name: letter.owner.name,
+        email: letter.owner.email,
+      }
+    : null
 
   return (
     <div className="panel panel-glass rounded-2xl p-4 md:p-5">
@@ -224,12 +258,26 @@ export const LetterInfo = memo(function LetterInfo({
           </div>
         )}
 
-        <div className="flex items-center gap-3">
-          <User className="h-5 w-5 text-slate-500" />
-          <div>
-            <div className="text-xs text-slate-500">Исполнитель</div>
-            <div className="text-white">
-              {letter.owner?.name || letter.owner?.email || 'Не назначен'}
+        {/* Исполнитель - с возможностью смены */}
+        <div className="border-t border-slate-700/50 pt-3">
+          <div className="flex items-center gap-3">
+            <User className="h-5 w-5 text-slate-500" />
+            <div className="min-w-0 flex-1">
+              <div className="mb-1.5 text-xs text-slate-500">Исполнитель</div>
+              {canManageLetters && onChangeOwner ? (
+                <OwnerSelector
+                  currentOwner={currentOwner}
+                  users={users}
+                  onSelect={onChangeOwner}
+                  disabled={updating || loadingUsers}
+                  canEdit={canManageLetters}
+                  placeholder="Назначить исполнителя"
+                />
+              ) : (
+                <div className="text-white">
+                  {letter.owner?.name || letter.owner?.email || 'Не назначен'}
+                </div>
+              )}
             </div>
           </div>
         </div>

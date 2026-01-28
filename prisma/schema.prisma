@@ -907,3 +907,19 @@ model PushSubscription {
   @@unique([userId, endpoint])
   @@index([userId])
 }
+
+// ===== НАСТРОЙКИ СТАТУСОВ ПИСЕМ =====
+
+model LetterStatusConfig {
+  id        String       @id @default(cuid())
+  status    LetterStatus @unique  // Ссылка на enum статус
+  label     String                // Кастомное отображаемое название
+  color     String       @default("#6B7280")  // Цвет для бейджа
+  order     Int          @default(0)  // Порядок сортировки в списках
+  isActive  Boolean      @default(true)   // Показывать ли статус в UI
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([order])
+  @@index([isActive])
+}

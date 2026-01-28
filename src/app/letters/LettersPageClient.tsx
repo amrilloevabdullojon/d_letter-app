@@ -154,6 +154,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const [users, setUsers] = useState<User[]>(initialData?.users ?? [])
   const [pagination, setPagination] = useState<Pagination | null>(initialData?.pagination ?? null)
   const [loading, setLoading] = useState(!initialData)
+  const [contentLoading, setContentLoading] = useState(false) // Локальный лоадер только для контента
   const [isSearching, setIsSearching] = useState(false)
 
   // Filter state
@@ -179,6 +180,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const suggestionsAbortRef = useRef<AbortController | null>(null)
 
   // Pagination
@@ -242,6 +244,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const skipInitialLoadRef = useRef(Boolean(initialData))
   const skipInitialSearchRef = useRef(Boolean(initialData))
   const skipUsersLoadRef = useRef(Boolean(initialData?.users?.length) || !canManageUsers)
+  const isFirstFilterLoadRef = useRef(true) // Для отслеживания первой загрузки фильтров
   const lettersCacheRef = useRef<
     Map<string, { letters: Letter[]; pagination: Pagination | null; storedAt: number }>
   >(new Map())
@@ -474,10 +477,16 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
 
   // Data loading
   const loadLetters = useCallback(
-    async (options: { showLoading?: boolean; force?: boolean } = {}) => {
-      const { showLoading = true, force = false } = options
+    async (options: { showLoading?: boolean; force?: boolean; contentOnly?: boolean } = {}) => {
+      const { showLoading = true, force = false, contentOnly = false } = options
       const requestId = ++lettersRequestIdRef.current
-      if (showLoading) setLoading(true)
+
+      // contentOnly показывает лоадер только над списком писем
+      if (contentOnly) {
+        setContentLoading(true)
+      } else if (showLoading) {
+        setLoading(true)
+      }
 
       try {
         const params = new URLSearchParams()
@@ -503,6 +512,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
           })
           if (requestId === lettersRequestIdRef.current) {
             setLoading(false)
+            setContentLoading(false)
             setIsSearching(false)
           }
           return
@@ -541,6 +551,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       } finally {
         if (requestId === lettersRequestIdRef.current) {
           setLoading(false)
+          setContentLoading(false)
           setIsSearching(false)
         }
       }
@@ -666,25 +677,32 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const handleQuickFilterChange = useCallback(
     (value: string) => {
       setQuickFilter(value)
-      setStatusFilter('all')
-      if (value === 'mine' || value === 'unassigned') {
-        setOwnerFilter('')
-      }
+      // Не сбрасываем statusFilter - пусть пользователь управляет фильтрами независимо
+      // Не сбрасываем ownerFilter - фильтры должны работать в комбинации
       goToPage(1)
     },
     [goToPage]
   )
 
-  // Initial load
+  // Initial load (только при первом рендере с сессией)
   useEffect(() => {
     if (session) {
       if (skipInitialLoadRef.current) {
         skipInitialLoadRef.current = false
+        isFirstFilterLoadRef.current = false
         return
       }
       loadLetters()
+      isFirstFilterLoadRef.current = false
     }
-  }, [session, loadLetters])
+  }, [session])
+
+  // Перезагрузка при изменении фильтров (локальный лоадер)
+  useEffect(() => {
+    if (!session || isFirstFilterLoadRef.current) return
+    // Используем contentOnly для показа локального лоадера вместо полной перезагрузки
+    loadLetters({ showLoading: false, contentOnly: true })
+  }, [page, limit, sortBy, sortOrder, statusFilter, quickFilter, ownerFilter, typeFilter])
 
   useEffect(() => {
     if (!session || !canManageUsers) return
@@ -702,14 +720,14 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       if (document.visibilityState === 'visible') {
         // Очищаем кэш и перезагружаем данные при возврате на вкладку
         lettersCacheRef.current.clear()
-        loadLetters({ showLoading: false, force: true })
+        loadLetters({ showLoading: false, force: true, contentOnly: true })
       }
     }
 
     const handlePopState = () => {
       // Очищаем кэш при навигации назад/вперед
       lettersCacheRef.current.clear()
-      loadLetters({ showLoading: false, force: true })
+      loadLetters({ showLoading: false, force: true, contentOnly: true })
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -719,7 +737,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [loadLetters])
+  }, [])
 
   useEffect(() => {
     if (!search.trim()) {
@@ -1039,19 +1057,100 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     type="text"
                     placeholder="Поиск по номеру, организации, содержанию, Jira и ответам..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => {
+                      setSearch(e.target.value)
+                      setSelectedSuggestionIndex(-1)
+                    }}
                     onFocus={() => {
                       setIsSearchFocused(true)
+                      setSelectedSuggestionIndex(-1)
                       if (searchSuggestions.length > 0 || recentSearches.length > 0) {
                         setSuggestionsOpen(true)
                       }
                     }}
                     onBlur={() => {
                       setIsSearchFocused(false)
-                      window.setTimeout(() => setSuggestionsOpen(false), 150)
+                      window.setTimeout(() => {
+                        setSuggestionsOpen(false)
+                        setSelectedSuggestionIndex(-1)
+                      }, 150)
+                    }}
+                    onKeyDown={(e) => {
+                      if (!suggestionsOpen) return
+
+                      // Подсчёт общего количества элементов для навигации
+                      const trimmedSearch = search.trim()
+                      const autocompleteSuggestions = trimmedSearch
+                        ? Array.from(
+                            new Set(
+                              searchSuggestions
+                                .flatMap((s) => [s.org, s.number])
+                                .filter(
+                                  (text) =>
+                                    text.toLowerCase().includes(trimmedSearch.toLowerCase()) &&
+                                    text.toLowerCase() !== trimmedSearch.toLowerCase()
+                                )
+                            )
+                          ).slice(0, 3)
+                        : []
+                      const totalItems = trimmedSearch
+                        ? autocompleteSuggestions.length + searchSuggestions.length
+                        : recentSearches.length
+
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault()
+                        setSelectedSuggestionIndex((prev) =>
+                          prev < totalItems - 1 ? prev + 1 : prev
+                        )
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault()
+                        setSelectedSuggestionIndex((prev) => (prev > -1 ? prev - 1 : -1))
+                      } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+                        e.preventDefault()
+                        if (!trimmedSearch) {
+                          // Последние поиски
+                          if (recentSearches[selectedSuggestionIndex]) {
+                            setSearch(recentSearches[selectedSuggestionIndex])
+                            setSuggestionsOpen(false)
+                            setSelectedSuggestionIndex(-1)
+                          }
+                        } else if (selectedSuggestionIndex < autocompleteSuggestions.length) {
+                          // Autocomplete
+                          setSearch(autocompleteSuggestions[selectedSuggestionIndex])
+                          setSelectedSuggestionIndex(-1)
+                        } else {
+                          // Выбор письма
+                          const letterIndex =
+                            selectedSuggestionIndex - autocompleteSuggestions.length
+                          if (searchSuggestions[letterIndex]) {
+                            router.push(`/letters/${searchSuggestions[letterIndex].id}`)
+                          }
+                        }
+                      } else if (
+                        e.key === 'Tab' &&
+                        trimmedSearch &&
+                        autocompleteSuggestions.length > 0
+                      ) {
+                        e.preventDefault()
+                        const idx =
+                          selectedSuggestionIndex >= 0 &&
+                          selectedSuggestionIndex < autocompleteSuggestions.length
+                            ? selectedSuggestionIndex
+                            : 0
+                        setSearch(autocompleteSuggestions[idx])
+                        setSelectedSuggestionIndex(-1)
+                      } else if (e.key === 'Escape') {
+                        setSuggestionsOpen(false)
+                        setSelectedSuggestionIndex(-1)
+                        searchInputRef.current?.blur()
+                      }
                     }}
                     className="h-12 w-full rounded-xl border border-slate-600/50 bg-slate-700/30 pl-14 pr-12 text-white placeholder-slate-400 transition-all focus:border-teal-500/50 focus:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                     aria-label="Поиск"
+                    aria-expanded={suggestionsOpen}
+                    aria-haspopup="listbox"
+                    role="combobox"
+                    autoComplete="off"
                   />
                 )}
                 {search && (
@@ -1072,11 +1171,20 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     suggestions={searchSuggestions}
                     recentSearches={recentSearches}
                     isLoading={suggestionsLoading}
+                    selectedIndex={selectedSuggestionIndex}
                     onSelectRecent={(value) => {
                       setSearch(value)
                       setSuggestionsOpen(false)
+                      setSelectedSuggestionIndex(-1)
                     }}
                     onClearRecent={clearRecentSearches}
+                    onAutoComplete={(value) => {
+                      setSearch(value)
+                      setSelectedSuggestionIndex(-1)
+                    }}
+                    onSelectSuggestion={(suggestion) => {
+                      router.push(`/letters/${suggestion.id}`)
+                    }}
                   />
                 )}
               </div>
@@ -1152,7 +1260,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   value={statusFilter}
                   onChange={(e) => {
                     setStatusFilter(e.target.value as LetterStatus | 'all')
-                    setQuickFilter('')
+                    // Не сбрасываем quickFilter - фильтры работают независимо
                     goToPage(1)
                   }}
                   disabled={filtersDisabled}
@@ -1176,9 +1284,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   value={ownerFilter}
                   onChange={(e) => {
                     setOwnerFilter(e.target.value)
-                    if (quickFilter === 'mine' || quickFilter === 'unassigned') {
-                      setQuickFilter('')
-                    }
+                    // Не сбрасываем quickFilter - фильтры работают независимо
                     goToPage(1)
                   }}
                   disabled={filtersDisabled}
@@ -1258,44 +1364,56 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
         </div>
 
         {/* Content */}
-        {loading ? (
-          effectiveViewMode === 'cards' ? (
-            <CardsSkeleton count={9} />
-          ) : effectiveViewMode === 'kanban' ? (
-            <div className="flex gap-4 overflow-x-auto pb-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="animate-shimmer h-96 min-w-[280px] rounded-xl bg-white/5" />
-              ))}
+        <div className="relative">
+          {/* Локальный лоадер при изменении фильтров/пагинации */}
+          {contentLoading && !loading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-900/60 backdrop-blur-sm">
+              <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
             </div>
+          )}
+
+          {loading ? (
+            effectiveViewMode === 'cards' ? (
+              <CardsSkeleton count={9} />
+            ) : effectiveViewMode === 'kanban' ? (
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="animate-shimmer h-96 min-w-[280px] rounded-xl bg-white/5"
+                  />
+                ))}
+              </div>
+            ) : (
+              <TableSkeleton rows={10} />
+            )
+          ) : letters.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-slate-300/70">Писем нет</p>
+            </div>
+          ) : effectiveViewMode === 'kanban' ? (
+            <LetterKanban letters={letters} onStatusChange={handleKanbanStatusChange} />
+          ) : effectiveViewMode === 'cards' ? (
+            <VirtualLetterList
+              letters={letters}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+            />
           ) : (
-            <TableSkeleton rows={10} />
-          )
-        ) : letters.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-slate-300/70">Писем нет</p>
-          </div>
-        ) : effectiveViewMode === 'kanban' ? (
-          <LetterKanban letters={letters} onStatusChange={handleKanbanStatusChange} />
-        ) : effectiveViewMode === 'cards' ? (
-          <VirtualLetterList
-            letters={letters}
-            selectedIds={selectedIds}
-            onToggleSelect={toggleSelect}
-          />
-        ) : (
-          <VirtualLetterTable
-            letters={letters}
-            selectedIds={selectedIds}
-            onToggleSelect={toggleSelect}
-            onToggleSelectAll={toggleSelectAll}
-            onSort={handleSort}
-            sortField={sortBy}
-            sortDirection={sortOrder}
-            focusedIndex={focusedIndex}
-            onRowClick={handleRowClick}
-            onPreview={handlePreviewOpen}
-          />
-        )}
+            <VirtualLetterTable
+              letters={letters}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+              onToggleSelectAll={toggleSelectAll}
+              onSort={handleSort}
+              sortField={sortBy}
+              sortDirection={sortOrder}
+              focusedIndex={focusedIndex}
+              onRowClick={handleRowClick}
+              onPreview={handlePreviewOpen}
+            />
+          )}
+        </div>
 
         {/* Pagination */}
         {pagination && (

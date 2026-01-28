@@ -25,6 +25,7 @@ interface UseLetterActionsReturn {
   portalLink: string
   updateField: (field: string, value: string) => Promise<void>
   saveField: (field: string, value: string) => Promise<void>
+  changeOwner: (ownerId: string | null) => Promise<void>
   deleteLetter: () => void
   duplicateLetter: () => Promise<void>
   toggleFavorite: () => Promise<void>
@@ -107,6 +108,33 @@ export function useLetterActions({
         await onUpdate()
       } catch (err) {
         console.error('Failed to save:', err)
+        throw err
+      } finally {
+        setUpdating(false)
+      }
+    },
+    [letter, onUpdate, toast]
+  )
+
+  const changeOwner = useCallback(
+    async (ownerId: string | null) => {
+      if (!letter) return
+      setUpdating(true)
+      try {
+        const res = await fetch(`/api/letters/${letter.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ field: 'ownerId', value: ownerId }),
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          toast.error(data?.error || 'Не удалось изменить исполнителя')
+          throw new Error(data?.error || 'Failed to change owner')
+        }
+        toast.success(ownerId ? 'Исполнитель назначен' : 'Исполнитель снят')
+        await onUpdate()
+      } catch (err) {
+        console.error('Failed to change owner:', err)
         throw err
       } finally {
         setUpdating(false)
@@ -343,6 +371,7 @@ export function useLetterActions({
     portalLink,
     updateField,
     saveField,
+    changeOwner,
     deleteLetter,
     duplicateLetter,
     toggleFavorite,
