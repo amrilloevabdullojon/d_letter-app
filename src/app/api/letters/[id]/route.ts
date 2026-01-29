@@ -493,6 +493,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         updateData.applicantTelegramChatId = newValue
         break
 
+      case 'ownerId':
+        oldValue = letter.ownerId
+        newValue = value || null
+        updateData.ownerId = newValue
+        break
+
       default:
         return NextResponse.json({ error: 'Invalid field' }, { status: 400 })
     }
