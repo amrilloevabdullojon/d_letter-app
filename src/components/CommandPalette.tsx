@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, FileText, Plus, Settings, User, LogOut, Home, BarChart } from 'lucide-react'
-import { useKeyboardShortcut, formatShortcut } from '@/hooks/use-keyboard-shortcuts'
+import { useKeyboardShortcut, formatShortcut } from '@/hooks/useKeyboardShortcuts'
 import { cn } from '@/lib/utils'
 
 interface Command {

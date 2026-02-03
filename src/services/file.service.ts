@@ -3,7 +3,8 @@ import { saveLocalUpload } from '@/lib/file-storage'
 import { syncFileToDrive } from '@/lib/file-sync'
 import { logger } from '@/lib/logger.server'
 import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE } from '@/lib/constants'
-import type { File as PrismaFile, FileStatus, Prisma } from '@prisma/client'
+import { hasPermission } from '@/lib/permissions'
+import type { File as PrismaFile, FileStatus, Prisma, Role } from '@prisma/client'
 import { env } from '@/lib/env.validation'
 
 /**
@@ -217,7 +218,7 @@ export class FileService {
    * @example
    * await FileService.delete('file123', 'user1')
    */
-  static async delete(fileId: string, userId: string): Promise<void> {
+  static async delete(fileId: string, userId: string, userRole?: Role): Promise<void> {
     try {
       const file = await prisma.file.findUnique({
         where: { id: fileId },
@@ -232,9 +233,15 @@ export class FileService {
         throw new FileServiceError('Файл не найден', 'NOT_FOUND', 404)
       }
 
-      // TODO: Add proper permission check
-      // For now, only letter owner can delete files
-      if (file.letter.ownerId !== userId) {
+      // Permission check:
+      // - File uploader can delete their own files
+      // - Letter owner can delete files attached to their letters
+      // - Users with MANAGE_LETTERS permission can delete any file
+      const isUploader = file.uploadedById === userId
+      const isLetterOwner = file.letter.ownerId === userId
+      const hasManagePermission = userRole && hasPermission(userRole, 'MANAGE_LETTERS')
+
+      if (!isUploader && !isLetterOwner && !hasManagePermission) {
         throw new FileServiceError('Доступ запрещен', 'FORBIDDEN', 403)
       }
 

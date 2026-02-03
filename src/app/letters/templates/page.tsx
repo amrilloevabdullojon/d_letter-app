@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from 'lucide-react'
-import { useLetterTemplates } from '@/hooks/use-letter-templates'
+import { useLetterTemplates } from '@/hooks/useLetterTemplates'
 
 type LetterTemplate = {
   id: string

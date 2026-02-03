@@ -123,3 +123,73 @@ export const sendMultiChannelNotification = async (
 
   return results
 }
+
+/**
+ * Send a notification to a user via their preferred channels
+ *
+ * Creates an in-app notification and optionally sends via email/telegram
+ * based on user preferences.
+ *
+ * @example
+ * ```ts
+ * await sendNotification({
+ *   userId: 'user123',
+ *   type: 'NEW_REQUEST',
+ *   title: 'New request',
+ *   message: 'A new request has been created',
+ *   link: '/requests/123',
+ * })
+ * ```
+ */
+export type SendNotificationInput = {
+  userId: string
+  type: string
+  title: string
+  message: string
+  link?: string
+  letterId?: string
+  requestId?: string
+}
+
+export const sendNotification = async (input: SendNotificationInput): Promise<void> => {
+  const { prisma } = await import('@/lib/prisma')
+
+  // Create in-app notification
+  await prisma.notification.create({
+    data: {
+      userId: input.userId,
+      type: input.type,
+      title: input.title,
+      message: input.message,
+      link: input.link,
+      letterId: input.letterId,
+    },
+  })
+
+  // Get user preferences for external notifications
+  const user = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: {
+      email: true,
+      telegramChatId: true,
+      notifyEmail: true,
+      notifyTelegram: true,
+    },
+  })
+
+  if (!user) return
+
+  // Send via external channels if enabled
+  if (user.notifyEmail && user.email) {
+    await sendEmail(user.email, input.title, input.message).catch((err) => {
+      logger.error('Notifications', err, { channel: 'email', userId: input.userId })
+    })
+  }
+
+  if (user.notifyTelegram && user.telegramChatId) {
+    const telegramMessage = `*${input.title}*\n\n${input.message}${input.link ? `\n\n[Открыть](${APP_URL}${input.link})` : ''}`
+    await sendTelegramMessage(user.telegramChatId, telegramMessage).catch((err) => {
+      logger.error('Notifications', err, { channel: 'telegram', userId: input.userId })
+    })
+  }
+}

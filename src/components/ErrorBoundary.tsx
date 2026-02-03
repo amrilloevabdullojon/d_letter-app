@@ -7,6 +7,10 @@ import Link from 'next/link'
 interface Props {
   children: ReactNode
   fallback?: ReactNode
+  /** Callback when error is caught */
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
+  /** Called when user clicks "Try again" */
+  onReset?: () => void
 }
 
 interface State {
@@ -30,6 +34,9 @@ export class ErrorBoundary extends Component<Props, State> {
       console.error('ErrorBoundary caught an error:', error, errorInfo)
     }
 
+    // Call custom error handler
+    this.props.onError?.(error, errorInfo)
+
     // Report to Sentry in production
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
       import('@/lib/sentry').then(({ captureException }) => {
@@ -44,6 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleReset = () => {
     this.setState({ hasError: false, error: undefined })
+    this.props.onReset?.()
   }
 
   render() {

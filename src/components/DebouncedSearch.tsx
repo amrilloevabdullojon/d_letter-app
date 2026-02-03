@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Search, X, Loader2 } from 'lucide-react'
-import { useDebounce } from '@/hooks/use-debounce'
+import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/lib/utils'
 
 interface DebouncedSearchProps {

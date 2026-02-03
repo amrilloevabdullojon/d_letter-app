@@ -12,6 +12,7 @@ import { type NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { hasPermission as checkPermission, type Permission } from '@/lib/permissions'
 import superjson from 'superjson'
 import type { Session } from 'next-auth'
 
@@ -65,16 +66,26 @@ const isAuthed = middleware(async ({ ctx, next }) => {
 
 /**
  * Middleware для проверки прав доступа
+ *
+ * @example
+ * ```ts
+ * const managerProcedure = protectedProcedure.use(requirePermission('MANAGE_LETTERS'))
+ * ```
  */
-const hasPermission = (permission: string) =>
+export const requirePermission = (permission: Permission) =>
   middleware(async ({ ctx, next }) => {
     if (!ctx.session?.user) {
       throw new TRPCError({ code: 'UNAUTHORIZED' })
     }
 
-    // Проверка прав (упрощенная версия, адаптируйте под вашу систему)
     const userRole = ctx.session.user.role
-    // TODO: Добавить полноценную проверку через hasPermission из @/lib/permissions
+
+    if (!checkPermission(userRole, permission)) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: `Permission denied: ${permission}`,
+      })
+    }
 
     return next({
       ctx: {
@@ -104,4 +115,25 @@ export const adminProcedure = protectedProcedure.use(
     }
     return next({ ctx })
   })
+)
+
+/**
+ * Процедура с проверкой прав на управление письмами
+ */
+export const letterManagerProcedure = protectedProcedure.use(
+  requirePermission('MANAGE_LETTERS')
+)
+
+/**
+ * Процедура с проверкой прав на просмотр отчётов
+ */
+export const reportViewerProcedure = protectedProcedure.use(
+  requirePermission('VIEW_REPORTS')
+)
+
+/**
+ * Процедура с проверкой прав на управление пользователями
+ */
+export const userManagerProcedure = protectedProcedure.use(
+  requirePermission('MANAGE_USERS')
 )

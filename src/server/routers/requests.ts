@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import { router, publicProcedure, protectedProcedure } from '../trpc'
 import { TRPCError } from '@trpc/server'
+import { sendNotification } from '@/lib/notifications'
 import type { RequestStatus, RequestPriority, RequestCategory } from '@prisma/client'
 
 // Zod схемы
@@ -205,7 +206,33 @@ export const requestsRouter = router({
         },
       })
 
-      // TODO: Отправить уведомления админам
+      // Отправить уведомления админам о новой заявке
+      try {
+        const admins = await ctx.prisma.user.findMany({
+          where: {
+            role: { in: ['ADMIN', 'SUPERADMIN'] },
+            isActive: true,
+          },
+          select: { id: true },
+        })
+
+        await Promise.all(
+          admins.map((admin) =>
+            sendNotification({
+              userId: admin.id,
+              type: 'NEW_REQUEST',
+              title: 'Новая заявка',
+              message: `Поступила новая заявка от ${input.organization}`,
+              link: `/requests/${request.id}`,
+            }).catch((err) => {
+              console.error('Failed to send notification to admin:', admin.id, err)
+            })
+          )
+        )
+      } catch (notifyError) {
+        // Не прерываем процесс если уведомления не отправились
+        console.error('Failed to notify admins about new request:', notifyError)
+      }
 
       return request
     }),
@@ -309,7 +336,20 @@ export const requestsRouter = router({
         },
       })
 
-      // TODO: Отправить уведомления
+      // Отправить уведомление назначенному сотруднику о новом комментарии
+      if (request.assignedToId && request.assignedToId !== ctx.session.user.id) {
+        try {
+          await sendNotification({
+            userId: request.assignedToId,
+            type: 'REQUEST_COMMENT',
+            title: 'Новый комментарий к заявке',
+            message: `${ctx.session.user.name || 'Пользователь'} оставил комментарий к заявке`,
+            link: `/requests/${requestId}`,
+          })
+        } catch (notifyError) {
+          console.error('Failed to send comment notification:', notifyError)
+        }
+      }
 
       return comment
     }),

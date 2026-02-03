@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react'
 import { X, Keyboard } from 'lucide-react'
-import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcuts'
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcuts'
 
 interface ShortcutGroup {
   title: string

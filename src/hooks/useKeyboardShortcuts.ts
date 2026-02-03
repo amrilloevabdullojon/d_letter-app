@@ -19,8 +19,20 @@ export interface KeyboardShortcut {
   /** Key to listen for (e.g., 'k', 'Enter', 'Escape') */
   key: string
 
-  /** Modifier keys */
+  /** Modifier keys (object form) */
   modifiers?: Modifiers
+
+  /** Ctrl modifier (flat form) */
+  ctrl?: boolean
+
+  /** Alt modifier (flat form) */
+  alt?: boolean
+
+  /** Shift modifier (flat form) */
+  shift?: boolean
+
+  /** Meta modifier (flat form) */
+  meta?: boolean
 
   /** Callback function */
   handler: (event: KeyboardEvent) => void
@@ -67,12 +79,16 @@ function isInputElement(element: Element | null): boolean {
  * Check if modifiers match
  */
 function checkModifiers(event: KeyboardEvent, modifiers?: Modifiers): boolean {
-  if (!modifiers) return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey
+  const ctrl = modifiers?.ctrl ?? false
+  const alt = modifiers?.alt ?? false
+  const shift = modifiers?.shift ?? false
+  const meta = modifiers?.meta ?? false
 
-  const ctrl = modifiers.ctrl ?? false
-  const alt = modifiers.alt ?? false
-  const shift = modifiers.shift ?? false
-  const meta = modifiers.meta ?? false
+  // If no modifiers specified, check that none are pressed
+  const noModifiersSpecified = !ctrl && !alt && !shift && !meta
+  if (noModifiersSpecified) {
+    return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey
+  }
 
   return (
     event.ctrlKey === ctrl &&
@@ -161,8 +177,14 @@ export function useKeyboardShortcuts(
           continue
         }
 
-        // Check modifiers
-        if (!checkModifiers(event, shortcut.modifiers)) continue
+        // Check modifiers (support both flat and nested forms)
+        const modifiers: Modifiers = shortcut.modifiers || {
+          ctrl: shortcut.ctrl,
+          alt: shortcut.alt,
+          shift: shortcut.shift,
+          meta: shortcut.meta,
+        }
+        if (!checkModifiers(event, modifiers)) continue
 
         // Execute handler
         if (shortcut.preventDefault !== false) {
@@ -277,6 +299,53 @@ export function getShortcutDisplay(shortcut: Pick<KeyboardShortcut, 'key' | 'mod
   }
 
   parts.push(key)
+
+  return parts.join('+')
+}
+
+/**
+ * Shortcut config for formatShortcut (compatible with use-keyboard-shortcuts API)
+ */
+interface ShortcutConfig {
+  key: string
+  ctrl?: boolean
+  alt?: boolean
+  shift?: boolean
+  meta?: boolean
+}
+
+/**
+ * Format shortcut for display (compatible API)
+ *
+ * @example
+ * formatShortcut({ key: 'k', ctrl: true }) // "Ctrl+K"
+ * formatShortcut({ key: 'Enter', shift: true }) // "Shift+Enter"
+ */
+export function formatShortcut(config: ShortcutConfig): string {
+  const parts: string[] = []
+
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+
+  if (config.ctrl) parts.push(isMac ? '⌃' : 'Ctrl')
+  if (config.alt) parts.push(isMac ? '⌥' : 'Alt')
+  if (config.shift) parts.push(isMac ? '⇧' : 'Shift')
+  if (config.meta) parts.push(isMac ? '⌘' : 'Win')
+
+  const specialKeys: Record<string, string> = {
+    escape: 'Esc',
+    enter: 'Enter',
+    arrowup: '↑',
+    arrowdown: '↓',
+    arrowleft: '←',
+    arrowright: '→',
+    backspace: '⌫',
+    delete: 'Del',
+    tab: 'Tab',
+    ' ': 'Space',
+  }
+
+  const key = config.key.toLowerCase()
+  parts.push(specialKeys[key] || config.key.toUpperCase())
 
   return parts.join('+')
 }
