@@ -206,29 +206,72 @@ export function useKeyboardShortcuts(
 }
 
 /**
+ * Shortcut config for object-style API
+ */
+interface ShortcutObjectConfig {
+  key: string
+  handler: (event: KeyboardEvent) => void
+  ctrl?: boolean
+  alt?: boolean
+  shift?: boolean
+  meta?: boolean
+  description?: string
+  preventDefault?: boolean
+  enabled?: boolean
+}
+
+/**
  * Hook for single keyboard shortcut
+ *
+ * Supports two API styles:
+ * 1. Object style: useKeyboardShortcut({ key: 'k', ctrl: true, handler: () => {} })
+ * 2. Args style: useKeyboardShortcut('Escape', handler, options)
  *
  * @example
  * ```tsx
- * function Modal({ onClose }) {
- *   useKeyboardShortcut('Escape', onClose)
+ * // Object style (from use-keyboard-shortcuts.ts)
+ * useKeyboardShortcut({
+ *   key: 'k',
+ *   ctrl: true,
+ *   handler: () => setSearchOpen(true),
+ * })
  *
- *   return <div>Modal content</div>
- * }
+ * // Args style
+ * useKeyboardShortcut('Escape', onClose)
  * ```
  */
 export function useKeyboardShortcut(
-  key: string,
-  handler: (event: KeyboardEvent) => void,
+  keyOrConfig: string | ShortcutObjectConfig,
+  handler?: (event: KeyboardEvent) => void,
   options: Omit<KeyboardShortcut, 'key' | 'handler'> & UseKeyboardShortcutsOptions = {}
 ): void {
+  // Object-style API
+  if (typeof keyOrConfig === 'object') {
+    const config = keyOrConfig
+    useKeyboardShortcuts([
+      {
+        key: config.key,
+        handler: config.handler,
+        ctrl: config.ctrl,
+        alt: config.alt,
+        shift: config.shift,
+        meta: config.meta,
+        description: config.description,
+        preventDefault: config.preventDefault,
+        enabled: config.enabled,
+      },
+    ])
+    return
+  }
+
+  // Args-style API
   const { global, scope, ...shortcutOptions } = options
 
   useKeyboardShortcuts(
     [
       {
-        key,
-        handler,
+        key: keyOrConfig,
+        handler: handler!,
         ...shortcutOptions,
       },
     ],
