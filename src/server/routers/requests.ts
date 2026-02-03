@@ -220,7 +220,7 @@ export const requestsRouter = router({
           admins.map((admin) =>
             sendNotification({
               userId: admin.id,
-              type: 'NEW_REQUEST',
+              type: 'SYSTEM',
               title: 'Новая заявка',
               message: `Поступила новая заявка от ${input.organization}`,
               link: `/requests/${request.id}`,
@@ -341,7 +341,7 @@ export const requestsRouter = router({
         try {
           await sendNotification({
             userId: request.assignedToId,
-            type: 'REQUEST_COMMENT',
+            type: 'COMMENT',
             title: 'Новый комментарий к заявке',
             message: `${ctx.session.user.name || 'Пользователь'} оставил комментарий к заявке`,
             link: `/requests/${requestId}`,

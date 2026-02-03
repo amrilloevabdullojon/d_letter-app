@@ -134,7 +134,7 @@ export const sendMultiChannelNotification = async (
  * ```ts
  * await sendNotification({
  *   userId: 'user123',
- *   type: 'NEW_REQUEST',
+ *   type: 'SYSTEM',
  *   title: 'New request',
  *   message: 'A new request has been created',
  *   link: '/requests/123',
@@ -143,7 +143,7 @@ export const sendMultiChannelNotification = async (
  */
 export type SendNotificationInput = {
   userId: string
-  type: string
+  type: 'NEW_LETTER' | 'COMMENT' | 'STATUS' | 'ASSIGNMENT' | 'DEADLINE_URGENT' | 'DEADLINE_OVERDUE' | 'SYSTEM'
   title: string
   message: string
   link?: string
