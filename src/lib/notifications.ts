@@ -155,13 +155,15 @@ export const sendNotification = async (input: SendNotificationInput): Promise<vo
   const { prisma } = await import('@/lib/prisma')
 
   // Create in-app notification
+  // Note: Prisma schema uses 'body' field, not 'message'
+  // 'link' is stored in metadata JSON field
   await prisma.notification.create({
     data: {
       userId: input.userId,
       type: input.type,
       title: input.title,
-      message: input.message,
-      link: input.link,
+      body: input.message,
+      metadata: input.link ? { link: input.link } : undefined,
       letterId: input.letterId,
     },
   })
