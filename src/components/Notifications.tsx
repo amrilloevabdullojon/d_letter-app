@@ -5,10 +5,11 @@ import { Bell, Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { NotificationCard } from '@/components/notifications/NotificationCard'
-import { formatDate, getWorkingDaysUntilDeadline } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { hasPermission } from '@/lib/permissions'
 import { useFetch, useMutation } from '@/hooks/useFetch'
 import { useNotificationSettings } from '@/hooks/useNotificationSettings'
+import { useDeadlineNotifications } from '@/hooks/useDeadlineNotifications'
 import { useToast } from '@/components/Toast'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
 import { playNotificationSound, setSoundEnabled } from '@/lib/sounds'
@@ -24,10 +25,6 @@ interface NotificationLetter {
     name: string | null
     email: string | null
   } | null
-}
-
-interface DeadlineLetter extends NotificationLetter {
-  deadlineDate: string
 }
 
 interface UserNotification {
@@ -63,16 +60,8 @@ interface NotificationGroup extends UnifiedNotification {
   unreadCount: number
 }
 
-const SNOOZE_KEY = 'notification-deadline-snoozes'
 const NOTIFICATIONS_LIMIT = 100
 const NOTIFICATIONS_INCREMENT = 50
-const DEADLINES_LIMIT = 100
-
-const getTomorrowStartIso = () => {
-  const now = new Date()
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-  return tomorrow.toISOString()
-}
 
 const isDeadlineKind = (kind: UnifiedKind) =>
   kind === 'DEADLINE_OVERDUE' || kind === 'DEADLINE_URGENT'
@@ -124,8 +113,22 @@ export function Notifications() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loadDeadlineNotifications, setLoadDeadlineNotifications] = useState(false)
-  const [snoozedDeadlines, setSnoozedDeadlines] = useState<Record<string, string>>({})
   const { settings: notificationSettings, updateSettings } = useNotificationSettings()
+
+  const refetchInterval = isOpen ? 60 * 1000 : 5 * 60 * 1000
+
+  const {
+    notifications: deadlineNotifications,
+    snoozeDeadline,
+    snoozeAll: snoozeAllDeadlines,
+    clearSnoozes,
+    pruneSnoozes,
+    hasActiveSnoozes,
+    refetch: refetchDeadlines,
+  } = useDeadlineNotifications({
+    enabled: loadDeadlineNotifications,
+    refetchInterval,
+  })
 
   const canManageLetters = hasPermission(session?.user.role, 'MANAGE_LETTERS')
   const currentUserId = session?.user.id
@@ -155,41 +158,6 @@ export function Notifications() {
     [matrixByEvent]
   )
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const stored = localStorage.getItem(SNOOZE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored) as Record<string, string>
-        if (parsed && typeof parsed === 'object') {
-          setSnoozedDeadlines(parsed)
-        }
-      }
-    } catch {
-      // Ignore
-    }
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      localStorage.setItem(SNOOZE_KEY, JSON.stringify(snoozedDeadlines))
-    } catch {
-      // Ignore
-    }
-  }, [snoozedDeadlines])
-
-  const pruneSnoozes = useCallback(() => {
-    const now = Date.now()
-    setSnoozedDeadlines((prev) => {
-      const next = Object.fromEntries(
-        Object.entries(prev).filter(([, until]) => new Date(until).getTime() > now)
-      )
-      return Object.keys(next).length === Object.keys(prev).length ? prev : next
-    })
-  }, [])
-
-  const refetchInterval = isOpen ? 60 * 1000 : 5 * 60 * 1000
   const quietHoursActive =
     notificationSettings.quietHoursEnabled &&
     isWithinQuietHours(
@@ -207,22 +175,6 @@ export function Notifications() {
       refetchOnFocus: true,
     }
   )
-  const overdueQuery = useFetch<{ letters?: DeadlineLetter[] }>(
-    `/api/letters?filter=overdue&limit=${DEADLINES_LIMIT}`,
-    {
-      initialData: { letters: [] },
-      skip: !loadDeadlineNotifications,
-      refetchInterval: loadDeadlineNotifications ? refetchInterval : undefined,
-    }
-  )
-  const urgentQuery = useFetch<{ letters?: DeadlineLetter[] }>(
-    `/api/letters?filter=urgent&limit=${DEADLINES_LIMIT}`,
-    {
-      initialData: { letters: [] },
-      skip: !loadDeadlineNotifications,
-      refetchInterval: loadDeadlineNotifications ? refetchInterval : undefined,
-    }
-  )
   const updateNotifications = useMutation<{ success: boolean }, { ids?: string[]; all?: boolean }>(
     '/api/notifications',
     { method: 'PATCH' }
@@ -233,44 +185,6 @@ export function Notifications() {
     [userNotificationsQuery.data]
   )
   const setUserNotifications = userNotificationsQuery.mutate
-
-  const deadlineNotifications = useMemo<UnifiedNotification[]>(() => {
-    if (!loadDeadlineNotifications) return [] as UnifiedNotification[]
-    const overdue: UnifiedNotification[] = (overdueQuery.data?.letters || []).map((letter) => ({
-      id: `deadline-overdue-${letter.id}`,
-      kind: 'DEADLINE_OVERDUE' as const,
-      title: '',
-      body: null,
-      priority: 'CRITICAL',
-      createdAt: letter.deadlineDate,
-      letter,
-      daysLeft: getWorkingDaysUntilDeadline(letter.deadlineDate),
-    }))
-    const urgent: UnifiedNotification[] = (urgentQuery.data?.letters || []).map((letter) => ({
-      id: `deadline-urgent-${letter.id}`,
-      kind: 'DEADLINE_URGENT' as const,
-      title: '',
-      body: null,
-      priority: 'HIGH',
-      createdAt: letter.deadlineDate,
-      letter,
-      daysLeft: getWorkingDaysUntilDeadline(letter.deadlineDate),
-    }))
-
-    const all = [...overdue, ...urgent]
-    return all.filter((item) => {
-      const letterId = item.letter?.id
-      if (!letterId) return true
-      const snoozedUntil = snoozedDeadlines[letterId]
-      if (!snoozedUntil) return true
-      return new Date(snoozedUntil).getTime() <= Date.now()
-    })
-  }, [
-    loadDeadlineNotifications,
-    overdueQuery.data?.letters,
-    urgentQuery.data?.letters,
-    snoozedDeadlines,
-  ])
 
   const unifiedNotifications = useMemo(() => {
     const userItems: UnifiedNotification[] = userNotifications.map((notif) => ({
@@ -283,7 +197,7 @@ export function Notifications() {
       isRead: notif.isRead,
       letter: notif.letter ?? null,
     }))
-    const all = [...userItems, ...deadlineNotifications]
+    const all = [...userItems, ...(deadlineNotifications as UnifiedNotification[])]
 
     const getPriority = (item: UnifiedNotification) => {
       const priority = resolvePriority(item)
@@ -528,28 +442,6 @@ export function Notifications() {
     }
   }
 
-  const snoozeDeadline = useCallback((letterId: string) => {
-    const until = getTomorrowStartIso()
-    setSnoozedDeadlines((prev) => ({ ...prev, [letterId]: until }))
-  }, [])
-
-  const snoozeAllDeadlines = useCallback(() => {
-    const until = getTomorrowStartIso()
-    setSnoozedDeadlines((prev) => {
-      const next = { ...prev }
-      deadlineNotifications.forEach((notif) => {
-        if (notif.letter?.id) {
-          next[notif.letter.id] = until
-        }
-      })
-      return next
-    })
-  }, [deadlineNotifications])
-
-  const clearSnoozes = useCallback(() => {
-    setSnoozedDeadlines({})
-  }, [])
-
   const assignToMe = async (letterId: string) => {
     if (!currentUserId) return
     const res = await fetch(`/api/letters/${letterId}`, {
@@ -565,8 +457,7 @@ export function Notifications() {
 
     toast.success('Вы назначены исполнителем')
     userNotificationsQuery.refetch()
-    overdueQuery.refetch()
-    urgentQuery.refetch()
+    refetchDeadlines()
   }
 
   const filterConfig: { key: FilterKey; label: string; count: number }[] = [
@@ -602,11 +493,6 @@ export function Notifications() {
       count: counts.system,
     },
   ]
-
-  const checkHasActiveSnoozes = () => {
-    const now = Date.now()
-    return Object.values(snoozedDeadlines).some((until) => new Date(until).getTime() > now)
-  }
 
   useEffect(() => {
     if (!isOpen) return
@@ -708,7 +594,7 @@ export function Notifications() {
                     Отметить все прочитанными
                   </button>
                 )}
-                {counts.deadlines > 0 && !checkHasActiveSnoozes() && (
+                {counts.deadlines > 0 && !hasActiveSnoozes && (
                   <button
                     onClick={() => {
                       hapticLight()
@@ -719,7 +605,7 @@ export function Notifications() {
                     Скрыть дедлайны до завтра
                   </button>
                 )}
-                {checkHasActiveSnoozes() && (
+                {hasActiveSnoozes && (
                   <button
                     onClick={() => {
                       hapticLight()
