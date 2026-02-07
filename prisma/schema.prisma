@@ -97,6 +97,7 @@ model User {
   preferences        UserPreferences?
   settingsHistory    SettingsHistory[]
   settingsHistoryChanged SettingsHistory[] @relation("SettingsHistoryChangedBy")
+  uploadedFiles      File[]            @relation("FileUploader")
 
   @@index([role])              // Индекс для фильтрации по роли
   @@index([canLogin])          // Индекс для фильтрации по доступу
@@ -508,10 +509,13 @@ model File {
   size      Int?
   letterId  String
   letter    Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  uploadedById String?
+  uploadedBy   User?    @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
+  @@index([uploadedById])
 }
 
 enum FileStorageProvider {

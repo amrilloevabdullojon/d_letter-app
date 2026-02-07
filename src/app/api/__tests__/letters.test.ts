@@ -185,7 +185,7 @@ describe('Letter Detail API', () => {
       const request = createMockRequest('GET', {
         url: 'http://localhost:3000/api/letters/letter-123',
       })
-      const response = await GET(request, { params: { id: 'letter-123' } })
+      const response = await GET(request, { params: Promise.resolve({ id: 'letter-123' }) })
 
       expect(response.status).toBe(200)
 
@@ -201,7 +201,7 @@ describe('Letter Detail API', () => {
       const request = createMockRequest('GET', {
         url: 'http://localhost:3000/api/letters/non-existent',
       })
-      const response = await GET(request, { params: { id: 'non-existent' } })
+      const response = await GET(request, { params: Promise.resolve({ id: 'non-existent' }) })
 
       expect(response.status).toBe(404)
     })
@@ -221,7 +221,7 @@ describe('Letter Detail API', () => {
         url: 'http://localhost:3000/api/letters/letter-123',
         body: { status: 'DONE' },
       })
-      const response = await PATCH(request, { params: { id: 'letter-123' } })
+      const response = await PATCH(request, { params: Promise.resolve({ id: 'letter-123' }) })
 
       expect(response.status).toBe(200)
 
@@ -243,7 +243,7 @@ describe('Letter Detail API', () => {
       const request = createMockRequest('DELETE', {
         url: 'http://localhost:3000/api/letters/letter-123',
       })
-      const response = await DELETE(request, { params: { id: 'letter-123' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'letter-123' }) })
 
       expect(response.status).toBe(200)
     })

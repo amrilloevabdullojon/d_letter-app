@@ -3,6 +3,7 @@
  *
  * Используется для:
  * - Управление выбранными письмами (bulk operations)
+ * - Фильтры и сортировка
  * - Drag & drop состояние
  * - Временные данные форм (autosave)
  * - Bulk action state
@@ -15,10 +16,32 @@ interface LetterDraft {
   number: string
   org: string
   content: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 type BulkActionType = 'status' | 'owner' | 'delete' | null
+type SortField = 'created' | 'deadline' | 'date' | 'number' | 'org' | 'status' | 'priority'
+type SortOrder = 'asc' | 'desc'
+
+interface FiltersState {
+  search: string
+  statusFilter: string
+  quickFilter: string
+  ownerFilter: string
+  typeFilter: string
+  sortBy: SortField
+  sortOrder: SortOrder
+}
+
+const DEFAULT_FILTERS: FiltersState = {
+  search: '',
+  statusFilter: 'all',
+  quickFilter: '',
+  ownerFilter: '',
+  typeFilter: '',
+  sortBy: 'created',
+  sortOrder: 'desc',
+}
 
 interface LettersState {
   // Selected letters для bulk operations
@@ -39,6 +62,18 @@ interface LettersState {
   setBulkValue: (value: string) => void
   setBulkLoading: (loading: boolean) => void
   resetBulk: () => void
+
+  // Filters & sorting
+  filters: FiltersState
+  setSearch: (search: string) => void
+  setStatusFilter: (status: string) => void
+  setQuickFilter: (filter: string) => void
+  setOwnerFilter: (owner: string) => void
+  setTypeFilter: (type: string) => void
+  setSortBy: (sortBy: SortField) => void
+  setSortOrder: (sortOrder: SortOrder) => void
+  resetFilters: () => void
+  setFilters: (filters: Partial<FiltersState>) => void
 
   // Drag & Drop
   draggedLetterId: string | null
@@ -110,6 +145,18 @@ export const useLettersStore = create<LettersState>()(
           selectedLetterIds: new Set(),
         }),
 
+      // Filters & sorting
+      filters: { ...DEFAULT_FILTERS },
+      setSearch: (search) => set((s) => ({ filters: { ...s.filters, search } })),
+      setStatusFilter: (statusFilter) => set((s) => ({ filters: { ...s.filters, statusFilter } })),
+      setQuickFilter: (quickFilter) => set((s) => ({ filters: { ...s.filters, quickFilter } })),
+      setOwnerFilter: (ownerFilter) => set((s) => ({ filters: { ...s.filters, ownerFilter } })),
+      setTypeFilter: (typeFilter) => set((s) => ({ filters: { ...s.filters, typeFilter } })),
+      setSortBy: (sortBy) => set((s) => ({ filters: { ...s.filters, sortBy } })),
+      setSortOrder: (sortOrder) => set((s) => ({ filters: { ...s.filters, sortOrder } })),
+      resetFilters: () => set({ filters: { ...DEFAULT_FILTERS } }),
+      setFilters: (partial) => set((s) => ({ filters: { ...s.filters, ...partial } })),
+
       // Drag & Drop
       draggedLetterId: null,
       setDraggedLetterId: (id) => set({ draggedLetterId: id }),
@@ -140,3 +187,17 @@ export const useBulkAction = () =>
     value: state.bulkValue,
     loading: state.bulkLoading,
   }))
+export const useFilters = () => useLettersStore((state) => state.filters)
+export const useActiveFiltersCount = () =>
+  useLettersStore((state) => {
+    const f = state.filters
+    let count = 0
+    if (f.search) count++
+    if (f.statusFilter !== 'all') count++
+    if (f.quickFilter) count++
+    if (f.ownerFilter) count++
+    if (f.typeFilter) count++
+    return count
+  })
+
+export type { SortField, SortOrder, FiltersState, BulkActionType }

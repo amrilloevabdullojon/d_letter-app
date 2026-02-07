@@ -107,14 +107,12 @@ export class LetterQueryBuilder {
   search(query: string | null): this {
     if (query && query.trim()) {
       const searchTerm = query.trim()
+      // ✅ PERF: number & org use GIN trigram indexes; content is useful but unindexed
+      // Removed low-value fields (jiraLink, answer, zordoc, comment) to reduce OR branches
       this.where.OR = [
         { number: { contains: searchTerm, mode: 'insensitive' } },
         { org: { contains: searchTerm, mode: 'insensitive' } },
         { content: { contains: searchTerm, mode: 'insensitive' } },
-        { jiraLink: { contains: searchTerm, mode: 'insensitive' } },
-        { answer: { contains: searchTerm, mode: 'insensitive' } },
-        { zordoc: { contains: searchTerm, mode: 'insensitive' } },
-        { comment: { contains: searchTerm, mode: 'insensitive' } },
         { applicantName: { contains: searchTerm, mode: 'insensitive' } },
       ]
     }

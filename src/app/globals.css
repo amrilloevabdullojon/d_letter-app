@@ -670,6 +670,37 @@ h4 {
   color: #9ca3af;
 }
 
+/* ✅ Semantic utility classes — use these instead of raw Tailwind color classes
+   to avoid needing .light .bg-gray-900 overrides. Theme-aware by default. */
+.bg-surface-primary {
+  background-color: rgb(var(--app-bg));
+}
+.bg-surface-secondary {
+  background-color: rgb(var(--app-bg-2));
+}
+.bg-surface-elevated {
+  background-color: rgb(var(--panel));
+}
+.bg-surface-overlay {
+  background-color: rgba(var(--panel) / 0.95);
+  backdrop-filter: blur(12px);
+}
+.text-theme-primary {
+  color: rgb(var(--text-primary));
+}
+.text-theme-muted {
+  color: rgb(var(--text-muted));
+}
+.text-theme-accent {
+  color: rgb(var(--accent));
+}
+.border-theme {
+  border-color: rgba(var(--panel-border) / 0.6);
+}
+.border-theme-strong {
+  border-color: rgba(var(--panel-border) / 0.8);
+}
+
 /* App surfaces */
 .panel {
   background: linear-gradient(160deg, rgba(var(--panel) / 0.98), rgba(var(--panel-2) / 0.92));

@@ -434,16 +434,13 @@ export class LetterService {
       where.ownerId = userId
     }
 
-    // Search
+    // Search — uses GIN trigram indexes on number & org
     if (filters.search) {
       where.OR = [
         { number: { contains: filters.search, mode: 'insensitive' } },
         { org: { contains: filters.search, mode: 'insensitive' } },
         { content: { contains: filters.search, mode: 'insensitive' } },
-        { jiraLink: { contains: filters.search, mode: 'insensitive' } },
-        { answer: { contains: filters.search, mode: 'insensitive' } },
-        { zordoc: { contains: filters.search, mode: 'insensitive' } },
-        { comment: { contains: filters.search, mode: 'insensitive' } },
+        { applicantName: { contains: filters.search, mode: 'insensitive' } },
       ]
     }
 

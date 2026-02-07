@@ -299,53 +299,57 @@ export class UserService {
     }
   }> {
     try {
-      const [letters, watchedCount, commentsCount, notificationsAggregate, unreadCount] =
-        await Promise.all([
-          prisma.letter.groupBy({
-            by: ['status'],
-            where: {
-              ownerId: userId,
-              deletedAt: null,
-            },
-            _count: true,
-          }),
-          prisma.watcher.count({
-            where: { userId },
-          }),
-          prisma.comment.count({
-            where: { authorId: userId },
-          }),
-          prisma.notification.aggregate({
-            where: { userId },
-            _count: {
-              _all: true,
-            },
-          }),
-          prisma.notification.count({
-            where: {
-              userId,
-              isRead: false,
-            },
-          }),
-        ])
+      // ✅ PERF: Single raw SQL query instead of 5 separate Prisma queries
+      const result = await prisma.$queryRaw<
+        Array<{
+          watched: bigint
+          comments: bigint
+          notif_total: bigint
+          notif_unread: bigint
+          letter_stats: string | null
+        }>
+      >`
+        SELECT
+          (SELECT COUNT(*) FROM "Watcher" WHERE "userId" = ${userId}) AS watched,
+          (SELECT COUNT(*) FROM "Comment" WHERE "authorId" = ${userId}) AS comments,
+          (SELECT COUNT(*) FROM "Notification" WHERE "userId" = ${userId}) AS notif_total,
+          (SELECT COUNT(*) FROM "Notification" WHERE "userId" = ${userId} AND "isRead" = false) AS notif_unread,
+          (
+            SELECT json_agg(row_to_json(s))
+            FROM (
+              SELECT "status", COUNT(*)::int AS count
+              FROM "Letter"
+              WHERE "ownerId" = ${userId} AND "deletedAt" IS NULL
+              GROUP BY "status"
+            ) s
+          ) AS letter_stats
+      `
 
+      const row = result[0]
       const byStatus: Record<string, number> = {}
       let totalLetters = 0
-      letters.forEach((group) => {
-        byStatus[group.status] = group._count
-        totalLetters += group._count
-      })
+
+      if (row?.letter_stats) {
+        const stats =
+          typeof row.letter_stats === 'string'
+            ? (JSON.parse(row.letter_stats) as Array<{ status: string; count: number }>)
+            : (row.letter_stats as unknown as Array<{ status: string; count: number }>)
+        stats.forEach((s) => {
+          byStatus[s.status] = s.count
+          totalLetters += s.count
+        })
+      }
 
       return {
         ownedLetters: {
           total: totalLetters,
           byStatus,
         },
-        watchedLetters: watchedCount,
-        comments: commentsCount,
+        watchedLetters: Number(row?.watched ?? 0),
+        comments: Number(row?.comments ?? 0),
         notifications: {
-          unread: unreadCount,
-          total: notificationsAggregate._count._all,
+          unread: Number(row?.notif_unread ?? 0),
+          total: Number(row?.notif_total ?? 0),
         },
       }
     } catch (error) {
