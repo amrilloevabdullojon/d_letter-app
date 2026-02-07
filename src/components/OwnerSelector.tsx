@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { User, ChevronDown, Check, X, Search, Loader2, UserX } from 'lucide-react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export interface OwnerOption {
   id: string
@@ -34,6 +35,7 @@ export function OwnerSelector({
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const isMobile = useIsMobile()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -124,18 +126,21 @@ export function OwnerSelector({
   }, [isOpen])
 
   // Выбор пользователя
-  const handleSelect = useCallback(async (userId: string | null) => {
-    if (disabled || saving) return
-    setSaving(true)
-    try {
-      await onSelect(userId)
-      handleClose()
-    } catch (error) {
-      console.error('Failed to select owner:', error)
-    } finally {
-      setSaving(false)
-    }
-  }, [disabled, saving, onSelect, handleClose])
+  const handleSelect = useCallback(
+    async (userId: string | null) => {
+      if (disabled || saving) return
+      setSaving(true)
+      try {
+        await onSelect(userId)
+        handleClose()
+      } catch (error) {
+        console.error('Failed to select owner:', error)
+      } finally {
+        setSaving(false)
+      }
+    },
+    [disabled, saving, onSelect, handleClose]
+  )
 
   // Фильтрованные пользователи
   const filteredUsers = useMemo(() => {
@@ -143,8 +148,7 @@ export function OwnerSelector({
     const query = search.toLowerCase()
     return users.filter(
       (user) =>
-        user.name?.toLowerCase().includes(query) ||
-        user.email?.toLowerCase().includes(query)
+        user.name?.toLowerCase().includes(query) || user.email?.toLowerCase().includes(query)
     )
   }, [users, search])
 
@@ -164,15 +168,36 @@ export function OwnerSelector({
   const dropdownContent = (
     <div
       ref={dropdownRef}
-      style={{
-        position: 'fixed',
-        top: position.top,
-        left: position.left,
-        width: position.width,
-        zIndex: 99999,
-      }}
-      className="overflow-hidden rounded-xl border border-slate-600/50 bg-slate-900 shadow-2xl"
+      style={
+        isMobile
+          ? { zIndex: 99999 }
+          : {
+              position: 'fixed',
+              top: position.top,
+              left: position.left,
+              width: position.width,
+              zIndex: 99999,
+            }
+      }
+      className={
+        isMobile
+          ? 'animate-slideUp fixed inset-x-0 bottom-0 z-[99999] overflow-hidden rounded-t-2xl border-t border-slate-600/50 bg-slate-900 shadow-2xl'
+          : 'overflow-hidden rounded-xl border border-slate-600/50 bg-slate-900 shadow-2xl'
+      }
     >
+      {isMobile && (
+        <div className="flex items-center justify-between border-b border-slate-700/50 px-4 py-3">
+          <span className="text-sm font-semibold text-white">Выбрать исполнителя</span>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
+            aria-label="Закрыть"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
       {/* Поиск */}
       <div className="border-b border-slate-700/50 p-3">
         <div className="relative">
@@ -204,7 +229,10 @@ export function OwnerSelector({
       )}
 
       {/* Список пользователей */}
-      <div className="max-h-56 overflow-auto p-1.5">
+      <div
+        className={`overflow-auto p-1.5 ${isMobile ? 'max-h-[50vh]' : 'max-h-56'}`}
+        style={isMobile ? { paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
+      >
         {filteredUsers.length === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-slate-500">
             {search ? 'Пользователи не найдены' : 'Нет доступных пользователей'}
@@ -292,7 +320,23 @@ export function OwnerSelector({
           />
         )}
       </button>
-      {mounted && isOpen && createPortal(dropdownContent, document.body)}
+      {mounted &&
+        isOpen &&
+        createPortal(
+          isMobile ? (
+            <>
+              <div
+                className="fixed inset-0 z-[99998] bg-black/50 backdrop-blur-sm"
+                onClick={handleClose}
+                aria-hidden="true"
+              />
+              {dropdownContent}
+            </>
+          ) : (
+            dropdownContent
+          ),
+          document.body
+        )}
     </>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { X, AlertTriangle, Trash2, CheckCircle, Info } from 'lucide-react'
 import { createFocusTrap } from '@/lib/a11y'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export type DialogVariant = 'danger' | 'warning' | 'success' | 'info'
 
@@ -56,6 +57,7 @@ export function ConfirmDialog({
   loading = false,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const isMobile = useIsMobile()
   const { icon: Icon, color, bg } = variantStyles[variant]
 
   // Focus trap
@@ -94,7 +96,9 @@ export function ConfirmDialog({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className={`fixed inset-0 z-50 flex ${isMobile ? 'items-end' : 'items-center'} justify-center`}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -109,7 +113,12 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="dialog-title"
         aria-describedby="dialog-message"
-        className="relative z-10 w-full max-w-md rounded-xl border border-gray-700 bg-gray-800 p-6 shadow-2xl"
+        className={`relative z-10 w-full max-w-md border border-gray-700 bg-gray-800 p-6 shadow-2xl ${
+          isMobile ? 'animate-slideUp rounded-t-2xl' : 'rounded-xl'
+        }`}
+        style={
+          isMobile ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' } : undefined
+        }
       >
         {/* Close button */}
         <button
