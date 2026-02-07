@@ -5,6 +5,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const EnhancedDialog = DialogPrimitive.Root
 
@@ -44,6 +45,7 @@ const EnhancedDialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => {
   const { preferences } = useUserPreferences()
+  const isMobile = useIsMobile()
   const modalAnimationsEnabled = preferences?.modalAnimations ?? true
   const animationsEnabled = preferences?.animations ?? true
 
@@ -55,11 +57,20 @@ const EnhancedDialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 rounded-2xl border border-gray-700/60 bg-gray-800/95 p-6 shadow-2xl backdrop-blur-md',
+          isMobile
+            ? 'fixed inset-x-0 bottom-0 z-50 grid w-full gap-6 rounded-t-2xl border-t border-gray-700/60 bg-gray-800/95 p-6 shadow-2xl backdrop-blur-md'
+            : 'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 rounded-2xl border border-gray-700/60 bg-gray-800/95 p-6 shadow-2xl backdrop-blur-md',
           shouldAnimate &&
+            isMobile &&
+            'duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+          shouldAnimate &&
+            !isMobile &&
             'duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
           className
         )}
+        style={
+          isMobile ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' } : undefined
+        }
         {...props}
       >
         {children}
@@ -73,26 +84,14 @@ const EnhancedDialogContent = React.forwardRef<
 })
 EnhancedDialogContent.displayName = DialogPrimitive.Content.displayName
 
-const EnhancedDialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn('flex flex-col space-y-2 text-left', className)}
-    {...props}
-  />
+const EnhancedDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn('flex flex-col space-y-2 text-left', className)} {...props} />
 )
 EnhancedDialogHeader.displayName = 'EnhancedDialogHeader'
 
-const EnhancedDialogFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+const EnhancedDialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
-      'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
-      className
-    )}
+    className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
     {...props}
   />
 )
@@ -104,10 +103,7 @@ const EnhancedDialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn(
-      'text-xl font-semibold leading-none tracking-tight text-white',
-      className
-    )}
+    className={cn('text-xl font-semibold leading-none tracking-tight text-white', className)}
     {...props}
   />
 ))
