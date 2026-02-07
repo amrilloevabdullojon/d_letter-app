@@ -12,7 +12,9 @@ import type { RequestStatus, RequestPriority, RequestCategory } from '@prisma/cl
 const getRequestsInputSchema = z.object({
   status: z.enum(['NEW', 'IN_REVIEW', 'DONE', 'SPAM', 'CANCELLED']).optional(),
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional(),
-  category: z.enum(['CONSULTATION', 'TECHNICAL', 'DOCUMENTATION', 'COMPLAINT', 'SUGGESTION', 'OTHER']).optional(),
+  category: z
+    .enum(['CONSULTATION', 'TECHNICAL', 'DOCUMENTATION', 'COMPLAINT', 'SUGGESTION', 'OTHER'])
+    .optional(),
   assignedToId: z.string().optional(),
   search: z.string().optional(),
   limit: z.number().min(1).max(100).default(50),
@@ -26,7 +28,9 @@ const createRequestInputSchema = z.object({
   contactPhone: z.string().min(1, 'Телефон обязателен'),
   contactTelegram: z.string(),
   description: z.string().min(10, 'Описание должно быть не менее 10 символов'),
-  category: z.enum(['CONSULTATION', 'TECHNICAL', 'DOCUMENTATION', 'COMPLAINT', 'SUGGESTION', 'OTHER']).default('OTHER'),
+  category: z
+    .enum(['CONSULTATION', 'TECHNICAL', 'DOCUMENTATION', 'COMPLAINT', 'SUGGESTION', 'OTHER'])
+    .default('OTHER'),
   source: z.string().optional(),
 })
 
@@ -35,7 +39,9 @@ const updateRequestInputSchema = z.object({
   data: z.object({
     status: z.enum(['NEW', 'IN_REVIEW', 'DONE', 'SPAM', 'CANCELLED']).optional(),
     priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional(),
-    category: z.enum(['CONSULTATION', 'TECHNICAL', 'DOCUMENTATION', 'COMPLAINT', 'SUGGESTION', 'OTHER']).optional(),
+    category: z
+      .enum(['CONSULTATION', 'TECHNICAL', 'DOCUMENTATION', 'COMPLAINT', 'SUGGESTION', 'OTHER'])
+      .optional(),
     assignedToId: z.string().nullable().optional(),
   }),
 })
@@ -49,310 +55,297 @@ export const requestsRouter = router({
   /**
    * Получить список заявок
    */
-  getAll: protectedProcedure
-    .input(getRequestsInputSchema)
-    .query(async ({ ctx, input }) => {
-      const { status, priority, category, assignedToId, search, limit, cursor } = input
+  getAll: protectedProcedure.input(getRequestsInputSchema).query(async ({ ctx, input }) => {
+    const { status, priority, category, assignedToId, search, limit, cursor } = input
 
-      const where: any = {
-        deletedAt: null,
-      }
+    const where: any = {
+      deletedAt: null,
+    }
 
-      if (status) {
-        where.status = status
-      }
+    if (status) {
+      where.status = status
+    }
 
-      if (priority) {
-        where.priority = priority
-      }
+    if (priority) {
+      where.priority = priority
+    }
 
-      if (category) {
-        where.category = category
-      }
+    if (category) {
+      where.category = category
+    }
 
-      if (assignedToId) {
-        where.assignedToId = assignedToId
-      }
+    if (assignedToId) {
+      where.assignedToId = assignedToId
+    }
 
-      if (search) {
-        where.OR = [
-          { organization: { contains: search, mode: 'insensitive' } },
-          { contactName: { contains: search, mode: 'insensitive' } },
-          { contactEmail: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-        ]
-      }
+    if (search) {
+      where.OR = [
+        { organization: { contains: search, mode: 'insensitive' } },
+        { contactName: { contains: search, mode: 'insensitive' } },
+        { contactEmail: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
-      const requests = await ctx.prisma.request.findMany({
-        where,
-        take: limit + 1,
-        cursor: cursor ? { id: cursor } : undefined,
-        orderBy: [
-          { priority: 'desc' },
-          { createdAt: 'desc' },
-        ],
-        include: {
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          _count: {
-            select: {
-              comments: true,
-              files: true,
-            },
+    const requests = await ctx.prisma.request.findMany({
+      where,
+      take: limit + 1,
+      cursor: cursor ? { id: cursor } : undefined,
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-      })
+        _count: {
+          select: {
+            comments: true,
+            files: true,
+          },
+        },
+      },
+    })
 
-      let nextCursor: string | undefined = undefined
-      if (requests.length > limit) {
-        const nextItem = requests.pop()
-        nextCursor = nextItem!.id
-      }
+    let nextCursor: string | undefined = undefined
+    if (requests.length > limit) {
+      const nextItem = requests.pop()
+      nextCursor = nextItem!.id
+    }
 
-      return {
-        requests,
-        nextCursor,
-      }
-    }),
+    return {
+      requests,
+      nextCursor,
+    }
+  }),
 
   /**
    * Получить заявку по ID
    */
-  getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const request = await ctx.prisma.request.findFirst({
-        where: {
-          id: input.id,
-          deletedAt: null,
-        },
-        include: {
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
-          files: true,
-          comments: {
-            include: {
-              author: {
-                select: {
-                  id: true,
-                  name: true,
-                  image: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-          },
-          history: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-            take: 20,
+  getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    const request = await ctx.prisma.request.findFirst({
+      where: {
+        id: input.id,
+        deletedAt: null,
+      },
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
           },
         },
+        files: true,
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        history: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 20,
+        },
+      },
+    })
+
+    if (!request) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Заявка не найдена',
       })
+    }
 
-      if (!request) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Заявка не найдена',
-        })
-      }
-
-      return request
-    }),
+    return request
+  }),
 
   /**
    * Создать заявку (публичный endpoint)
    */
-  create: publicProcedure
-    .input(createRequestInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      // Создать заявку
-      const request = await ctx.prisma.request.create({
-        data: {
-          ...input,
-          status: 'NEW',
-          priority: 'NORMAL',
-        },
-        include: {
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+  create: publicProcedure.input(createRequestInputSchema).mutation(async ({ ctx, input }) => {
+    // Создать заявку
+    const request = await ctx.prisma.request.create({
+      data: {
+        ...input,
+        status: 'NEW',
+        priority: 'NORMAL',
+      },
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
+      },
+    })
+
+    // Отправить уведомления админам о новой заявке
+    try {
+      const admins = await ctx.prisma.user.findMany({
+        where: {
+          role: { in: ['ADMIN', 'SUPERADMIN'] },
+          canLogin: true,
+        },
+        select: { id: true },
       })
 
-      // Отправить уведомления админам о новой заявке
-      try {
-        const admins = await ctx.prisma.user.findMany({
-          where: {
-            role: { in: ['ADMIN', 'SUPERADMIN'] },
-            isActive: true,
-          },
-          select: { id: true },
-        })
-
-        await Promise.all(
-          admins.map((admin) =>
-            sendNotification({
-              userId: admin.id,
-              type: 'SYSTEM',
-              title: 'Новая заявка',
-              message: `Поступила новая заявка от ${input.organization}`,
-              link: `/requests/${request.id}`,
-            }).catch((err) => {
-              console.error('Failed to send notification to admin:', admin.id, err)
-            })
-          )
+      await Promise.all(
+        admins.map((admin) =>
+          sendNotification({
+            userId: admin.id,
+            type: 'SYSTEM',
+            title: 'Новая заявка',
+            message: `Поступила новая заявка от ${input.organization}`,
+            link: `/requests/${request.id}`,
+          }).catch((err) => {
+            console.error('Failed to send notification to admin:', admin.id, err)
+          })
         )
-      } catch (notifyError) {
-        // Не прерываем процесс если уведомления не отправились
-        console.error('Failed to notify admins about new request:', notifyError)
-      }
+      )
+    } catch (notifyError) {
+      // Не прерываем процесс если уведомления не отправились
+      console.error('Failed to notify admins about new request:', notifyError)
+    }
 
-      return request
-    }),
+    return request
+  }),
 
   /**
    * Обновить заявку
    */
-  update: protectedProcedure
-    .input(updateRequestInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
-        throw new TRPCError({ code: 'UNAUTHORIZED' })
-      }
+  update: protectedProcedure.input(updateRequestInputSchema).mutation(async ({ ctx, input }) => {
+    if (!ctx.session?.user) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' })
+    }
 
-      const { id, data } = input
+    const { id, data } = input
 
-      // Проверить существование
-      const existing = await ctx.prisma.request.findFirst({
-        where: { id, deletedAt: null },
+    // Проверить существование
+    const existing = await ctx.prisma.request.findFirst({
+      where: { id, deletedAt: null },
+    })
+
+    if (!existing) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Заявка не найдена',
       })
+    }
 
-      if (!existing) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Заявка не найдена',
-        })
-      }
-
-      // Обновить
-      const updated = await ctx.prisma.request.update({
-        where: { id },
-        data,
-        include: {
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+    // Обновить
+    const updated = await ctx.prisma.request.update({
+      where: { id },
+      data,
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-      })
+      },
+    })
 
-      // Записать изменения в историю
-      for (const [field, value] of Object.entries(data)) {
-        if (value !== undefined) {
-          await ctx.prisma.requestHistory.create({
-            data: {
-              requestId: id,
-              userId: ctx.session.user.id,
-              field,
-              oldValue: String((existing as any)[field] || ''),
-              newValue: String(value),
-            },
-          })
-        }
+    // Записать изменения в историю
+    for (const [field, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        await ctx.prisma.requestHistory.create({
+          data: {
+            requestId: id,
+            userId: ctx.session.user.id,
+            field,
+            oldValue: String((existing as any)[field] || ''),
+            newValue: String(value),
+          },
+        })
       }
+    }
 
-      return updated
-    }),
+    return updated
+  }),
 
   /**
    * Добавить комментарий к заявке
    */
-  addComment: protectedProcedure
-    .input(addCommentInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user) {
-        throw new TRPCError({ code: 'UNAUTHORIZED' })
-      }
+  addComment: protectedProcedure.input(addCommentInputSchema).mutation(async ({ ctx, input }) => {
+    if (!ctx.session?.user) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' })
+    }
 
-      const { requestId, text } = input
+    const { requestId, text } = input
 
-      // Проверить существование заявки
-      const request = await ctx.prisma.request.findFirst({
-        where: { id: requestId, deletedAt: null },
+    // Проверить существование заявки
+    const request = await ctx.prisma.request.findFirst({
+      where: { id: requestId, deletedAt: null },
+    })
+
+    if (!request) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Заявка не найдена',
       })
+    }
 
-      if (!request) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Заявка не найдена',
-        })
-      }
-
-      // Создать комментарий
-      const comment = await ctx.prisma.requestComment.create({
-        data: {
-          requestId,
-          authorId: ctx.session.user.id,
-          text,
-        },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
+    // Создать комментарий
+    const comment = await ctx.prisma.requestComment.create({
+      data: {
+        requestId,
+        authorId: ctx.session.user.id,
+        text,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
           },
         },
-      })
+      },
+    })
 
-      // Отправить уведомление назначенному сотруднику о новом комментарии
-      if (request.assignedToId && request.assignedToId !== ctx.session.user.id) {
-        try {
-          await sendNotification({
-            userId: request.assignedToId,
-            type: 'COMMENT',
-            title: 'Новый комментарий к заявке',
-            message: `${ctx.session.user.name || 'Пользователь'} оставил комментарий к заявке`,
-            link: `/requests/${requestId}`,
-          })
-        } catch (notifyError) {
-          console.error('Failed to send comment notification:', notifyError)
-        }
+    // Отправить уведомление назначенному сотруднику о новом комментарии
+    if (request.assignedToId && request.assignedToId !== ctx.session.user.id) {
+      try {
+        await sendNotification({
+          userId: request.assignedToId,
+          type: 'COMMENT',
+          title: 'Новый комментарий к заявке',
+          message: `${ctx.session.user.name || 'Пользователь'} оставил комментарий к заявке`,
+          link: `/requests/${requestId}`,
+        })
+      } catch (notifyError) {
+        console.error('Failed to send comment notification:', notifyError)
       }
+    }
 
-      return comment
-    }),
+    return comment
+  }),
 
   /**
    * Удалить заявку (soft delete)
@@ -408,20 +401,29 @@ export const requestsRouter = router({
       }),
     ])
 
-    const statusCounts = byStatus.reduce((acc, item) => {
-      acc[item.status] = item._count
-      return acc
-    }, {} as Record<RequestStatus, number>)
+    const statusCounts = byStatus.reduce(
+      (acc, item) => {
+        acc[item.status] = item._count
+        return acc
+      },
+      {} as Record<RequestStatus, number>
+    )
 
-    const priorityCounts = byPriority.reduce((acc, item) => {
-      acc[item.priority] = item._count
-      return acc
-    }, {} as Record<RequestPriority, number>)
+    const priorityCounts = byPriority.reduce(
+      (acc, item) => {
+        acc[item.priority] = item._count
+        return acc
+      },
+      {} as Record<RequestPriority, number>
+    )
 
-    const categoryCounts = byCategory.reduce((acc, item) => {
-      acc[item.category] = item._count
-      return acc
-    }, {} as Record<RequestCategory, number>)
+    const categoryCounts = byCategory.reduce(
+      (acc, item) => {
+        acc[item.category] = item._count
+        return acc
+      },
+      {} as Record<RequestCategory, number>
+    )
 
     return {
       total,
