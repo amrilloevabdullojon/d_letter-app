@@ -124,81 +124,66 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
   let byStatus: Record<LetterStatus, number> = cachedStats?.byStatus ?? { ...emptyByStatus }
 
   if (!summary) {
-    const [
-      statusCounts,
-      total,
-      overdue,
-      urgent,
-      todayDeadlines,
-      weekDeadlines,
-      monthNew,
-      monthDone,
-    ] = await Promise.all([
-      prisma.letter.groupBy({
-        by: ['status'],
-        where: { deletedAt: null },
-        _count: { status: true },
-      }),
-      prisma.letter.count({ where: { deletedAt: null } }),
-      prisma.letter.count({
-        where: {
-          deletedAt: null,
-          deadlineDate: { lt: now },
-          status: { notIn: ['READY', 'DONE'] },
-        },
-      }),
-      prisma.letter.count({
-        where: {
-          deletedAt: null,
-          deadlineDate: { gte: now, lte: urgentDeadline },
-          status: { notIn: ['READY', 'DONE'] },
-        },
-      }),
-      prisma.letter.count({
-        where: {
-          deletedAt: null,
-          deadlineDate: { gte: today, lt: tomorrow },
-          status: { notIn: ['READY', 'DONE'] },
-        },
-      }),
-      prisma.letter.count({
-        where: {
-          deletedAt: null,
-          deadlineDate: { gte: today, lt: weekEnd },
-          status: { notIn: ['READY', 'DONE'] },
-        },
-      }),
-      prisma.letter.count({
-        where: { deletedAt: null, createdAt: { gte: startOfMonth } },
-      }),
-      prisma.letter.count({
-        where: {
-          deletedAt: null,
-          closeDate: { gte: startOfMonth },
-          status: { in: ['READY', 'DONE'] },
-        },
-      }),
-    ])
+    // ✅ PERF: Single SQL query replaces 9 separate Prisma queries (8 COUNTs + 1 groupBy)
+    const statsResult = await prisma.$queryRaw<
+      Array<{
+        total: bigint
+        overdue: bigint
+        urgent: bigint
+        today_deadlines: bigint
+        week_deadlines: bigint
+        month_new: bigint
+        month_done: bigint
+        cnt_not_reviewed: bigint
+        cnt_accepted: bigint
+        cnt_in_progress: bigint
+        cnt_clarification: bigint
+        cnt_ready: bigint
+        cnt_done: bigint
+      }>
+    >`
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE "deadlineDate" < ${now} AND "status" NOT IN ('READY', 'DONE')) AS overdue,
+        COUNT(*) FILTER (WHERE "deadlineDate" >= ${now} AND "deadlineDate" <= ${urgentDeadline} AND "status" NOT IN ('READY', 'DONE')) AS urgent,
+        COUNT(*) FILTER (WHERE "deadlineDate" >= ${today} AND "deadlineDate" < ${tomorrow} AND "status" NOT IN ('READY', 'DONE')) AS today_deadlines,
+        COUNT(*) FILTER (WHERE "deadlineDate" >= ${today} AND "deadlineDate" < ${weekEnd} AND "status" NOT IN ('READY', 'DONE')) AS week_deadlines,
+        COUNT(*) FILTER (WHERE "createdAt" >= ${startOfMonth}) AS month_new,
+        COUNT(*) FILTER (WHERE "closeDate" >= ${startOfMonth} AND "status" IN ('READY', 'DONE')) AS month_done,
+        COUNT(*) FILTER (WHERE "status" = 'NOT_REVIEWED') AS cnt_not_reviewed,
+        COUNT(*) FILTER (WHERE "status" = 'ACCEPTED') AS cnt_accepted,
+        COUNT(*) FILTER (WHERE "status" = 'IN_PROGRESS') AS cnt_in_progress,
+        COUNT(*) FILTER (WHERE "status" = 'CLARIFICATION') AS cnt_clarification,
+        COUNT(*) FILTER (WHERE "status" = 'READY') AS cnt_ready,
+        COUNT(*) FILTER (WHERE "status" = 'DONE') AS cnt_done
+      FROM "Letter"
+      WHERE "deletedAt" IS NULL
+    `
 
-    byStatus = { ...emptyByStatus }
-    statusCounts.forEach((item) => {
-      byStatus[item.status] = item._count.status
-    })
+    const stats = statsResult[0]
+    byStatus = {
+      NOT_REVIEWED: Number(stats.cnt_not_reviewed),
+      ACCEPTED: Number(stats.cnt_accepted),
+      IN_PROGRESS: Number(stats.cnt_in_progress),
+      CLARIFICATION: Number(stats.cnt_clarification),
+      READY: Number(stats.cnt_ready),
+      DONE: Number(stats.cnt_done),
+    }
 
     const done = byStatus.READY + byStatus.DONE
     const inProgress = byStatus.IN_PROGRESS + byStatus.ACCEPTED + byStatus.CLARIFICATION
 
     summary = {
-      total,
-      overdue,
-      urgent,
+      total: Number(stats.total),
+      overdue: Number(stats.overdue),
+      urgent: Number(stats.urgent),
       done,
       inProgress,
       notReviewed: byStatus.NOT_REVIEWED,
-      todayDeadlines,
-      weekDeadlines,
-      monthNew,
-      monthDone,
+      todayDeadlines: Number(stats.today_deadlines),
+      weekDeadlines: Number(stats.week_deadlines),
+      monthNew: Number(stats.month_new),
+      monthDone: Number(stats.month_done),
       avgDays: 0,
     }
   }

@@ -5,6 +5,7 @@
  * - Управление выбранными письмами (bulk operations)
  * - Drag & drop состояние
  * - Временные данные форм (autosave)
+ * - Bulk action state
  */
 
 import { create } from 'zustand'
@@ -17,15 +18,27 @@ interface LetterDraft {
   [key: string]: any
 }
 
+type BulkActionType = 'status' | 'owner' | 'delete' | null
+
 interface LettersState {
   // Selected letters для bulk operations
   selectedLetterIds: Set<string>
   selectLetter: (id: string) => void
   deselectLetter: (id: string) => void
   toggleLetter: (id: string) => void
+  toggleSelectAll: (allIds: string[]) => void
   selectAll: (ids: string[]) => void
   clearSelection: () => void
   isSelected: (id: string) => boolean
+
+  // Bulk action
+  bulkAction: BulkActionType
+  bulkValue: string
+  bulkLoading: boolean
+  setBulkAction: (action: BulkActionType) => void
+  setBulkValue: (value: string) => void
+  setBulkLoading: (loading: boolean) => void
+  resetBulk: () => void
 
   // Drag & Drop
   draggedLetterId: string | null
@@ -64,6 +77,14 @@ export const useLettersStore = create<LettersState>()(
           get().selectLetter(id)
         }
       },
+      toggleSelectAll: (allIds) => {
+        const { selectedLetterIds } = get()
+        if (selectedLetterIds.size === allIds.length) {
+          set({ selectedLetterIds: new Set() })
+        } else {
+          set({ selectedLetterIds: new Set(allIds) })
+        }
+      },
       selectAll: (ids) =>
         set({
           selectedLetterIds: new Set(ids),
@@ -73,6 +94,21 @@ export const useLettersStore = create<LettersState>()(
           selectedLetterIds: new Set(),
         }),
       isSelected: (id) => get().selectedLetterIds.has(id),
+
+      // Bulk action
+      bulkAction: null,
+      bulkValue: '',
+      bulkLoading: false,
+      setBulkAction: (action) => set({ bulkAction: action }),
+      setBulkValue: (value) => set({ bulkValue: value }),
+      setBulkLoading: (loading) => set({ bulkLoading: loading }),
+      resetBulk: () =>
+        set({
+          bulkAction: null,
+          bulkValue: '',
+          bulkLoading: false,
+          selectedLetterIds: new Set(),
+        }),
 
       // Drag & Drop
       draggedLetterId: null,
@@ -94,10 +130,13 @@ export const useLettersStore = create<LettersState>()(
 )
 
 // Селекторы
-export const useSelectedLetterIds = () =>
-  useLettersStore((state) => state.selectedLetterIds)
-export const useSelectedCount = () =>
-  useLettersStore((state) => state.selectedLetterIds.size)
+export const useSelectedLetterIds = () => useLettersStore((state) => state.selectedLetterIds)
+export const useSelectedCount = () => useLettersStore((state) => state.selectedLetterIds.size)
 export const useViewMode = () => useLettersStore((state) => state.viewMode)
-export const useDraggedLetterId = () =>
-  useLettersStore((state) => state.draggedLetterId)
+export const useDraggedLetterId = () => useLettersStore((state) => state.draggedLetterId)
+export const useBulkAction = () =>
+  useLettersStore((state) => ({
+    action: state.bulkAction,
+    value: state.bulkValue,
+    loading: state.bulkLoading,
+  }))

@@ -260,6 +260,22 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     return count
   }, [search, statusFilter, quickFilter, ownerFilter, typeFilter])
 
+  // ✅ PERF: Memoize letter stats instead of computing .filter() inline in JSX on every render
+  const letterStats = useMemo(() => {
+    let overdue = 0
+    let urgent = 0
+    let inProgress = 0
+    const now = Date.now()
+    for (const l of letters) {
+      if (l.status === 'DONE' || l.status === 'READY') continue
+      if (l.status === 'IN_PROGRESS') inProgress++
+      const days = Math.ceil((new Date(l.deadlineDate).getTime() - now) / (1000 * 60 * 60 * 24))
+      if (days < 0) overdue++
+      else if (days <= 3) urgent++
+    }
+    return { overdue, urgent, inProgress }
+  }, [letters])
+
   const currentViewFilters = useCallback(
     () => ({
       search,
@@ -942,45 +958,21 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     <div className="h-2 w-2 rounded-full bg-red-400" />
                     <span className="text-xs text-slate-300">
                       Просрочено:{' '}
-                      <span className="font-semibold text-red-400">
-                        {
-                          letters.filter((l) => {
-                            const days = Math.ceil(
-                              (new Date(l.deadlineDate).getTime() - Date.now()) /
-                                (1000 * 60 * 60 * 24)
-                            )
-                            return days < 0 && l.status !== 'DONE' && l.status !== 'READY'
-                          }).length
-                        }
-                      </span>
+                      <span className="font-semibold text-red-400">{letterStats.overdue}</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 rounded-lg bg-slate-700/40 px-3 py-2">
                     <div className="h-2 w-2 rounded-full bg-yellow-400" />
                     <span className="text-xs text-slate-300">
                       Срочно:{' '}
-                      <span className="font-semibold text-yellow-400">
-                        {
-                          letters.filter((l) => {
-                            const days = Math.ceil(
-                              (new Date(l.deadlineDate).getTime() - Date.now()) /
-                                (1000 * 60 * 60 * 24)
-                            )
-                            return (
-                              days >= 0 && days <= 3 && l.status !== 'DONE' && l.status !== 'READY'
-                            )
-                          }).length
-                        }
-                      </span>
+                      <span className="font-semibold text-yellow-400">{letterStats.urgent}</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 rounded-lg bg-slate-700/40 px-3 py-2">
                     <div className="h-2 w-2 rounded-full bg-teal-400" />
                     <span className="text-xs text-slate-300">
                       В работе:{' '}
-                      <span className="font-semibold text-teal-400">
-                        {letters.filter((l) => l.status === 'IN_PROGRESS').length}
-                      </span>
+                      <span className="font-semibold text-teal-400">{letterStats.inProgress}</span>
                     </span>
                   </div>
                 </div>

@@ -7,6 +7,35 @@ import { RATE_LIMIT_WINDOW_MINUTES, MAX_LOGIN_ATTEMPTS } from '@/lib/constants'
 import type { JWT } from 'next-auth/jwt'
 import type { Role } from '@prisma/client'
 
+// ✅ PERF: In-memory cache for tokenVersion to avoid DB query on every request
+const tokenVersionCache = new Map<string, { version: number; expiresAt: number }>()
+const TOKEN_VERSION_CACHE_TTL = 30_000 // 30 seconds
+
+function getCachedTokenVersion(userId: string): number | null {
+  const entry = tokenVersionCache.get(userId)
+  if (entry && entry.expiresAt > Date.now()) {
+    return entry.version
+  }
+  tokenVersionCache.delete(userId)
+  return null
+}
+
+function setCachedTokenVersion(userId: string, version: number): void {
+  // Evict stale entries when cache grows too large
+  if (tokenVersionCache.size > 500) {
+    const now = Date.now()
+    for (const [k, v] of tokenVersionCache) {
+      if (v.expiresAt <= now) tokenVersionCache.delete(k)
+    }
+  }
+  tokenVersionCache.set(userId, { version, expiresAt: Date.now() + TOKEN_VERSION_CACHE_TTL })
+}
+
+/** Call this when a user's token is invalidated (e.g. role change, logout all) */
+export function invalidateTokenVersionCache(userId: string): void {
+  tokenVersionCache.delete(userId)
+}
+
 /**
  * NextAuth configuration with JWT strategy for better performance.
  * JWT tokens cache user role and avatar, reducing database queries.
@@ -149,26 +178,33 @@ export const authOptions: AuthOptions = {
       }
 
       // Validate token version on each request to detect invalidated tokens
-      // Only check if token has tokenVersion (backwards compatible with old tokens)
+      // ✅ PERF: Check in-memory cache first to avoid DB query on every request
       if (token.id && typeof token.tokenVersion === 'number') {
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: token.id as string },
-            select: { tokenVersion: true },
-          })
+        const userId = token.id as string
+        const cachedVersion = getCachedTokenVersion(userId)
 
-          // If tokenVersion in DB is higher, the token was invalidated
-          // Skip check if dbUser.tokenVersion is null/undefined (field not migrated yet)
-          if (
-            dbUser &&
-            typeof dbUser.tokenVersion === 'number' &&
-            dbUser.tokenVersion > token.tokenVersion
-          ) {
-            // Return empty token to force re-authentication
+        if (cachedVersion !== null) {
+          // Fast path: use cached version
+          if (cachedVersion > token.tokenVersion) {
             return { ...token, id: undefined, role: undefined }
           }
-        } catch {
-          // If tokenVersion field doesn't exist in DB yet, skip validation
+        } else {
+          // Slow path: query DB and cache result
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: userId },
+              select: { tokenVersion: true },
+            })
+
+            if (dbUser && typeof dbUser.tokenVersion === 'number') {
+              setCachedTokenVersion(userId, dbUser.tokenVersion)
+              if (dbUser.tokenVersion > token.tokenVersion) {
+                return { ...token, id: undefined, role: undefined }
+              }
+            }
+          } catch {
+            // If tokenVersion field doesn't exist in DB yet, skip validation
+          }
         }
       }
 

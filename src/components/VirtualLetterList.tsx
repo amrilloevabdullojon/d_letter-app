@@ -124,7 +124,7 @@ interface VirtualLetterListProps {
   onToggleFavorite?: (id: string) => void
 }
 
-export function VirtualLetterList({
+export const VirtualLetterList = memo(function VirtualLetterList({
   letters,
   selectedIds,
   onToggleSelect,
@@ -185,7 +185,7 @@ export function VirtualLetterList({
       </div>
     </div>
   )
-}
+})
 
 // Get row background based on deadline status
 function getRowBgClass(letter: Letter): string {
@@ -329,7 +329,7 @@ interface VirtualLetterTableProps {
   onPreview: (id: string) => void
 }
 
-export function VirtualLetterTable({
+export const VirtualLetterTable = memo(function VirtualLetterTable({
   letters,
   selectedIds,
   onToggleSelect,
@@ -475,4 +475,4 @@ export function VirtualLetterTable({
       </div>
     </div>
   )
-}
+})

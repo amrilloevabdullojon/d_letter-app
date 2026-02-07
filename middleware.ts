@@ -100,8 +100,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // ✅ ОПТИМИЗАЦИЯ: Используем JWT кэш вместо повторного декодирования
-  const authCookie = request.cookies.get('next-auth.session-token')?.value ||
-                     request.cookies.get('__Secure-next-auth.session-token')?.value
+  const authCookie =
+    request.cookies.get('next-auth.session-token')?.value ||
+    request.cookies.get('__Secure-next-auth.session-token')?.value
 
   let token = authCookie ? getFromCache(authCookie) : null
 
@@ -153,9 +154,11 @@ export async function middleware(request: NextRequest) {
     )
   }
 
-  const response = NextResponse.next()
-  response.headers.set('x-user-id', token.sub || '')
-  response.headers.set('x-user-role', userRole)
+  // ✅ SECURITY: Pass user info via request headers (server-only), not response headers
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-user-id', token.sub || '')
+  requestHeaders.set('x-user-role', userRole)
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
   return finalizeResponse(request, response)
 }
 

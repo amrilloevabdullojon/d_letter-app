@@ -5,11 +5,17 @@ import type { NextRequest } from 'next/server'
  * Security headers configuration.
  * Apply CSP and other security headers to all responses.
  */
+// ✅ SECURITY: unsafe-eval only in dev (Next.js HMR needs it); removed in production
+const isDev = process.env.NODE_ENV !== 'production'
+const scriptSrc = isDev
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com"
+  : "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
+
 export const securityHeaders = {
   // Content Security Policy
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com", // Next.js requires unsafe-eval in dev
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",
@@ -19,7 +25,7 @@ export const securityHeaders = {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    'upgrade-insecure-requests',
+    ...(isDev ? [] : ['upgrade-insecure-requests']),
   ].join('; '),
 
   // Prevent MIME type sniffing

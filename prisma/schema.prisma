@@ -328,6 +328,10 @@ model Letter {
   @@index([priority])
   @@index([status, deadlineDate]) // Составной индекс для срочных/просроченных
   @@index([status, ownerId])      // Составной индекс для фильтрации по статусу и ответственному
+  @@index([deletedAt, createdAt]) // Основной список: WHERE deletedAt IS NULL ORDER BY createdAt
+  @@index([deletedAt, status, deadlineDate]) // Dashboard: overdue/urgent запросы
+  @@index([deletedAt, ownerId])   // Фильтр по исполнителю с soft delete
+  @@index([org])                  // Поиск по организации
 }
 
 enum LetterStatus {
