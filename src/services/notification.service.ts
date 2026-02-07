@@ -357,4 +357,33 @@ export class NotificationService {
       throw new NotificationServiceError('Ошибка при очистке уведомлений', 'CLEANUP_FAILED', 500)
     }
   }
+
+  /**
+   * Удалить протухшие push-подписки
+   *
+   * @example
+   * const deleted = await NotificationService.cleanupStalePushSubscriptions()
+   */
+  static async cleanupStalePushSubscriptions(): Promise<number> {
+    try {
+      const result = await prisma.pushSubscription.deleteMany({
+        where: {
+          expirationTime: {
+            lte: new Date(),
+          },
+        },
+      })
+
+      if (result.count > 0) {
+        logger.info('notification.service', 'Stale push subscriptions cleaned up', {
+          count: result.count,
+        })
+      }
+
+      return result.count
+    } catch (error) {
+      logger.error('notification.service', error)
+      throw new NotificationServiceError('Ошибка при очистке push-подписок', 'CLEANUP_FAILED', 500)
+    }
+  }
 }

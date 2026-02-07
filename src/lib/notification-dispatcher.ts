@@ -18,31 +18,6 @@ import type {
   Prisma,
 } from '@prisma/client'
 
-const isMissingNotificationActorColumn = (error: unknown) =>
-  error instanceof Error && error.message.includes('Notification.actorId')
-
-const isMissingNotificationDedupeKeyColumn = (error: unknown) =>
-  error instanceof Error &&
-  /Notification\.dedupeKey/i.test(error.message) &&
-  /does not exist/i.test(error.message)
-
-const isMissingNotificationPreferenceTable = (error: unknown) =>
-  error instanceof Error &&
-  /NotificationPreference/i.test(error.message) &&
-  /does not exist/i.test(error.message)
-
-const isMissingNotificationSubscriptionTable = (error: unknown) =>
-  error instanceof Error &&
-  /NotificationSubscription/i.test(error.message) &&
-  /does not exist/i.test(error.message)
-
-const isMissingNotificationDeliveryTable = (error: unknown) =>
-  error instanceof Error &&
-  /NotificationDelivery/i.test(error.message) &&
-  /does not exist/i.test(error.message)
-
-let notificationDeliveryAvailable: boolean | null = null
-
 type DispatchNotificationInput = {
   event: NotificationEventType
   title: string
@@ -127,24 +102,12 @@ const resolveSubscriptions = async (
   event: NotificationEventType,
   actorId?: string | null
 ): Promise<string[]> => {
-  let subscriptions: Array<{ userId: string; scope: string; value: string | null }>
-  try {
-    subscriptions = await prisma.notificationSubscription.findMany({
-      where: {
-        OR: [{ event: 'ALL' }, { event }],
-      },
-      select: { userId: true, scope: true, value: true },
-    })
-  } catch (error) {
-    if (isMissingNotificationSubscriptionTable(error)) {
-      logger.warn(
-        'dispatchNotification',
-        'NotificationSubscription table missing, skipping subscription delivery'
-      )
-      return []
-    }
-    throw error
-  }
+  const subscriptions = await prisma.notificationSubscription.findMany({
+    where: {
+      OR: [{ event: 'ALL' }, { event }],
+    },
+    select: { userId: true, scope: true, value: true },
+  })
 
   if (subscriptions.length === 0) return []
 
@@ -187,7 +150,7 @@ export const dispatchNotification = async ({
 
   if (recipients.size === 0) return
 
-  const userSelectBase = {
+  const userSelect = {
     id: true,
     email: true,
     telegramChatId: true,
@@ -199,32 +162,15 @@ export const dispatchNotification = async ({
     quietHoursEnd: true,
     digestFrequency: true,
     profile: { select: { phone: true } },
-  } satisfies Prisma.UserSelect
-
-  const userSelectWithPreference = {
-    ...userSelectBase,
     notificationPreference: { select: { settings: true } },
   } satisfies Prisma.UserSelect
 
-  type UserBase = Prisma.UserGetPayload<{ select: typeof userSelectBase }>
-  type UserWithPreference = Prisma.UserGetPayload<{ select: typeof userSelectWithPreference }>
+  type UserWithPreference = Prisma.UserGetPayload<{ select: typeof userSelect }>
 
-  let users: Array<UserBase | UserWithPreference>
-  try {
-    users = await prisma.user.findMany({
-      where: { id: { in: Array.from(recipients) } },
-      select: userSelectWithPreference,
-    })
-  } catch (error) {
-    if (!isMissingNotificationPreferenceTable(error)) {
-      throw error
-    }
-    logger.warn('dispatchNotification', 'NotificationPreference table missing, using user defaults')
-    users = await prisma.user.findMany({
-      where: { id: { in: Array.from(recipients) } },
-      select: userSelectBase,
-    })
-  }
+  const users: UserWithPreference[] = await prisma.user.findMany({
+    where: { id: { in: Array.from(recipients) } },
+    select: userSelect,
+  })
 
   const matrixDefaults = new Map(
     DEFAULT_NOTIFICATION_SETTINGS.matrix.map((item) => [item.event, item])
@@ -233,7 +179,6 @@ export const dispatchNotification = async ({
   const dedupeSince =
     dedupeWindowMinutes > 0 ? new Date(now.getTime() - dedupeWindowMinutes * 60 * 1000) : null
   const baseDedupeKey = dedupeKey || [event, letterId || 'none', actorId || 'system'].join(':')
-  let dedupeKeySupported = true
 
   for (const user of users) {
     const settings =
@@ -256,28 +201,17 @@ export const dispatchNotification = async ({
       settings.quietHoursEnabled &&
       isWithinQuietHours(now, settings.quietHoursStart, settings.quietHoursEnd)
 
-    if (dedupeSince && baseDedupeKey && dedupeKeySupported) {
-      try {
-        const existing = await prisma.notification.findFirst({
-          where: {
-            userId: user.id,
-            dedupeKey: baseDedupeKey,
-            createdAt: { gte: dedupeSince },
-          },
-          select: { id: true },
-        })
-        if (existing) {
-          continue
-        }
-      } catch (error) {
-        if (!isMissingNotificationDedupeKeyColumn(error)) {
-          throw error
-        }
-        dedupeKeySupported = false
-        logger.warn(
-          'dispatchNotification',
-          'Notification.dedupeKey column missing, skipping dedupe checks'
-        )
+    if (dedupeSince && baseDedupeKey) {
+      const existing = await prisma.notification.findFirst({
+        where: {
+          userId: user.id,
+          dedupeKey: baseDedupeKey,
+          createdAt: { gte: dedupeSince },
+        },
+        select: { id: true },
+      })
+      if (existing) {
+        continue
       }
     }
 
@@ -302,41 +236,13 @@ export const dispatchNotification = async ({
       metadata: metadata ? (metadata as unknown as Prisma.InputJsonValue) : undefined,
     }
 
-    const data = {
-      ...baseData,
-      ...(actorId ? { actorId } : {}),
-      ...(dedupeKeySupported && baseDedupeKey ? { dedupeKey: baseDedupeKey } : {}),
-    }
-
-    let notification: { id: string }
-
-    try {
-      notification = await prisma.notification.create({ data })
-    } catch (error) {
-      const missingActor = isMissingNotificationActorColumn(error)
-      const missingDedupeKey = isMissingNotificationDedupeKeyColumn(error)
-      if (!missingActor && !missingDedupeKey) {
-        throw error
-      }
-
-      if (missingDedupeKey && dedupeKeySupported) {
-        dedupeKeySupported = false
-        logger.warn(
-          'dispatchNotification',
-          'Notification.dedupeKey column missing, skipping dedupe fields'
-        )
-      }
-
-      const fallbackData = {
+    const notification = await prisma.notification.create({
+      data: {
         ...baseData,
-        ...(missingActor ? {} : actorId ? { actorId } : {}),
-        ...(missingDedupeKey || !dedupeKeySupported || !baseDedupeKey
-          ? {}
-          : { dedupeKey: baseDedupeKey }),
-      }
-
-      notification = await prisma.notification.create({ data: fallbackData })
-    }
+        ...(actorId ? { actorId } : {}),
+        ...(baseDedupeKey ? { dedupeKey: baseDedupeKey } : {}),
+      },
+    })
 
     const messageText = buildMessage(title, body)
     const shouldMute =
@@ -348,33 +254,17 @@ export const dispatchNotification = async ({
       recipient?: string | null
       error?: string | null
     }) => {
-      if (notificationDeliveryAvailable === false) {
-        return
-      }
-      try {
-        await prisma.notificationDelivery.create({
-          data: {
-            notificationId: notification.id,
-            userId: user.id,
-            channel: data.channel,
-            status: data.status,
-            recipient: data.recipient || undefined,
-            error: data.error || undefined,
-            sentAt: data.status === 'SENT' ? new Date() : undefined,
-          },
-        })
-        notificationDeliveryAvailable = true
-      } catch (error) {
-        if (isMissingNotificationDeliveryTable(error)) {
-          notificationDeliveryAvailable = false
-          logger.warn(
-            'dispatchNotification',
-            'NotificationDelivery table missing, skipping delivery audit'
-          )
-          return
-        }
-        throw error
-      }
+      await prisma.notificationDelivery.create({
+        data: {
+          notificationId: notification.id,
+          userId: user.id,
+          channel: data.channel,
+          status: data.status,
+          recipient: data.recipient || undefined,
+          error: data.error || undefined,
+          sentAt: data.status === 'SENT' ? new Date() : undefined,
+        },
+      })
     }
 
     // ✅ PERF: Deliver to all channels in parallel instead of sequentially
