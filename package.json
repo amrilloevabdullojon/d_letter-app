@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "postinstall": "prisma generate && prisma migrate resolve --rolled-back 20260207150000_add_search_index_and_uploadedby || true",
     "build": "prisma generate && prisma migrate deploy && next build --webpack",
     "start": "next start",
     "lint": "eslint .",
