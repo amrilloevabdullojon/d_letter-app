@@ -234,14 +234,12 @@ export class FileService {
       }
 
       // Permission check:
-      // - File uploader can delete their own files
       // - Letter owner can delete files attached to their letters
       // - Users with MANAGE_LETTERS permission can delete any file
-      const isUploader = file.uploadedById === userId
       const isLetterOwner = file.letter.ownerId === userId
       const hasManagePermission = userRole && hasPermission(userRole, 'MANAGE_LETTERS')
 
-      if (!isUploader && !isLetterOwner && !hasManagePermission) {
+      if (!isLetterOwner && !hasManagePermission) {
         throw new FileServiceError('Доступ запрещен', 'FORBIDDEN', 403)
       }
 
