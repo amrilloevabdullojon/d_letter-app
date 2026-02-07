@@ -10,6 +10,7 @@ import {
 import { logger } from '@/lib/logger.server'
 import { sendEmail, sendSms } from '@/lib/notifications'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { sendPushNotification } from '@/lib/push.server'
 import type {
   DigestFrequency,
   NotificationChannel,
@@ -376,76 +377,123 @@ export const dispatchNotification = async ({
       }
     }
 
+    // ✅ PERF: Deliver to all channels in parallel instead of sequentially
+    const deliveryTasks: Promise<void>[] = []
+
     if (channelFlags.IN_APP) {
-      await createDelivery({ channel: 'IN_APP', status: 'SENT', recipient: user.id })
+      deliveryTasks.push(createDelivery({ channel: 'IN_APP', status: 'SENT', recipient: user.id }))
     }
 
     if (channelFlags.EMAIL) {
-      if (shouldMute) {
-        await createDelivery({
-          channel: 'EMAIL',
-          status: 'SKIPPED',
-          recipient: user.email,
-          error: 'quiet_hours',
-        })
-      } else if (!user.email) {
-        await createDelivery({ channel: 'EMAIL', status: 'SKIPPED', error: 'missing_email' })
-      } else {
-        const success = await sendEmail(user.email, title, messageText)
-        await createDelivery({
-          channel: 'EMAIL',
-          status: success ? 'SENT' : 'FAILED',
-          recipient: user.email,
-          error: success ? null : 'send_failed',
-        })
-      }
+      deliveryTasks.push(
+        (async () => {
+          if (shouldMute) {
+            await createDelivery({
+              channel: 'EMAIL',
+              status: 'SKIPPED',
+              recipient: user.email,
+              error: 'quiet_hours',
+            })
+          } else if (!user.email) {
+            await createDelivery({ channel: 'EMAIL', status: 'SKIPPED', error: 'missing_email' })
+          } else {
+            const success = await sendEmail(user.email, title, messageText)
+            await createDelivery({
+              channel: 'EMAIL',
+              status: success ? 'SENT' : 'FAILED',
+              recipient: user.email,
+              error: success ? null : 'send_failed',
+            })
+          }
+        })()
+      )
     }
 
     if (channelFlags.TELEGRAM) {
-      if (shouldMute) {
-        await createDelivery({
-          channel: 'TELEGRAM',
-          status: 'SKIPPED',
-          recipient: user.telegramChatId,
-          error: 'quiet_hours',
-        })
-      } else if (!user.telegramChatId) {
-        await createDelivery({ channel: 'TELEGRAM', status: 'SKIPPED', error: 'missing_telegram' })
-      } else {
-        const success = await sendTelegramMessage(user.telegramChatId, messageText)
-        await createDelivery({
-          channel: 'TELEGRAM',
-          status: success ? 'SENT' : 'FAILED',
-          recipient: user.telegramChatId,
-          error: success ? null : 'send_failed',
-        })
-      }
+      deliveryTasks.push(
+        (async () => {
+          if (shouldMute) {
+            await createDelivery({
+              channel: 'TELEGRAM',
+              status: 'SKIPPED',
+              recipient: user.telegramChatId,
+              error: 'quiet_hours',
+            })
+          } else if (!user.telegramChatId) {
+            await createDelivery({
+              channel: 'TELEGRAM',
+              status: 'SKIPPED',
+              error: 'missing_telegram',
+            })
+          } else {
+            const success = await sendTelegramMessage(user.telegramChatId, messageText)
+            await createDelivery({
+              channel: 'TELEGRAM',
+              status: success ? 'SENT' : 'FAILED',
+              recipient: user.telegramChatId,
+              error: success ? null : 'send_failed',
+            })
+          }
+        })()
+      )
     }
 
     if (channelFlags.SMS) {
-      const phone = user.profile?.phone
-      if (shouldMute) {
-        await createDelivery({
-          channel: 'SMS',
-          status: 'SKIPPED',
-          recipient: phone,
-          error: 'quiet_hours',
-        })
-      } else if (!phone) {
-        await createDelivery({ channel: 'SMS', status: 'SKIPPED', error: 'missing_phone' })
-      } else {
-        const success = await sendSms(phone, messageText)
-        await createDelivery({
-          channel: 'SMS',
-          status: success ? 'SENT' : 'FAILED',
-          recipient: phone,
-          error: success ? null : 'send_failed',
-        })
-      }
+      deliveryTasks.push(
+        (async () => {
+          const phone = user.profile?.phone
+          if (shouldMute) {
+            await createDelivery({
+              channel: 'SMS',
+              status: 'SKIPPED',
+              recipient: phone,
+              error: 'quiet_hours',
+            })
+          } else if (!phone) {
+            await createDelivery({ channel: 'SMS', status: 'SKIPPED', error: 'missing_phone' })
+          } else {
+            const success = await sendSms(phone, messageText)
+            await createDelivery({
+              channel: 'SMS',
+              status: success ? 'SENT' : 'FAILED',
+              recipient: phone,
+              error: success ? null : 'send_failed',
+            })
+          }
+        })()
+      )
     }
 
     if (channelFlags.PUSH) {
-      await createDelivery({ channel: 'PUSH', status: 'SKIPPED', error: 'push_not_supported' })
+      deliveryTasks.push(
+        (async () => {
+          if (shouldMute) {
+            await createDelivery({ channel: 'PUSH', status: 'SKIPPED', error: 'quiet_hours' })
+          } else {
+            const result = await sendPushNotification(user.id, {
+              title,
+              body: body || undefined,
+              data: {
+                url: letterId ? `/letters/${letterId}` : '/notifications',
+                priority: priority === 'HIGH' || priority === 'CRITICAL' ? 'high' : 'normal',
+              },
+            })
+            await createDelivery({
+              channel: 'PUSH',
+              status: result.sent > 0 ? 'SENT' : result.failed > 0 ? 'FAILED' : 'SKIPPED',
+              recipient: user.id,
+              error:
+                result.sent === 0 && result.failed === 0
+                  ? 'no_subscriptions'
+                  : result.failed > 0
+                    ? 'partial_failure'
+                    : null,
+            })
+          }
+        })()
+      )
     }
+
+    await Promise.allSettled(deliveryTasks)
   }
 }

@@ -41,41 +41,47 @@ export async function sendPushNotification(
       return { sent: 0, failed: 0 }
     }
 
+    const results = await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        const pushSubscription: webpush.PushSubscription = {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth,
+          },
+        }
+
+        await webpush.sendNotification(pushSubscription, JSON.stringify(payload))
+      })
+    )
+
     let sent = 0
     let failed = 0
 
-    await Promise.all(
-      subscriptions.map(async (sub) => {
-        try {
-          const pushSubscription: webpush.PushSubscription = {
-            endpoint: sub.endpoint,
-            keys: {
-              p256dh: sub.p256dh,
-              auth: sub.auth,
-            },
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i]
+      if (result.status === 'fulfilled') {
+        sent++
+      } else {
+        failed++
+        const error = result.reason
+
+        if (error && typeof error === 'object' && 'statusCode' in error) {
+          const statusCode = (error as { statusCode: number }).statusCode
+          if (statusCode === 404 || statusCode === 410) {
+            await prisma.pushSubscription
+              .delete({
+                where: { id: subscriptions[i].id },
+              })
+              .catch(() => {})
           }
-
-          await webpush.sendNotification(pushSubscription, JSON.stringify(payload))
-          sent++
-        } catch (error) {
-          failed++
-
-          if (error && typeof error === 'object' && 'statusCode' in error) {
-            const statusCode = (error as { statusCode: number }).statusCode
-
-            if (statusCode === 404 || statusCode === 410) {
-              await prisma.pushSubscription.delete({
-                where: { id: sub.id },
-              }).catch(() => {})
-            }
-          }
-
-          logger.error('Push', `Failed to send push notification to ${sub.endpoint}`, {
-            error: error instanceof Error ? error.message : String(error),
-          })
         }
-      })
-    )
+
+        logger.error('Push', `Failed to send push notification to ${subscriptions[i].endpoint}`, {
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
 
     return { sent, failed }
   } catch (error) {
@@ -88,16 +94,21 @@ export async function sendPushToMany(
   userIds: string[],
   payload: PushNotificationPayload
 ): Promise<{ sent: number; failed: number }> {
+  const results = await Promise.allSettled(
+    userIds.map((userId) => sendPushNotification(userId, payload))
+  )
+
   let totalSent = 0
   let totalFailed = 0
 
-  await Promise.all(
-    userIds.map(async (userId) => {
-      const result = await sendPushNotification(userId, payload)
-      totalSent += result.sent
-      totalFailed += result.failed
-    })
-  )
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      totalSent += result.value.sent
+      totalFailed += result.value.failed
+    } else {
+      totalFailed++
+    }
+  }
 
   return { sent: totalSent, failed: totalFailed }
 }

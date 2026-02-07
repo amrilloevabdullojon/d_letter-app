@@ -1,22 +1,11 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  AlertTriangle,
-  Bell,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  FileText,
-  Info,
-  Search,
-  MessageSquare,
-  UserPlus,
-  X,
-} from 'lucide-react'
+import { Bell, Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays } from '@/lib/utils'
+import { NotificationCard } from '@/components/notifications/NotificationCard'
+import { formatDate, getWorkingDaysUntilDeadline } from '@/lib/utils'
 import { hasPermission } from '@/lib/permissions'
 import { useFetch, useMutation } from '@/hooks/useFetch'
 import { useNotificationSettings } from '@/hooks/useNotificationSettings'
@@ -88,27 +77,6 @@ const getTomorrowStartIso = () => {
 const isDeadlineKind = (kind: UnifiedKind) =>
   kind === 'DEADLINE_OVERDUE' || kind === 'DEADLINE_URGENT'
 
-const getKindLabel = (kind: UnifiedKind) => {
-  switch (kind) {
-    case 'NEW_LETTER':
-      return '\u041d\u043e\u0432\u044b\u0435 \u043f\u0438\u0441\u044c\u043c\u0430'
-    case 'COMMENT':
-      return 'Комментарий'
-    case 'STATUS':
-      return 'Статус'
-    case 'ASSIGNMENT':
-      return 'Назначение'
-    case 'SYSTEM':
-      return 'Системное'
-    case 'DEADLINE_OVERDUE':
-      return 'Просрочено'
-    case 'DEADLINE_URGENT':
-      return 'Скоро дедлайн'
-    default:
-      return ''
-  }
-}
-
 const getSectionTitle = (dateValue: string) => {
   const parsed = new Date(dateValue)
   if (Number.isNaN(parsed.getTime())) return 'Недавно'
@@ -128,24 +96,6 @@ const isCorruptedText = (value: string) => {
   if (!trimmed) return true
   const questionMarks = (trimmed.match(/\?/g) || []).length
   return questionMarks >= Math.max(3, Math.ceil(trimmed.length * 0.3))
-}
-
-const buildFallbackTitle = (item: UnifiedNotification) => {
-  const number = item.letter?.number ? `№${item.letter.number}` : ''
-  const suffix = number ? ` ${number}` : ''
-
-  switch (item.kind) {
-    case 'COMMENT':
-      return `Новый комментарий к письму${suffix}`
-    case 'STATUS':
-      return `Статус письма${suffix} изменен`
-    case 'ASSIGNMENT':
-      return `Вам назначено письмо${suffix}`
-    case 'SYSTEM':
-      return 'Системное уведомление'
-    default:
-      return item.title || 'Уведомление'
-  }
 }
 
 const decodeUnicodeEscapes = (value: string) => {
@@ -562,7 +512,7 @@ export function Notifications() {
 
     const result = await updateNotifications.mutate({ ids })
     if (!result) {
-      console.error('Failed to mark notifications read')
+      toast.error('Не удалось отметить уведомления как прочитанные')
       setUserNotifications(previous)
     }
   }
@@ -573,7 +523,7 @@ export function Notifications() {
 
     const result = await updateNotifications.mutate({ all: true })
     if (!result) {
-      console.error('Failed to mark all notifications read')
+      toast.error('Не удалось отметить все уведомления как прочитанные')
       setUserNotifications(previous)
     }
   }
@@ -656,66 +606,6 @@ export function Notifications() {
   const checkHasActiveSnoozes = () => {
     const now = Date.now()
     return Object.values(snoozedDeadlines).some((until) => new Date(until).getTime() > now)
-  }
-
-  const renderNotificationTitle = (item: UnifiedNotification) => {
-    if (!isDeadlineKind(item.kind)) {
-      const normalizedTitle = normalizeText(item.title)
-      if (!normalizedTitle || isCorruptedText(normalizedTitle)) {
-        return buildFallbackTitle(item)
-      }
-      return normalizedTitle
-    }
-    const days = item.daysLeft ?? 0
-    if (item.kind === 'DEADLINE_OVERDUE') {
-      const absDays = Math.abs(days)
-      return `Просрочено на ${absDays} раб. ${pluralizeDays(absDays)}`
-    }
-    return `До дедлайна ${days} раб. ${pluralizeDays(days)}`
-  }
-
-  const renderNotificationMeta = (item: UnifiedNotification) => {
-    if (isDeadlineKind(item.kind)) {
-      return <span>Дедлайн: {formatDate(item.letter?.deadlineDate || '')}</span>
-    }
-    return <span>{new Date(item.createdAt).toLocaleString('ru-RU')}</span>
-  }
-
-  const renderNotificationIcon = (item: UnifiedNotification) => {
-    const commonClass = 'w-4 h-4'
-    switch (item.kind) {
-      case 'NEW_LETTER':
-        return {
-          icon: FileText,
-          color: 'text-emerald-300',
-          bg: 'bg-emerald-500/20',
-          cls: commonClass,
-        }
-      case 'COMMENT':
-        return { icon: MessageSquare, color: 'text-sky-400', bg: 'bg-sky-500/20', cls: commonClass }
-      case 'STATUS':
-        return {
-          icon: CheckCircle2,
-          color: 'text-emerald-400',
-          bg: 'bg-emerald-500/20',
-          cls: commonClass,
-        }
-      case 'ASSIGNMENT':
-        return {
-          icon: UserPlus,
-          color: 'text-purple-400',
-          bg: 'bg-purple-500/20',
-          cls: commonClass,
-        }
-      case 'SYSTEM':
-        return { icon: Info, color: 'text-slate-300', bg: 'bg-slate-800/80', cls: commonClass }
-      case 'DEADLINE_OVERDUE':
-        return { icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/20', cls: commonClass }
-      case 'DEADLINE_URGENT':
-        return { icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-500/20', cls: commonClass }
-      default:
-        return { icon: Bell, color: 'text-slate-300', bg: 'bg-slate-800/80', cls: commonClass }
-    }
   }
 
   useEffect(() => {
@@ -995,156 +885,22 @@ export function Notifications() {
                       <div className="sticky top-0 z-10 -mx-4 border-b border-slate-800/70 bg-slate-900/90 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-slate-500 backdrop-blur">
                         {section.title}
                       </div>
-                      {section.items.map((notif) => {
-                        const iconConfig = renderNotificationIcon(notif)
-                        const Icon = iconConfig.icon
-                        const isUnread = !isDeadlineKind(notif.kind) && notif.unreadCount > 0
-                        const linkTarget = notif.letter?.id
-                          ? `/letters/${notif.letter.id}`
-                          : '/letters'
-                        const bodyRaw = normalizeText(notif.body)
-                        const body = bodyRaw && !isCorruptedText(bodyRaw) ? bodyRaw : ''
-                        const orgRaw = normalizeText(notif.letter?.org)
-                        const org = orgRaw && !isCorruptedText(orgRaw) ? orgRaw : ''
-                        const accentTone = isDeadlineKind(notif.kind)
-                          ? notif.kind === 'DEADLINE_OVERDUE'
-                            ? 'bg-red-500/70'
-                            : 'bg-yellow-400/70'
-                          : isUnread
-                            ? 'bg-emerald-400/70'
-                            : 'bg-slate-700/60'
-                        const cardTone = isDeadlineKind(notif.kind)
-                          ? notif.kind === 'DEADLINE_OVERDUE'
-                            ? 'border-red-500/35 bg-red-500/10 shadow-[0_12px_30px_-20px_rgba(248,113,113,0.4)]'
-                            : 'border-yellow-500/35 bg-yellow-500/10 shadow-[0_12px_30px_-20px_rgba(250,204,21,0.35)]'
-                          : isUnread
-                            ? 'border-emerald-500/35 bg-emerald-500/10 shadow-[0_12px_30px_-22px_rgba(16,185,129,0.35)]'
-                            : 'border-slate-800/70 bg-slate-900/50'
-                        const priorityBadge = isDeadlineKind(notif.kind)
-                          ? {
-                              label: notif.kind === 'DEADLINE_OVERDUE' ? 'Критично' : 'Срочно',
-                              className:
-                                notif.kind === 'DEADLINE_OVERDUE'
-                                  ? 'border-red-500/40 bg-red-500/15 text-red-200'
-                                  : 'border-yellow-500/40 bg-yellow-500/15 text-yellow-200',
-                            }
-                          : isUnread && notif.kind === 'ASSIGNMENT'
-                            ? {
-                                label: 'Важное',
-                                className:
-                                  'border-emerald-500/40 bg-emerald-500/15 text-emerald-200',
-                              }
-                            : null
-
-                        return (
-                          <Link
-                            key={notif.id}
-                            href={linkTarget}
-                            onClick={() => {
-                              hapticLight()
-                              if (!isDeadlineKind(notif.kind)) {
-                                markNotificationsRead(notif.ids)
-                              }
-                              setIsOpen(false)
-                            }}
-                            className={`tap-highlight group relative flex items-start gap-3 overflow-hidden rounded-2xl border px-4 py-3 transition ${cardTone} hover:-translate-y-0.5 hover:border-slate-600/70 hover:bg-slate-800/70`}
-                          >
-                            <span className={`absolute left-0 top-0 h-full w-1 ${accentTone}`} />
-                            <div
-                              className={`rounded-lg p-2 ring-1 ring-white/10 ${iconConfig.bg} ${iconConfig.color}`}
-                            >
-                              <Icon className={iconConfig.cls} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-white">
-                                  {renderNotificationTitle(notif)}
-                                </span>
-                                {notif.count > 1 && (
-                                  <span className="rounded-full border border-slate-700/70 bg-slate-800/80 px-2 py-0.5 text-[10px] text-slate-200">
-                                    x{notif.count}
-                                  </span>
-                                )}
-                                {isUnread && (
-                                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                                )}
-                              </div>
-                              {notificationSettings.showPreviews && body && (
-                                <div className="mt-1 line-clamp-2 text-xs text-slate-300">
-                                  {body}
-                                </div>
-                              )}
-                              {notificationSettings.showOrganizations && org && (
-                                <div className="mt-1 truncate text-xs text-slate-400">{org}</div>
-                              )}
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                <span>{getKindLabel(notif.kind)}</span>
-                                <span className="text-slate-600">•</span>
-                                {renderNotificationMeta(notif)}
-                                {priorityBadge && (
-                                  <span
-                                    className={`rounded-full border px-2 py-0.5 text-[10px] ${priorityBadge.className}`}
-                                  >
-                                    {priorityBadge.label}
-                                  </span>
-                                )}
-                                {notif.letter?.number && (
-                                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-200">
-                                    №{notif.letter.number}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                                {!isDeadlineKind(notif.kind) && notif.unreadCount > 0 && (
-                                  <button
-                                    onClick={(event) => {
-                                      event.preventDefault()
-                                      event.stopPropagation()
-                                      hapticLight()
-                                      markNotificationsRead(notif.ids)
-                                    }}
-                                    className="tap-highlight rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
-                                  >
-                                    Отметить прочитанным
-                                  </button>
-                                )}
-                                {isDeadlineKind(notif.kind) && notif.letter?.id && (
-                                  <button
-                                    onClick={(event) => {
-                                      event.preventDefault()
-                                      event.stopPropagation()
-                                      hapticLight()
-                                      if (notif.letter?.id) {
-                                        snoozeDeadline(notif.letter.id)
-                                      }
-                                    }}
-                                    className="tap-highlight rounded-full bg-slate-800/80 px-2.5 py-1 text-slate-200 transition hover:bg-slate-700"
-                                  >
-                                    Скрыть до завтра
-                                  </button>
-                                )}
-                                {canManageLetters &&
-                                  currentUserId &&
-                                  notif.letter?.id &&
-                                  !notif.letter?.owner && (
-                                    <button
-                                      onClick={(event) => {
-                                        event.preventDefault()
-                                        event.stopPropagation()
-                                        hapticMedium()
-                                        assignToMe(notif.letter!.id)
-                                      }}
-                                      className="tap-highlight rounded-full bg-emerald-500/15 px-2.5 py-1 text-emerald-200 transition hover:bg-emerald-500/25"
-                                    >
-                                      Назначить меня
-                                    </button>
-                                  )}
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-500 transition group-hover:text-slate-300" />
-                          </Link>
-                        )
-                      })}
+                      {section.items.map((notif) => (
+                        <NotificationCard
+                          key={notif.id}
+                          notif={notif}
+                          showPreviews={notificationSettings.showPreviews}
+                          showOrganizations={notificationSettings.showOrganizations}
+                          canManageLetters={canManageLetters}
+                          currentUserId={currentUserId}
+                          onMarkRead={markNotificationsRead}
+                          onSnooze={snoozeDeadline}
+                          onAssignToMe={assignToMe}
+                          onClose={() => setIsOpen(false)}
+                          normalizeText={normalizeText}
+                          isCorruptedText={isCorruptedText}
+                        />
+                      ))}
                     </div>
                   ))}
                   {canLoadMore && activeFilter !== 'deadlines' && (
