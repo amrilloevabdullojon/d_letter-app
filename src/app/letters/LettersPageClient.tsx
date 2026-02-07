@@ -65,6 +65,7 @@ import {
   pluralizeLetters,
 } from './letters-types'
 
+import { PullToRefresh } from '@/components/PullToRefresh'
 import { useKeyboard } from '@/hooks/useKeyboard'
 import { useDebouncedCallback } from '@/hooks/useDebounce'
 import { usePagination } from '@/hooks/usePagination'
@@ -902,6 +903,10 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     runBulkAction()
   }, [bulkAction, bulkValue, confirmDialog, runBulkAction, selectedIds, users])
 
+  const handlePullToRefresh = useCallback(async () => {
+    await loadLetters({ showLoading: false, force: true, contentOnly: true })
+  }, [loadLetters])
+
   // Auth loading
   if (authStatus === 'loading') {
     return (
@@ -923,520 +928,528 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     <div className="app-shell min-h-screen">
       <Header />
 
-      <main
-        id="main-content"
-        className="animate-pageIn relative mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
-      >
-        {/* Header with gradient */}
-        <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/80 via-slate-800/60 to-slate-900/80 p-6 md:p-8">
-          {/* Decorative elements */}
-          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-2xl" />
+      <PullToRefresh onRefresh={handlePullToRefresh} disabled={!isMobile}>
+        <main
+          id="main-content"
+          className="animate-pageIn relative mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+        >
+          {/* Header with gradient */}
+          <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/80 via-slate-800/60 to-slate-900/80 p-6 md:p-8">
+            {/* Decorative elements */}
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-2xl" />
 
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            {/* Title and stats */}
-            <div className="flex-1">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 p-3 shadow-lg shadow-teal-500/25">
-                  <FileText className="h-6 w-6 text-white" />
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              {/* Title and stats */}
+              <div className="flex-1">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 p-3 shadow-lg shadow-teal-500/25">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="font-display text-3xl font-bold text-white md:text-4xl">
+                      Письма
+                    </h1>
+                    {pagination && (
+                      <p className="text-sm text-slate-400">
+                        Всего{' '}
+                        <span className="font-semibold text-teal-400">{pagination.total}</span>{' '}
+                        {pluralizeLetters(pagination.total)}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h1 className="font-display text-3xl font-bold text-white md:text-4xl">Письма</h1>
-                  {pagination && (
-                    <p className="text-sm text-slate-400">
-                      Всего <span className="font-semibold text-teal-400">{pagination.total}</span>{' '}
-                      {pluralizeLetters(pagination.total)}
-                    </p>
-                  )}
-                </div>
+
+                {/* Stats cards */}
+                {pagination && (
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex items-center gap-2 rounded-lg bg-slate-700/40 px-3 py-2">
+                      <div className="h-2 w-2 rounded-full bg-red-400" />
+                      <span className="text-xs text-slate-300">
+                        Просрочено:{' '}
+                        <span className="font-semibold text-red-400">{letterStats.overdue}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-lg bg-slate-700/40 px-3 py-2">
+                      <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                      <span className="text-xs text-slate-300">
+                        Срочно:{' '}
+                        <span className="font-semibold text-yellow-400">{letterStats.urgent}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-lg bg-slate-700/40 px-3 py-2">
+                      <div className="h-2 w-2 rounded-full bg-teal-400" />
+                      <span className="text-xs text-slate-300">
+                        В работе:{' '}
+                        <span className="font-semibold text-teal-400">
+                          {letterStats.inProgress}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Stats cards */}
-              {pagination && (
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex items-center gap-2 rounded-lg bg-slate-700/40 px-3 py-2">
-                    <div className="h-2 w-2 rounded-full bg-red-400" />
-                    <span className="text-xs text-slate-300">
-                      Просрочено:{' '}
-                      <span className="font-semibold text-red-400">{letterStats.overdue}</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-slate-700/40 px-3 py-2">
-                    <div className="h-2 w-2 rounded-full bg-yellow-400" />
-                    <span className="text-xs text-slate-300">
-                      Срочно:{' '}
-                      <span className="font-semibold text-yellow-400">{letterStats.urgent}</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-slate-700/40 px-3 py-2">
-                    <div className="h-2 w-2 rounded-full bg-teal-400" />
-                    <span className="text-xs text-slate-300">
-                      В работе:{' '}
-                      <span className="font-semibold text-teal-400">{letterStats.inProgress}</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex flex-wrap gap-2 lg:flex-nowrap">
-              <a
-                href={`/api/export?${new URLSearchParams({
-                  ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
-                  ...(quickFilter ? { filter: quickFilter } : {}),
-                  ...(ownerFilter ? { owner: ownerFilter } : {}),
-                  ...(typeFilter ? { type: typeFilter } : {}),
-                  ...(selectedIds.size > 0 ? { ids: Array.from(selectedIds).join(',') } : {}),
-                }).toString()}`}
-                className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600/50 bg-slate-700/50 px-4 py-2.5 text-sm font-medium text-slate-200 transition-all hover:border-slate-500 hover:bg-slate-700 hover:text-white"
-              >
-                <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
-                Экспорт
-              </a>
-              <button
-                type="button"
-                onClick={() => setShowBulkCreate(true)}
-                className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600/50 bg-slate-700/50 px-4 py-2.5 text-sm font-medium text-slate-200 transition-all hover:border-slate-500 hover:bg-slate-700 hover:text-white"
-              >
-                <ListPlus className="h-4 w-4 transition-transform group-hover:scale-110" />
-                Импорт
-              </button>
-              <Link
-                href="/letters/new"
-                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:shadow-teal-500/40 hover:brightness-110"
-              >
-                <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-                Новое письмо
-              </Link>
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-2 lg:flex-nowrap">
+                <a
+                  href={`/api/export?${new URLSearchParams({
+                    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+                    ...(quickFilter ? { filter: quickFilter } : {}),
+                    ...(ownerFilter ? { owner: ownerFilter } : {}),
+                    ...(typeFilter ? { type: typeFilter } : {}),
+                    ...(selectedIds.size > 0 ? { ids: Array.from(selectedIds).join(',') } : {}),
+                  }).toString()}`}
+                  className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600/50 bg-slate-700/50 px-4 py-2.5 text-sm font-medium text-slate-200 transition-all hover:border-slate-500 hover:bg-slate-700 hover:text-white"
+                >
+                  <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                  Экспорт
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkCreate(true)}
+                  className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600/50 bg-slate-700/50 px-4 py-2.5 text-sm font-medium text-slate-200 transition-all hover:border-slate-500 hover:bg-slate-700 hover:text-white"
+                >
+                  <ListPlus className="h-4 w-4 transition-transform group-hover:scale-110" />
+                  Импорт
+                </button>
+                <Link
+                  href="/letters/new"
+                  className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:shadow-teal-500/40 hover:brightness-110"
+                >
+                  <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                  Новое письмо
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Bulk Actions Bar */}
-        <LettersBulkActions
-          selectedCount={selectedIds.size}
-          bulkAction={bulkAction}
-          bulkValue={bulkValue}
-          bulkLoading={bulkLoading}
-          users={users}
-          userRole={session.user.role}
-          statuses={STATUSES}
-          onBulkActionChange={setBulkAction}
-          onBulkValueChange={setBulkValue}
-          onExecute={executeBulkAction}
-          onClear={() => {
-            setSelectedIds(new Set())
-            setBulkAction(null)
-            setBulkValue('')
-          }}
-        />
+          {/* Bulk Actions Bar */}
+          <LettersBulkActions
+            selectedCount={selectedIds.size}
+            bulkAction={bulkAction}
+            bulkValue={bulkValue}
+            bulkLoading={bulkLoading}
+            users={users}
+            userRole={session.user.role}
+            statuses={STATUSES}
+            onBulkActionChange={setBulkAction}
+            onBulkValueChange={setBulkValue}
+            onExecute={executeBulkAction}
+            onClear={() => {
+              setSelectedIds(new Set())
+              setBulkAction(null)
+              setBulkValue('')
+            }}
+          />
 
-        {/* Quick Filters */}
-        <LettersQuickFilters value={quickFilter} onChange={handleQuickFilterChange} />
+          {/* Quick Filters */}
+          <LettersQuickFilters value={quickFilter} onChange={handleQuickFilterChange} />
 
-        {/* Filters Row */}
-        <div className="relative z-20 mb-6 rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800/80 to-slate-800/60 p-4 backdrop-blur-sm lg:sticky lg:top-20 lg:z-30">
-          <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center">
-            {/* Search */}
-            <div className="w-full min-w-0 lg:flex-[1_1_100%] lg:basis-full">
-              <div className="relative">
-                <div
-                  className={`absolute left-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg ${
-                    isSearching ? 'bg-teal-500/20' : 'bg-slate-700/50'
-                  }`}
-                >
-                  {isSearching ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-teal-400" />
+          {/* Filters Row */}
+          <div className="relative z-20 mb-6 rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800/80 to-slate-800/60 p-4 backdrop-blur-sm lg:sticky lg:top-20 lg:z-30">
+            <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center">
+              {/* Search */}
+              <div className="w-full min-w-0 lg:flex-[1_1_100%] lg:basis-full">
+                <div className="relative">
+                  <div
+                    className={`absolute left-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg ${
+                      isSearching ? 'bg-teal-500/20' : 'bg-slate-700/50'
+                    }`}
+                  >
+                    {isSearching ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-teal-400" />
+                    ) : (
+                      <Search className="h-4 w-4 text-slate-400" />
+                    )}
+                  </div>
+                  {isInitialLoading ? (
+                    <div
+                      className="animate-shimmer h-12 w-full rounded-xl bg-slate-700/30"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <Search className="h-4 w-4 text-slate-400" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Поиск по номеру, организации, содержанию, Jira и ответам..."
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value)
+                        setSelectedSuggestionIndex(-1)
+                      }}
+                      onFocus={() => {
+                        setIsSearchFocused(true)
+                        setSelectedSuggestionIndex(-1)
+                        if (searchSuggestions.length > 0 || recentSearches.length > 0) {
+                          setSuggestionsOpen(true)
+                        }
+                      }}
+                      onBlur={() => {
+                        setIsSearchFocused(false)
+                        window.setTimeout(() => {
+                          setSuggestionsOpen(false)
+                          setSelectedSuggestionIndex(-1)
+                        }, 150)
+                      }}
+                      onKeyDown={(e) => {
+                        if (!suggestionsOpen) return
+
+                        // Подсчёт общего количества элементов для навигации
+                        const trimmedSearch = search.trim()
+                        const autocompleteSuggestions = trimmedSearch
+                          ? Array.from(
+                              new Set(
+                                searchSuggestions
+                                  .flatMap((s) => [s.org, s.number])
+                                  .filter(
+                                    (text) =>
+                                      text.toLowerCase().includes(trimmedSearch.toLowerCase()) &&
+                                      text.toLowerCase() !== trimmedSearch.toLowerCase()
+                                  )
+                              )
+                            ).slice(0, 3)
+                          : []
+                        const totalItems = trimmedSearch
+                          ? autocompleteSuggestions.length + searchSuggestions.length
+                          : recentSearches.length
+
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault()
+                          setSelectedSuggestionIndex((prev) =>
+                            prev < totalItems - 1 ? prev + 1 : prev
+                          )
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault()
+                          setSelectedSuggestionIndex((prev) => (prev > -1 ? prev - 1 : -1))
+                        } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+                          e.preventDefault()
+                          if (!trimmedSearch) {
+                            // Последние поиски
+                            if (recentSearches[selectedSuggestionIndex]) {
+                              setSearch(recentSearches[selectedSuggestionIndex])
+                              setSuggestionsOpen(false)
+                              setSelectedSuggestionIndex(-1)
+                            }
+                          } else if (selectedSuggestionIndex < autocompleteSuggestions.length) {
+                            // Autocomplete
+                            setSearch(autocompleteSuggestions[selectedSuggestionIndex])
+                            setSelectedSuggestionIndex(-1)
+                          } else {
+                            // Выбор письма
+                            const letterIndex =
+                              selectedSuggestionIndex - autocompleteSuggestions.length
+                            if (searchSuggestions[letterIndex]) {
+                              router.push(`/letters/${searchSuggestions[letterIndex].id}`)
+                            }
+                          }
+                        } else if (
+                          e.key === 'Tab' &&
+                          trimmedSearch &&
+                          autocompleteSuggestions.length > 0
+                        ) {
+                          e.preventDefault()
+                          const idx =
+                            selectedSuggestionIndex >= 0 &&
+                            selectedSuggestionIndex < autocompleteSuggestions.length
+                              ? selectedSuggestionIndex
+                              : 0
+                          setSearch(autocompleteSuggestions[idx])
+                          setSelectedSuggestionIndex(-1)
+                        } else if (e.key === 'Escape') {
+                          setSuggestionsOpen(false)
+                          setSelectedSuggestionIndex(-1)
+                          searchInputRef.current?.blur()
+                        }
+                      }}
+                      className="h-12 w-full rounded-xl border border-slate-600/50 bg-slate-700/30 pl-14 pr-12 text-white placeholder-slate-400 transition-all focus:border-teal-500/50 focus:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                      aria-label="Поиск"
+                      aria-expanded={suggestionsOpen}
+                      aria-haspopup="listbox"
+                      role="combobox"
+                      autoComplete="off"
+                    />
+                  )}
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg bg-slate-600/50 p-1.5 text-slate-400 transition hover:bg-slate-600 hover:text-white"
+                      aria-label="Очистить поиск"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+
+                  {(suggestionsOpen ||
+                    suggestionsLoading ||
+                    (isSearchFocused && !search.trim() && recentSearches.length > 0)) && (
+                    <LettersSearchSuggestions
+                      search={search}
+                      suggestions={searchSuggestions}
+                      recentSearches={recentSearches}
+                      isLoading={suggestionsLoading}
+                      selectedIndex={selectedSuggestionIndex}
+                      onSelectRecent={(value) => {
+                        setSearch(value)
+                        setSuggestionsOpen(false)
+                        setSelectedSuggestionIndex(-1)
+                      }}
+                      onClearRecent={clearRecentSearches}
+                      onRemoveRecent={removeRecentSearch}
+                      onAutoComplete={(value) => {
+                        setSearch(value)
+                        setSelectedSuggestionIndex(-1)
+                      }}
+                      onSelectSuggestion={(suggestion) => {
+                        router.push(`/letters/${suggestion.id}`)
+                      }}
+                    />
                   )}
                 </div>
-                {isInitialLoading ? (
-                  <div
-                    className="animate-shimmer h-12 w-full rounded-xl bg-slate-700/30"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Поиск по номеру, организации, содержанию, Jira и ответам..."
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value)
-                      setSelectedSuggestionIndex(-1)
-                    }}
-                    onFocus={() => {
-                      setIsSearchFocused(true)
-                      setSelectedSuggestionIndex(-1)
-                      if (searchSuggestions.length > 0 || recentSearches.length > 0) {
-                        setSuggestionsOpen(true)
-                      }
-                    }}
-                    onBlur={() => {
-                      setIsSearchFocused(false)
-                      window.setTimeout(() => {
-                        setSuggestionsOpen(false)
-                        setSelectedSuggestionIndex(-1)
-                      }, 150)
-                    }}
-                    onKeyDown={(e) => {
-                      if (!suggestionsOpen) return
 
-                      // Подсчёт общего количества элементов для навигации
-                      const trimmedSearch = search.trim()
-                      const autocompleteSuggestions = trimmedSearch
-                        ? Array.from(
-                            new Set(
-                              searchSuggestions
-                                .flatMap((s) => [s.org, s.number])
-                                .filter(
-                                  (text) =>
-                                    text.toLowerCase().includes(trimmedSearch.toLowerCase()) &&
-                                    text.toLowerCase() !== trimmedSearch.toLowerCase()
-                                )
-                            )
-                          ).slice(0, 3)
-                        : []
-                      const totalItems = trimmedSearch
-                        ? autocompleteSuggestions.length + searchSuggestions.length
-                        : recentSearches.length
+                <p className="mt-2 hidden text-xs text-slate-500 md:block">
+                  Поиск по номеру, организации, содержанию, Jira ссылкам и ответам
+                </p>
+              </div>
 
-                      if (e.key === 'ArrowDown') {
-                        e.preventDefault()
-                        setSelectedSuggestionIndex((prev) =>
-                          prev < totalItems - 1 ? prev + 1 : prev
-                        )
-                      } else if (e.key === 'ArrowUp') {
-                        e.preventDefault()
-                        setSelectedSuggestionIndex((prev) => (prev > -1 ? prev - 1 : -1))
-                      } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
-                        e.preventDefault()
-                        if (!trimmedSearch) {
-                          // Последние поиски
-                          if (recentSearches[selectedSuggestionIndex]) {
-                            setSearch(recentSearches[selectedSuggestionIndex])
-                            setSuggestionsOpen(false)
-                            setSelectedSuggestionIndex(-1)
-                          }
-                        } else if (selectedSuggestionIndex < autocompleteSuggestions.length) {
-                          // Autocomplete
-                          setSearch(autocompleteSuggestions[selectedSuggestionIndex])
-                          setSelectedSuggestionIndex(-1)
-                        } else {
-                          // Выбор письма
-                          const letterIndex =
-                            selectedSuggestionIndex - autocompleteSuggestions.length
-                          if (searchSuggestions[letterIndex]) {
-                            router.push(`/letters/${searchSuggestions[letterIndex].id}`)
-                          }
-                        }
-                      } else if (
-                        e.key === 'Tab' &&
-                        trimmedSearch &&
-                        autocompleteSuggestions.length > 0
-                      ) {
-                        e.preventDefault()
-                        const idx =
-                          selectedSuggestionIndex >= 0 &&
-                          selectedSuggestionIndex < autocompleteSuggestions.length
-                            ? selectedSuggestionIndex
-                            : 0
-                        setSearch(autocompleteSuggestions[idx])
-                        setSelectedSuggestionIndex(-1)
-                      } else if (e.key === 'Escape') {
-                        setSuggestionsOpen(false)
-                        setSelectedSuggestionIndex(-1)
-                        searchInputRef.current?.blur()
-                      }
-                    }}
-                    className="h-12 w-full rounded-xl border border-slate-600/50 bg-slate-700/30 pl-14 pr-12 text-white placeholder-slate-400 transition-all focus:border-teal-500/50 focus:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                    aria-label="Поиск"
-                    aria-expanded={suggestionsOpen}
-                    aria-haspopup="listbox"
-                    role="combobox"
-                    autoComplete="off"
-                  />
-                )}
-                {search && (
+              <button
+                onClick={() => setFiltersOpen((prev) => !prev)}
+                className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-medium transition-all sm:hidden ${
+                  filtersOpen
+                    ? 'bg-teal-500/20 text-teal-300 ring-1 ring-teal-500/30'
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+                aria-expanded={filtersOpen}
+                aria-controls="letters-filters"
+              >
+                <Filter className="h-4 w-4" />
+                {activeFiltersCount > 0 ? `Фильтры (${activeFiltersCount})` : 'Фильтры'}
+              </button>
+
+              {!filtersOpen && activeFiltersCount > 0 && (
+                <div className="flex w-full flex-wrap gap-2 sm:hidden">
+                  {search && (
+                    <span className="rounded-lg bg-teal-500/10 px-2.5 py-1 text-xs font-medium text-teal-300 ring-1 ring-teal-500/20">
+                      Поиск: {search}
+                    </span>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <span className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300 ring-1 ring-blue-500/20">
+                      {STATUS_LABELS[statusFilter as LetterStatus]}
+                    </span>
+                  )}
+                  {quickFilter && (
+                    <span className="rounded-lg bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-300 ring-1 ring-purple-500/20">
+                      {QUICK_FILTERS.find((item) => item.value === quickFilter)?.label ||
+                        quickFilter}
+                    </span>
+                  )}
+                  {ownerFilter && (
+                    <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/20">
+                      {users.find((user) => user.id === ownerFilter)?.name ||
+                        users.find((user) => user.id === ownerFilter)?.email ||
+                        ownerFilter}
+                    </span>
+                  )}
+                  {typeFilter && (
+                    <span className="rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-amber-500/20">
+                      {LETTER_TYPES.find((item) => item.value === typeFilter)?.label || typeFilter}
+                    </span>
+                  )}
                   <button
-                    onClick={() => setSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg bg-slate-600/50 p-1.5 text-slate-400 transition hover:bg-slate-600 hover:text-white"
-                    aria-label="Очистить поиск"
+                    onClick={resetFilters}
+                    className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300 ring-1 ring-red-500/20 transition hover:bg-red-500/20"
+                    aria-label="Сбросить фильтры"
                   >
-                    <X className="h-4 w-4" />
+                    Сбросить
                   </button>
-                )}
+                </div>
+              )}
 
-                {(suggestionsOpen ||
-                  suggestionsLoading ||
-                  (isSearchFocused && !search.trim() && recentSearches.length > 0)) && (
-                  <LettersSearchSuggestions
-                    search={search}
-                    suggestions={searchSuggestions}
-                    recentSearches={recentSearches}
-                    isLoading={suggestionsLoading}
-                    selectedIndex={selectedSuggestionIndex}
-                    onSelectRecent={(value) => {
-                      setSearch(value)
-                      setSuggestionsOpen(false)
-                      setSelectedSuggestionIndex(-1)
+              <div
+                id="letters-filters"
+                className={`${filtersOpen ? 'flex' : 'hidden'} w-full flex-col gap-3 sm:flex sm:w-full sm:flex-row sm:flex-wrap lg:w-auto xl:flex-nowrap`}
+              >
+                {/* Status filter */}
+                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px]">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20">
+                    <Filter className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value as LetterStatus | 'all')
+                      // Не сбрасываем quickFilter - фильтры работают независимо
+                      goToPage(1)
                     }}
-                    onClearRecent={clearRecentSearches}
-                    onRemoveRecent={removeRecentSearch}
-                    onAutoComplete={(value) => {
-                      setSearch(value)
-                      setSelectedSuggestionIndex(-1)
+                    disabled={filtersDisabled}
+                    className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
+                    aria-label="Статус"
+                  >
+                    <option value="all">Все статусы</option>
+                    {STATUSES.filter((s) => s !== 'all').map((status) => (
+                      <option key={status} value={status}>
+                        {STATUS_LABELS[status as LetterStatus]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[210px]">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
+                    <Users className="h-4 w-4 text-emerald-400" />
+                  </div>
+                  <select
+                    value={ownerFilter}
+                    onChange={(e) => {
+                      setOwnerFilter(e.target.value)
+                      // Не сбрасываем quickFilter - фильтры работают независимо
+                      goToPage(1)
                     }}
-                    onSelectSuggestion={(suggestion) => {
-                      router.push(`/letters/${suggestion.id}`)
+                    disabled={filtersDisabled}
+                    className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
+                    aria-label="Исполнитель"
+                  >
+                    <option value="">Все исполнители</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name || user.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px]">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20">
+                    <FileText className="h-4 w-4 text-amber-400" />
+                  </div>
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => {
+                      setTypeFilter(e.target.value)
+                      goToPage(1)
                     }}
-                  />
+                    disabled={filtersDisabled}
+                    className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
+                    aria-label="Тип"
+                  >
+                    <option value="">Все типы</option>
+                    {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={resetFilters}
+                    className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 text-sm font-medium text-red-300 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 hover:text-red-200 sm:w-auto"
+                    aria-label="Сбросить фильтры"
+                  >
+                    <XCircle className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                    Сбросить ({activeFiltersCount})
+                  </button>
                 )}
               </div>
 
-              <p className="mt-2 hidden text-xs text-slate-500 md:block">
-                Поиск по номеру, организации, содержанию, Jira ссылкам и ответам
-              </p>
+              <div className="hidden w-full flex-wrap items-center gap-2 sm:ml-auto sm:flex sm:w-auto">
+                {/* Saved views */}
+                <LettersSavedViews
+                  views={savedViews}
+                  activeViewId={activeViewId}
+                  onApply={applySavedView}
+                  onSave={saveCurrentView}
+                  onDelete={deleteSavedView}
+                />
+
+                {/* View toggle */}
+                <LettersViewToggle value={viewMode} onChange={setViewMode} />
+
+                {/* Keyboard shortcuts help */}
+                <div className="relative hidden sm:block">
+                  <button
+                    onClick={() => (shortcutsOpen ? closeShortcuts() : openShortcuts())}
+                    className={`rounded-lg p-2.5 transition-all ${shortcutsOpen ? 'bg-teal-500/20 text-teal-300 ring-1 ring-teal-500/30' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                    title="Горячие клавиши"
+                    aria-label="Горячие клавиши"
+                  >
+                    <Keyboard className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
             </div>
+          </div>
 
-            <button
-              onClick={() => setFiltersOpen((prev) => !prev)}
-              className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-medium transition-all sm:hidden ${
-                filtersOpen
-                  ? 'bg-teal-500/20 text-teal-300 ring-1 ring-teal-500/30'
-                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white'
-              }`}
-              aria-expanded={filtersOpen}
-              aria-controls="letters-filters"
-            >
-              <Filter className="h-4 w-4" />
-              {activeFiltersCount > 0 ? `Фильтры (${activeFiltersCount})` : 'Фильтры'}
-            </button>
-
-            {!filtersOpen && activeFiltersCount > 0 && (
-              <div className="flex w-full flex-wrap gap-2 sm:hidden">
-                {search && (
-                  <span className="rounded-lg bg-teal-500/10 px-2.5 py-1 text-xs font-medium text-teal-300 ring-1 ring-teal-500/20">
-                    Поиск: {search}
-                  </span>
-                )}
-                {statusFilter !== 'all' && (
-                  <span className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300 ring-1 ring-blue-500/20">
-                    {STATUS_LABELS[statusFilter as LetterStatus]}
-                  </span>
-                )}
-                {quickFilter && (
-                  <span className="rounded-lg bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-300 ring-1 ring-purple-500/20">
-                    {QUICK_FILTERS.find((item) => item.value === quickFilter)?.label || quickFilter}
-                  </span>
-                )}
-                {ownerFilter && (
-                  <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/20">
-                    {users.find((user) => user.id === ownerFilter)?.name ||
-                      users.find((user) => user.id === ownerFilter)?.email ||
-                      ownerFilter}
-                  </span>
-                )}
-                {typeFilter && (
-                  <span className="rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-amber-500/20">
-                    {LETTER_TYPES.find((item) => item.value === typeFilter)?.label || typeFilter}
-                  </span>
-                )}
-                <button
-                  onClick={resetFilters}
-                  className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300 ring-1 ring-red-500/20 transition hover:bg-red-500/20"
-                  aria-label="Сбросить фильтры"
-                >
-                  Сбросить
-                </button>
+          {/* Content */}
+          <div className="relative">
+            {/* Локальный лоадер при изменении фильтров/пагинации */}
+            {contentLoading && !loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-900/60 backdrop-blur-sm">
+                <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
               </div>
             )}
 
-            <div
-              id="letters-filters"
-              className={`${filtersOpen ? 'flex' : 'hidden'} w-full flex-col gap-3 sm:flex sm:w-full sm:flex-row sm:flex-wrap lg:w-auto xl:flex-nowrap`}
-            >
-              {/* Status filter */}
-              <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20">
-                  <Filter className="h-4 w-4 text-blue-400" />
-                </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value as LetterStatus | 'all')
-                    // Не сбрасываем quickFilter - фильтры работают независимо
-                    goToPage(1)
-                  }}
-                  disabled={filtersDisabled}
-                  className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
-                  aria-label="Статус"
-                >
-                  <option value="all">Все статусы</option>
-                  {STATUSES.filter((s) => s !== 'all').map((status) => (
-                    <option key={status} value={status}>
-                      {STATUS_LABELS[status as LetterStatus]}
-                    </option>
+            {loading ? (
+              effectiveViewMode === 'cards' ? (
+                <CardsSkeleton count={9} />
+              ) : effectiveViewMode === 'kanban' ? (
+                <div className="flex gap-4 overflow-x-auto pb-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="animate-shimmer h-96 min-w-[280px] rounded-xl bg-white/5"
+                    />
                   ))}
-                </select>
-              </div>
-
-              <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[210px]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
-                  <Users className="h-4 w-4 text-emerald-400" />
                 </div>
-                <select
-                  value={ownerFilter}
-                  onChange={(e) => {
-                    setOwnerFilter(e.target.value)
-                    // Не сбрасываем quickFilter - фильтры работают независимо
-                    goToPage(1)
-                  }}
-                  disabled={filtersDisabled}
-                  className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
-                  aria-label="Исполнитель"
-                >
-                  <option value="">Все исполнители</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name || user.email}
-                    </option>
-                  ))}
-                </select>
+              ) : (
+                <TableSkeleton rows={10} />
+              )
+            ) : letters.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-slate-300/70">Писем нет</p>
               </div>
-
-              <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20">
-                  <FileText className="h-4 w-4 text-amber-400" />
-                </div>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => {
-                    setTypeFilter(e.target.value)
-                    goToPage(1)
-                  }}
-                  disabled={filtersDisabled}
-                  className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
-                  aria-label="Тип"
-                >
-                  <option value="">Все типы</option>
-                  {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {activeFiltersCount > 0 && (
-                <button
-                  onClick={resetFilters}
-                  className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 text-sm font-medium text-red-300 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 hover:text-red-200 sm:w-auto"
-                  aria-label="Сбросить фильтры"
-                >
-                  <XCircle className="h-4 w-4 transition-transform group-hover:rotate-90" />
-                  Сбросить ({activeFiltersCount})
-                </button>
-              )}
-            </div>
-
-            <div className="hidden w-full flex-wrap items-center gap-2 sm:ml-auto sm:flex sm:w-auto">
-              {/* Saved views */}
-              <LettersSavedViews
-                views={savedViews}
-                activeViewId={activeViewId}
-                onApply={applySavedView}
-                onSave={saveCurrentView}
-                onDelete={deleteSavedView}
-              />
-
-              {/* View toggle */}
-              <LettersViewToggle value={viewMode} onChange={setViewMode} />
-
-              {/* Keyboard shortcuts help */}
-              <div className="relative hidden sm:block">
-                <button
-                  onClick={() => (shortcutsOpen ? closeShortcuts() : openShortcuts())}
-                  className={`rounded-lg p-2.5 transition-all ${shortcutsOpen ? 'bg-teal-500/20 text-teal-300 ring-1 ring-teal-500/30' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
-                  title="Горячие клавиши"
-                  aria-label="Горячие клавиши"
-                >
-                  <Keyboard className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="relative">
-          {/* Локальный лоадер при изменении фильтров/пагинации */}
-          {contentLoading && !loading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-900/60 backdrop-blur-sm">
-              <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
-            </div>
-          )}
-
-          {loading ? (
-            effectiveViewMode === 'cards' ? (
-              <CardsSkeleton count={9} />
             ) : effectiveViewMode === 'kanban' ? (
-              <div className="flex gap-4 overflow-x-auto pb-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="animate-shimmer h-96 min-w-[280px] rounded-xl bg-white/5"
-                  />
-                ))}
-              </div>
+              <LetterKanban letters={letters} onStatusChange={handleKanbanStatusChange} />
+            ) : effectiveViewMode === 'cards' ? (
+              <VirtualLetterList
+                letters={letters}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+              />
             ) : (
-              <TableSkeleton rows={10} />
-            )
-          ) : letters.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-slate-300/70">Писем нет</p>
-            </div>
-          ) : effectiveViewMode === 'kanban' ? (
-            <LetterKanban letters={letters} onStatusChange={handleKanbanStatusChange} />
-          ) : effectiveViewMode === 'cards' ? (
-            <VirtualLetterList
-              letters={letters}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelect}
-            />
-          ) : (
-            <VirtualLetterTable
-              letters={letters}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelect}
-              onToggleSelectAll={toggleSelectAll}
-              onSort={handleSort}
-              sortField={sortBy}
-              sortDirection={sortOrder}
-              focusedIndex={focusedIndex}
-              onRowClick={handleRowClick}
-              onPreview={handlePreviewOpen}
+              <VirtualLetterTable
+                letters={letters}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAll}
+                onSort={handleSort}
+                sortField={sortBy}
+                sortDirection={sortOrder}
+                focusedIndex={focusedIndex}
+                onRowClick={handleRowClick}
+                onPreview={handlePreviewOpen}
+              />
+            )}
+          </div>
+
+          {/* Pagination */}
+          {pagination && (
+            <LettersPagination
+              pagination={pagination}
+              page={page}
+              limit={limit}
+              totalPages={totalPages}
+              hasPrev={hasPrev}
+              hasNext={hasNext}
+              onPrev={prevPage}
+              onNext={nextPage}
+              onPrefetchPage={handlePrefetchPage}
             />
           )}
-        </div>
-
-        {/* Pagination */}
-        {pagination && (
-          <LettersPagination
-            pagination={pagination}
-            page={page}
-            limit={limit}
-            totalPages={totalPages}
-            hasPrev={hasPrev}
-            hasNext={hasNext}
-            onPrev={prevPage}
-            onNext={nextPage}
-            onPrefetchPage={handlePrefetchPage}
-          />
-        )}
-      </main>
+        </main>
+      </PullToRefresh>
 
       {/* Letter Preview Panel */}
       <LetterPreview letterId={previewId} onClose={() => setPreviewId(null)} />

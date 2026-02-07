@@ -3,9 +3,10 @@
 import { useRef, useMemo, useCallback, memo, useState, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { LetterCard } from './LetterCard'
+import { SwipeableListItem, type SwipeAction } from './SwipeableListItem'
 import { StatusBadge } from './StatusBadge'
 import type { LetterStatus } from '@/types/prisma'
-import { ArrowDown, ArrowUp, ArrowUpDown, CheckSquare, Eye, Square } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, CheckSquare, Eye, Square, Star } from 'lucide-react'
 import { formatDate, getWorkingDaysUntilDeadline, isDoneStatus, pluralizeDays } from '@/lib/utils'
 import { usePrefetch } from '@/lib/react-query'
 
@@ -90,6 +91,26 @@ const CardWrapper = memo(function CardWrapper({
   onToggleFavorite,
   onPrefetch,
 }: CardWrapperProps) {
+  const leftActions: SwipeAction[] = onToggleFavorite
+    ? [
+        {
+          icon: Star,
+          label: letter.isFavorite ? 'Убрать' : 'В избранное',
+          color: letter.isFavorite ? 'warning' : 'primary',
+          onClick: () => onToggleFavorite(letter.id),
+        },
+      ]
+    : []
+
+  const rightActions: SwipeAction[] = [
+    {
+      icon: isSelected ? Square : CheckSquare,
+      label: isSelected ? 'Снять' : 'Выбрать',
+      color: isSelected ? 'warning' : 'success',
+      onClick: () => onToggleSelect(letter.id),
+    },
+  ]
+
   return (
     <div className="relative" onMouseEnter={() => onPrefetch?.(letter.id)}>
       <button
@@ -112,7 +133,9 @@ const CardWrapper = memo(function CardWrapper({
           />
         </svg>
       </button>
-      <LetterCard letter={letter} onToggleFavorite={onToggleFavorite} />
+      <SwipeableListItem leftActions={leftActions} rightActions={rightActions}>
+        <LetterCard letter={letter} onToggleFavorite={onToggleFavorite} />
+      </SwipeableListItem>
     </div>
   )
 })

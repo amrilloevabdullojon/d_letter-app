@@ -24,6 +24,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { RequestStats } from '@/components/RequestStats'
 import { RequestSLABadge } from '@/components/RequestSLABadge'
 import { ActiveFilters } from '@/components/ActiveFilters'
+import { PullToRefresh } from '@/components/PullToRefresh'
 
 type RequestStatus = 'NEW' | 'IN_REVIEW' | 'DONE' | 'SPAM' | 'CANCELLED'
 type RequestPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
@@ -356,170 +357,133 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
 
   if (!session) return null
 
+  const handlePullToRefresh = async () => {
+    setRefreshKey((prev) => prev + 1)
+  }
+
   return (
     <div className="app-shell min-h-screen bg-gray-900">
       <Header />
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-white">{'Заявки'}</h1>
-            {pagination && (
-              <p className="mt-1 text-sm text-slate-400">{`Всего: ${pagination.total}`}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              disabled={exporting || loading}
-              className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-white transition hover:bg-white/20 disabled:opacity-50"
-              title="Экспортировать в CSV"
-            >
-              {exporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
+      <PullToRefresh onRefresh={handlePullToRefresh}>
+        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-white">{'Заявки'}</h1>
+              {pagination && (
+                <p className="mt-1 text-sm text-slate-400">{`Всего: ${pagination.total}`}</p>
               )}
-              <span className="hidden sm:inline">Экспорт</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-white transition hover:bg-white/20"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Обновить</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Statistics Dashboard */}
-        <RequestStats key={refreshKey} />
-
-        {/* Active Filters */}
-        <ActiveFilters
-          filters={activeFilters}
-          onRemove={handleRemoveFilter}
-          onClearAll={handleClearAllFilters}
-        />
-
-        <div className="panel panel-soft panel-glass mb-6 space-y-3 rounded-2xl p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value)
-                  setPage(1)
-                }}
-                placeholder="Поиск по организации, контактам, описанию"
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pl-9 pr-4 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
-              />
             </div>
-            <button
-              type="button"
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white transition hover:bg-gray-700"
-              title="Изменить порядок сортировки"
-            >
-              <ArrowUpDown className="h-4 w-4" />
-              <span className="hidden md:inline">
-                {sortOrder === 'desc' ? 'Новые первые' : 'Старые первые'}
-              </span>
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <select
-              value={statusFilter}
-              onChange={(event) => {
-                setStatusFilter(event.target.value as RequestStatus | '')
-                setPage(1)
-              }}
-              className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="">Все статусы</option>
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={priorityFilter}
-              onChange={(event) => {
-                setPriorityFilter(event.target.value as RequestPriority | '')
-                setPage(1)
-              }}
-              className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="">Все приоритеты</option>
-              {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={categoryFilter}
-              onChange={(event) => {
-                setCategoryFilter(event.target.value as RequestCategory | '')
-                setPage(1)
-              }}
-              className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="">Все категории</option>
-              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            {(statusFilter || priorityFilter || categoryFilter || search) && (
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setStatusFilter('')
-                  setPriorityFilter('')
-                  setCategoryFilter('')
-                  setSearch('')
+                onClick={handleExportCSV}
+                disabled={exporting || loading}
+                className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-white transition hover:bg-white/20 disabled:opacity-50"
+                title="Экспортировать в CSV"
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">Экспорт</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-white transition hover:bg-white/20"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Обновить</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Statistics Dashboard */}
+          <RequestStats key={refreshKey} />
+
+          {/* Active Filters */}
+          <ActiveFilters
+            filters={activeFilters}
+            onRemove={handleRemoveFilter}
+            onClearAll={handleClearAllFilters}
+          />
+
+          <div className="panel panel-soft panel-glass mb-6 space-y-3 rounded-2xl p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value)
+                    setPage(1)
+                  }}
+                  placeholder="Поиск по организации, контактам, описанию"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pl-9 pr-4 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white transition hover:bg-gray-700"
+                title="Изменить порядок сортировки"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                <span className="hidden md:inline">
+                  {sortOrder === 'desc' ? 'Новые первые' : 'Старые первые'}
+                </span>
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <select
+                value={statusFilter}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value as RequestStatus | '')
                   setPage(1)
                 }}
-                className="px-3 py-2 text-sm text-slate-400 transition hover:text-white"
+                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
               >
-                Сбросить фильтры
-              </button>
-            )}
-          </div>
-        </div>
-
-        {error && !loading && (
-          <div className="panel panel-glass mb-6 rounded-2xl border border-red-500/30 p-4 text-red-300">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <RequestListSkeleton count={5} />
-        ) : requests.length === 0 ? (
-          <EmptyState
-            variant={
-              statusFilter || priorityFilter || categoryFilter || search ? 'search' : 'requests'
-            }
-            title={
-              statusFilter || priorityFilter || categoryFilter || search
-                ? 'Ничего не найдено'
-                : undefined
-            }
-            description={
-              statusFilter || priorityFilter || categoryFilter || search
-                ? 'Попробуйте изменить параметры поиска или сбросить фильтры'
-                : undefined
-            }
-            action={
-              statusFilter || priorityFilter || categoryFilter || search ? (
+                <option value="">Все статусы</option>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={priorityFilter}
+                onChange={(event) => {
+                  setPriorityFilter(event.target.value as RequestPriority | '')
+                  setPage(1)
+                }}
+                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="">Все приоритеты</option>
+                {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={categoryFilter}
+                onChange={(event) => {
+                  setCategoryFilter(event.target.value as RequestCategory | '')
+                  setPage(1)
+                }}
+                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="">Все категории</option>
+                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              {(statusFilter || priorityFilter || categoryFilter || search) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -529,124 +493,167 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
                     setSearch('')
                     setPage(1)
                   }}
-                  className="rounded-lg bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20"
+                  className="px-3 py-2 text-sm text-slate-400 transition hover:text-white"
                 >
                   Сбросить фильтры
                 </button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <div className="stagger-animation space-y-4">
-            {requests.map((request) => (
-              <Link
-                key={request.id}
-                href={`/requests/${request.id}`}
-                className={`panel panel-soft panel-glass card-hover block rounded-2xl p-5 ${
-                  request.priority === 'URGENT' ? 'urgent-card' : ''
-                }`}
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-3">
-                      {request.priority === 'URGENT' && (
-                        <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
-                      )}
-                      <span className="text-lg font-semibold text-white transition group-hover:text-emerald-300">
-                        {request.organization}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-300">
-                      {request.contactName}
-                      {' • '}
-                      {request.contactPhone}
-                      {' • '}
-                      {request.contactEmail}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[request.priority]}`}
-                      >
-                        <Flag className="h-3 w-3" />
-                        {PRIORITY_LABELS[request.priority]}
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded bg-purple-500/20 px-2 py-0.5 text-xs font-medium text-purple-300">
-                        <Tag className="h-3 w-3" />
-                        {CATEGORY_LABELS[request.category]}
-                      </span>
-                      <RequestSLABadge
-                        createdAt={request.createdAt}
-                        status={request.status}
-                        compact
-                      />
-                      {request.status === 'NEW' && (
-                        <span className="status-dot-new h-2 w-2 rounded-full bg-sky-400" />
-                      )}
-                    </div>
-                  </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[request.status]}`}
+              )}
+            </div>
+          </div>
+
+          {error && !loading && (
+            <div className="panel panel-glass mb-6 rounded-2xl border border-red-500/30 p-4 text-red-300">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <RequestListSkeleton count={5} />
+          ) : requests.length === 0 ? (
+            <EmptyState
+              variant={
+                statusFilter || priorityFilter || categoryFilter || search ? 'search' : 'requests'
+              }
+              title={
+                statusFilter || priorityFilter || categoryFilter || search
+                  ? 'Ничего не найдено'
+                  : undefined
+              }
+              description={
+                statusFilter || priorityFilter || categoryFilter || search
+                  ? 'Попробуйте изменить параметры поиска или сбросить фильтры'
+                  : undefined
+              }
+              action={
+                statusFilter || priorityFilter || categoryFilter || search ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter('')
+                      setPriorityFilter('')
+                      setCategoryFilter('')
+                      setSearch('')
+                      setPage(1)
+                    }}
+                    className="rounded-lg bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20"
                   >
-                    {STATUS_LABELS[request.status]}
-                  </span>
-                </div>
-
-                {request.description && (
-                  <p className="mt-3 line-clamp-2 text-sm text-slate-300/90">
-                    {request.description}
-                  </p>
-                )}
-
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                  <span>{formatDate(request.createdAt)}</span>
-                  <span>{`Файлов: ${request._count?.files ?? 0}`}</span>
-                  {(request._count?.comments ?? 0) > 0 && (
-                    <span className="inline-flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" />
-                      {request._count.comments}
+                    Сбросить фильтры
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <div className="stagger-animation space-y-4">
+              {requests.map((request) => (
+                <Link
+                  key={request.id}
+                  href={`/requests/${request.id}`}
+                  className={`panel panel-soft panel-glass card-hover block rounded-2xl p-5 ${
+                    request.priority === 'URGENT' ? 'urgent-card' : ''
+                  }`}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-3">
+                        {request.priority === 'URGENT' && (
+                          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
+                        )}
+                        <span className="text-lg font-semibold text-white transition group-hover:text-emerald-300">
+                          {request.organization}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-300">
+                        {request.contactName}
+                        {' • '}
+                        {request.contactPhone}
+                        {' • '}
+                        {request.contactEmail}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[request.priority]}`}
+                        >
+                          <Flag className="h-3 w-3" />
+                          {PRIORITY_LABELS[request.priority]}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded bg-purple-500/20 px-2 py-0.5 text-xs font-medium text-purple-300">
+                          <Tag className="h-3 w-3" />
+                          {CATEGORY_LABELS[request.category]}
+                        </span>
+                        <RequestSLABadge
+                          createdAt={request.createdAt}
+                          status={request.status}
+                          compact
+                        />
+                        {request.status === 'NEW' && (
+                          <span className="status-dot-new h-2 w-2 rounded-full bg-sky-400" />
+                        )}
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[request.status]}`}
+                    >
+                      {STATUS_LABELS[request.status]}
                     </span>
-                  )}
-                  <span>
-                    {`Ответственный: ${
-                      request.assignedTo?.name || request.assignedTo?.email || '—'
-                    }`}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+                  </div>
 
-        {pagination && pagination.totalPages > 1 && (
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-slate-400">
-              {`Показаны ${Math.min((page - 1) * limit + 1, pagination.total)}-${Math.min(
-                page * limit,
-                pagination.total
-              )} из ${pagination.total}`}
+                  {request.description && (
+                    <p className="mt-3 line-clamp-2 text-sm text-slate-300/90">
+                      {request.description}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                    <span>{formatDate(request.createdAt)}</span>
+                    <span>{`Файлов: ${request._count?.files ?? 0}`}</span>
+                    {(request._count?.comments ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        {request._count.comments}
+                      </span>
+                    )}
+                    <span>
+                      {`Ответственный: ${
+                        request.assignedTo?.name || request.assignedTo?.email || '—'
+                      }`}
+                    </span>
+                  </div>
+                </Link>
+              ))}
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                disabled={page <= 1}
-                className="rounded-lg bg-white/10 px-3 py-1.5 text-white transition hover:bg-white/20 disabled:opacity-40"
-              >
-                {'Назад'}
-              </button>
-              <span className="text-sm text-slate-300">{`${page} / ${pagination.totalPages}`}</span>
-              <button
-                type="button"
-                onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
-                disabled={page >= pagination.totalPages}
-                className="rounded-lg bg-white/10 px-3 py-1.5 text-white transition hover:bg-white/20 disabled:opacity-40"
-              >
-                {'Далее'}
-              </button>
+          )}
+
+          {pagination && pagination.totalPages > 1 && (
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-slate-400">
+                {`Показаны ${Math.min((page - 1) * limit + 1, pagination.total)}-${Math.min(
+                  page * limit,
+                  pagination.total
+                )} из ${pagination.total}`}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page <= 1}
+                  className="rounded-lg bg-white/10 px-3 py-1.5 text-white transition hover:bg-white/20 disabled:opacity-40"
+                >
+                  {'Назад'}
+                </button>
+                <span className="text-sm text-slate-300">{`${page} / ${pagination.totalPages}`}</span>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
+                  disabled={page >= pagination.totalPages}
+                  className="rounded-lg bg-white/10 px-3 py-1.5 text-white transition hover:bg-white/20 disabled:opacity-40"
+                >
+                  {'Далее'}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      </PullToRefresh>
     </div>
   )
 }

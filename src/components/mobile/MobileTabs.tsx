@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, ReactNode } from 'react'
+import { useState, useCallback, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { useSwipe } from '@/hooks/useSwipe'
+import { hapticSelectionChange } from '@/lib/haptic'
 
 export interface MobileTab {
   id?: string
@@ -35,9 +37,29 @@ export function MobileTabs({
   const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : internalActiveTab
   const setActiveTab = onChange || setInternalActiveTab
 
-  const activeTabContent = tabs.find(
-    (tab) => (tab.id || tab.value) === activeTab
-  )?.content
+  const activeTabContent = tabs.find((tab) => (tab.id || tab.value) === activeTab)?.content
+
+  const tabValues = tabs.map((tab) => tab.id || tab.value || '')
+  const activeIndex = tabValues.indexOf(activeTab)
+
+  const goToPrevTab = useCallback(() => {
+    if (activeIndex > 0) {
+      hapticSelectionChange()
+      setActiveTab(tabValues[activeIndex - 1])
+    }
+  }, [activeIndex, setActiveTab, tabValues])
+
+  const goToNextTab = useCallback(() => {
+    if (activeIndex < tabValues.length - 1) {
+      hapticSelectionChange()
+      setActiveTab(tabValues[activeIndex + 1])
+    }
+  }, [activeIndex, setActiveTab, tabValues])
+
+  const swipeHandlers = useSwipe(
+    { onSwipeLeft: goToNextTab, onSwipeRight: goToPrevTab },
+    { minSwipeDistance: 60, maxSwipeTime: 400 }
+  )
 
   return (
     <div className={cn('flex flex-col', className)}>
@@ -73,7 +95,13 @@ export function MobileTabs({
 
       {/* Tab Content - only render if content is provided (for uncontrolled mode) */}
       {activeTabContent && (
-        <div className="mt-4" role="tabpanel">
+        <div
+          className="mt-4"
+          role="tabpanel"
+          onTouchStart={swipeHandlers.onTouchStart}
+          onTouchMove={swipeHandlers.onTouchMove}
+          onTouchEnd={swipeHandlers.onTouchEnd}
+        >
           {activeTabContent}
         </div>
       )}

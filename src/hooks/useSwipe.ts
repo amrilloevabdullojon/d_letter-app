@@ -1,3 +1,4 @@
+import React from 'react'
 import { useEffect, useRef, useState } from 'react'
 
 export interface SwipeHandlers {
@@ -37,7 +38,7 @@ export function useSwipe(handlers: SwipeHandlers, config: SwipeConfig = {}) {
   const touchStart = useRef<TouchPosition | null>(null)
   const touchEnd = useRef<TouchPosition | null>(null)
 
-  const handleTouchStart = (e: TouchEvent) => {
+  const handleTouchStart = (e: TouchEvent | React.TouchEvent) => {
     touchEnd.current = null
     touchStart.current = {
       x: e.touches[0].clientX,
@@ -46,7 +47,7 @@ export function useSwipe(handlers: SwipeHandlers, config: SwipeConfig = {}) {
     }
   }
 
-  const handleTouchMove = (e: TouchEvent) => {
+  const handleTouchMove = (e: TouchEvent | React.TouchEvent) => {
     if (preventDefaultTouchmoveEvent) {
       e.preventDefault()
     }
@@ -110,13 +111,13 @@ export function useSwipeRef<T extends HTMLElement>(
     const element = ref.current
     if (!element) return
 
-    element.addEventListener('touchstart', swipeHandlers.onTouchStart)
-    element.addEventListener('touchmove', swipeHandlers.onTouchMove)
+    element.addEventListener('touchstart', swipeHandlers.onTouchStart as EventListener)
+    element.addEventListener('touchmove', swipeHandlers.onTouchMove as EventListener)
     element.addEventListener('touchend', swipeHandlers.onTouchEnd)
 
     return () => {
-      element.removeEventListener('touchstart', swipeHandlers.onTouchStart)
-      element.removeEventListener('touchmove', swipeHandlers.onTouchMove)
+      element.removeEventListener('touchstart', swipeHandlers.onTouchStart as EventListener)
+      element.removeEventListener('touchmove', swipeHandlers.onTouchMove as EventListener)
       element.removeEventListener('touchend', swipeHandlers.onTouchEnd)
     }
   }, [swipeHandlers])
