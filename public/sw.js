@@ -1,5 +1,7 @@
 // Service Worker for DMED Letters
-const CACHE_NAME = 'dmed-letters-v3'
+const CACHE_NAME = 'dmed-letters-v4'
+const API_CACHE_NAME = 'dmed-letters-api-v1'
+const API_CACHE_MAX_AGE = 5 * 60 * 1000 // 5 minutes
 const STATIC_ASSETS = [
   '/favicon.svg',
   '/apple-touch-icon.svg',
@@ -8,18 +10,30 @@ const STATIC_ASSETS = [
   '/offline.html',
 ]
 
+// API paths that should be cached with network-first strategy
+const CACHEABLE_API_PATTERNS = ['/api/letters', '/api/notifications', '/api/requests', '/api/users']
+
+// API paths that should never be cached
+const NO_CACHE_API_PATTERNS = ['/api/auth', '/api/push', '/api/sync', '/api/upload']
+
+function isCacheableApi(url) {
+  if (NO_CACHE_API_PATTERNS.some((p) => url.includes(p))) return false
+  return CACHEABLE_API_PATTERNS.some((p) => url.includes(p))
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)))
   self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
+  const keepCaches = [CACHE_NAME, API_CACHE_NAME]
   event.waitUntil(
     caches
       .keys()
       .then((cacheNames) =>
         Promise.all(
-          cacheNames.filter((name) => name != CACHE_NAME).map((name) => caches.delete(name))
+          cacheNames.filter((name) => !keepCaches.includes(name)).map((name) => caches.delete(name))
         )
       )
   )
@@ -32,6 +46,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   if (!request.url.startsWith('http')) return
 
+  // Navigation requests: network with offline fallback
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() =>
@@ -41,11 +56,37 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // Cacheable API requests: network-first with cache fallback
+  if (request.url.includes('/api/') && isCacheableApi(request.url)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(API_CACHE_NAME).then((cache) => cache.put(request, copy))
+          }
+          return response
+        })
+        .catch(() =>
+          caches.match(request).then((cached) => {
+            if (cached) return cached
+            return new Response(JSON.stringify({ error: 'offline', cached: false }), {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          })
+        )
+    )
+    return
+  }
+
+  // Non-cacheable API requests: network only
   if (request.url.includes('/api/')) {
     event.respondWith(fetch(request))
     return
   }
 
+  // Static assets: cache-first
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached
@@ -61,8 +102,29 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') {
+  const data = event.data
+
+  if (data === 'SKIP_WAITING' || data?.type === 'SKIP_WAITING') {
     self.skipWaiting()
+  }
+
+  if (data?.type === 'CLEAR_CACHE') {
+    caches.delete(API_CACHE_NAME)
+    caches.delete(CACHE_NAME).then(() => {
+      caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    })
+  }
+
+  if (data?.type === 'CACHE_URLS' && Array.isArray(data.urls)) {
+    caches.open(API_CACHE_NAME).then((cache) => {
+      data.urls.forEach((url) => {
+        fetch(url)
+          .then((response) => {
+            if (response.ok) cache.put(url, response)
+          })
+          .catch(() => {})
+      })
+    })
   }
 })
 
