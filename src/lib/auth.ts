@@ -46,9 +46,8 @@ export const authOptions: AuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      // SECURITY: Disabled dangerous email linking to prevent account takeover
-      // Users must manually link accounts through profile settings
-      allowDangerousEmailAccountLinking: false,
+      // Allow linking OAuth account to existing user with same email
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
   // Use JWT strategy for better performance (no DB query on each request)
