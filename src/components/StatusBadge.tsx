@@ -2,7 +2,17 @@
 
 import type { LetterStatus } from '@/types/prisma'
 import { STATUS_LABELS } from '@/lib/utils'
-import { Circle, CircleDot, Clock, HelpCircle, CheckCircle, CheckCircle2 } from 'lucide-react'
+import {
+  Circle,
+  CircleDot,
+  Clock,
+  HelpCircle,
+  CheckCircle,
+  CheckCircle2,
+  Snowflake,
+  XCircle,
+  RefreshCw,
+} from 'lucide-react'
 
 interface StatusBadgeProps {
   status: LetterStatus
@@ -73,6 +83,24 @@ export function StatusBadge({ status, size = 'md', mobileOptimized = false }: St
       border: 'border-teal-400/30',
       icon: CheckCircle2,
     },
+    FROZEN: {
+      bg: 'bg-blue-500/10',
+      text: 'text-blue-200',
+      border: 'border-blue-400/30',
+      icon: Snowflake,
+    },
+    REJECTED: {
+      bg: 'bg-red-500/10',
+      text: 'text-red-200',
+      border: 'border-red-400/30',
+      icon: XCircle,
+    },
+    PROCESSED: {
+      bg: 'bg-purple-500/10',
+      text: 'text-purple-200',
+      border: 'border-purple-400/30',
+      icon: RefreshCw,
+    },
   }
 
   const styles = statusStyles[status]
@@ -87,5 +115,3 @@ export function StatusBadge({ status, size = 'md', mobileOptimized = false }: St
     </span>
   )
 }
-
-

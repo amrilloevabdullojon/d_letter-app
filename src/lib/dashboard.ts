@@ -90,6 +90,9 @@ const emptyByStatus: Record<LetterStatus, number> = {
   CLARIFICATION: 0,
   READY: 0,
   DONE: 0,
+  FROZEN: 0,
+  REJECTED: 0,
+  PROCESSED: 0,
 }
 
 export async function getDashboardData(session: Session): Promise<DashboardData> {
@@ -140,6 +143,9 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
         cnt_clarification: bigint
         cnt_ready: bigint
         cnt_done: bigint
+        cnt_frozen: bigint
+        cnt_rejected: bigint
+        cnt_processed: bigint
       }>
     >`
       SELECT
@@ -155,7 +161,10 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
         COUNT(*) FILTER (WHERE "status" = 'IN_PROGRESS') AS cnt_in_progress,
         COUNT(*) FILTER (WHERE "status" = 'CLARIFICATION') AS cnt_clarification,
         COUNT(*) FILTER (WHERE "status" = 'READY') AS cnt_ready,
-        COUNT(*) FILTER (WHERE "status" = 'DONE') AS cnt_done
+        COUNT(*) FILTER (WHERE "status" = 'DONE') AS cnt_done,
+        COUNT(*) FILTER (WHERE "status" = 'FROZEN') AS cnt_frozen,
+        COUNT(*) FILTER (WHERE "status" = 'REJECTED') AS cnt_rejected,
+        COUNT(*) FILTER (WHERE "status" = 'PROCESSED') AS cnt_processed
       FROM "Letter"
       WHERE "deletedAt" IS NULL
     `
@@ -168,6 +177,9 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
       CLARIFICATION: Number(stats.cnt_clarification),
       READY: Number(stats.cnt_ready),
       DONE: Number(stats.cnt_done),
+      FROZEN: Number(stats.cnt_frozen),
+      REJECTED: Number(stats.cnt_rejected),
+      PROCESSED: Number(stats.cnt_processed),
     }
 
     const done = byStatus.READY + byStatus.DONE

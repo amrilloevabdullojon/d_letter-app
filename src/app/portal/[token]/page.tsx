@@ -21,6 +21,9 @@ const STATUS_LABELS_UZ: Record<LetterStatus, string> = {
   CLARIFICATION: 'aniqlashtirishda',
   READY: 'tayyor',
   DONE: 'bajarildi',
+  FROZEN: 'muzlatilgan',
+  REJECTED: 'rad etildi',
+  PROCESSED: 'qayta ishlangan',
 }
 
 type PageProps = {
