@@ -10,8 +10,11 @@ const DEFAULT_STATUS_CONFIG = [
   { status: 'ACCEPTED', label: 'Принят', color: '#3B82F6', order: 1 },
   { status: 'IN_PROGRESS', label: 'В работе', color: '#F59E0B', order: 2 },
   { status: 'CLARIFICATION', label: 'На уточнении', color: '#A855F7', order: 3 },
-  { status: 'READY', label: 'Готово', color: '#22C55E', order: 4 },
-  { status: 'DONE', label: 'Сделано', color: '#14B8A6', order: 5 },
+  { status: 'FROZEN', label: 'Заморожен', color: '#60A5FA', order: 4 },
+  { status: 'REJECTED', label: 'Отклонён', color: '#EF4444', order: 5 },
+  { status: 'READY', label: 'Готово', color: '#22C55E', order: 6 },
+  { status: 'PROCESSED', label: 'Обработано', color: '#6366F1', order: 7 },
+  { status: 'DONE', label: 'Сделано', color: '#14B8A6', order: 8 },
 ] as const
 
 // GET - получить все настройки статусов

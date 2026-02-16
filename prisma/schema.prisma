@@ -340,7 +340,10 @@ enum LetterStatus {
   ACCEPTED      // принят
   IN_PROGRESS   // взято в работу
   CLARIFICATION // на уточнении
+  FROZEN        // заморожен
+  REJECTED      // отклонён
   READY         // готово
+  PROCESSED     // обработано
   DONE          // сделано
 }
 

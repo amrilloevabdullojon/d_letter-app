@@ -20,7 +20,10 @@ const letterStatuses: [LetterStatus, ...LetterStatus[]] = [
   'ACCEPTED',
   'IN_PROGRESS',
   'CLARIFICATION',
+  'FROZEN',
+  'REJECTED',
   'READY',
+  'PROCESSED',
   'DONE',
 ]
 
@@ -129,6 +132,8 @@ export const letterFiltersSchema = z.object({
   owner: z.string().cuid().optional(),
   type: z.string().optional(),
   search: z.string().max(200).optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
   filter: z
     .enum(['overdue', 'urgent', 'done', 'active', 'favorites', 'unassigned', 'mine'])
     .optional(),

@@ -9,6 +9,9 @@ import {
   CheckCircle2,
   CheckCheck,
   Loader2,
+  Snowflake,
+  XCircle,
+  ClipboardCheck,
 } from 'lucide-react'
 import type { LetterStatus } from '@/types/prisma'
 import { STATUS_LABELS } from '@/lib/utils'
@@ -46,11 +49,29 @@ const STATUS_CONFIG: Record<
     bgColor: 'bg-purple-500/10',
     ringColor: 'ring-purple-500/30',
   },
+  FROZEN: {
+    icon: Snowflake,
+    color: 'text-blue-300',
+    bgColor: 'bg-blue-500/10',
+    ringColor: 'ring-blue-500/30',
+  },
+  REJECTED: {
+    icon: XCircle,
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/10',
+    ringColor: 'ring-red-500/30',
+  },
   READY: {
     icon: CheckCircle2,
     color: 'text-teal-400',
     bgColor: 'bg-teal-500/10',
     ringColor: 'ring-teal-500/30',
+  },
+  PROCESSED: {
+    icon: ClipboardCheck,
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/10',
+    ringColor: 'ring-indigo-500/30',
   },
   DONE: {
     icon: CheckCheck,
@@ -65,7 +86,10 @@ const STATUSES: LetterStatus[] = [
   'ACCEPTED',
   'IN_PROGRESS',
   'CLARIFICATION',
+  'FROZEN',
+  'REJECTED',
   'READY',
+  'PROCESSED',
   'DONE',
 ]
 

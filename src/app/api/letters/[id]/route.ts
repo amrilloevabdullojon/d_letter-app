@@ -114,51 +114,59 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // ✅ КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Объединяем ВСЕ DB queries в один Promise.all
     // Это снижает время удержания подключений и предотвращает connection pool exhaustion
-    const [letter, totalCommentsResult, isWatchingResult, previewCommentsData, prevLetter, nextLetter] =
-      await Promise.all([
-        // 1. Основной запрос письма
-        prisma.letter.findUnique({
-          where: { id },
-          include,
-        }),
+    const [
+      letter,
+      totalCommentsResult,
+      isWatchingResult,
+      previewCommentsData,
+      prevLetter,
+      nextLetter,
+    ] = await Promise.all([
+      // 1. Основной запрос письма
+      prisma.letter.findUnique({
+        where: { id },
+        include,
+      }),
 
-        // 2. Count comments (только если НЕ summaryMode или если нужен preview)
-        summaryMode && !commentsPreview
-          ? Promise.resolve(null)
-          : prisma.comment.count({ where: { letterId: id, parentId: null } }),
+      // 2. Count comments (только если НЕ summaryMode или если нужен preview)
+      summaryMode && !commentsPreview
+        ? Promise.resolve(null)
+        : prisma.comment.count({ where: { letterId: id, parentId: null } }),
 
-        // 3. Check if watching (только для summaryMode)
-        summaryMode
-          ? prisma.watcher.findFirst({
-              where: { letterId: id, userId: session.user.id },
-              select: { id: true },
-            })
-          : Promise.resolve(null),
+      // 3. Check if watching (только для summaryMode)
+      summaryMode
+        ? prisma.watcher.findFirst({
+            where: { letterId: id, userId: session.user.id },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
 
-        // 4. Preview comments (только если summaryMode && commentsPreview)
-        summaryMode && commentsPreview
-          ? Promise.all([
-              prisma.comment.findMany({
-                where: { letterId: id, parentId: null },
-                orderBy: { createdAt: 'desc' as const },
-                take: commentsLimit,
-                skip: commentsSkip,
-                include: {
-                  author: { select: { id: true, name: true, email: true, image: true } },
-                  _count: { select: { replies: true } },
-                },
-              }),
-              prisma.comment.count({ where: { letterId: id, parentId: null } }),
-            ])
-          : Promise.resolve(null),
+      // 4. Preview comments (только если summaryMode && commentsPreview)
+      summaryMode && commentsPreview
+        ? Promise.all([
+            prisma.comment.findMany({
+              where: { letterId: id, parentId: null },
+              orderBy: { createdAt: 'desc' as const },
+              take: commentsLimit,
+              skip: commentsSkip,
+              include: {
+                author: { select: { id: true, name: true, email: true, image: true } },
+                _count: { select: { replies: true } },
+              },
+            }),
+            prisma.comment.count({ where: { letterId: id, parentId: null } }),
+          ])
+        : Promise.resolve(null),
 
-        // 5. Previous letter (только если neighborsMode)
-        neighborsMode
-          ? prisma.letter.findFirst({
+      // 5. Previous letter (только если neighborsMode)
+      neighborsMode
+        ? prisma.letter
+            .findFirst({
               where: baseWhere,
               orderBy: { createdAt: 'desc' },
               select: { id: true, number: true, org: true, createdAt: true },
-            }).then(async (firstLetter) => {
+            })
+            .then(async (firstLetter) => {
               if (!firstLetter) return null
               // Нужна createdAt письма, но она еще не загружена, так что делаем второй запрос
               // Лучше делать это здесь в Promise.all, чем sequential
@@ -173,15 +181,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 select: { id: true, number: true, org: true },
               })
             })
-          : Promise.resolve(null),
+        : Promise.resolve(null),
 
-        // 6. Next letter (только если neighborsMode)
-        neighborsMode
-          ? prisma.letter.findFirst({
+      // 6. Next letter (только если neighborsMode)
+      neighborsMode
+        ? prisma.letter
+            .findFirst({
               where: baseWhere,
               orderBy: { createdAt: 'asc' },
               select: { id: true, number: true, org: true, createdAt: true },
-            }).then(async (lastLetter) => {
+            })
+            .then(async (lastLetter) => {
               if (!lastLetter) return null
               const currentLetter = await prisma.letter.findUnique({
                 where: { id },
@@ -194,8 +204,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 select: { id: true, number: true, org: true },
               })
             })
-          : Promise.resolve(null),
-      ])
+        : Promise.resolve(null),
+    ])
 
     if (!letter) {
       return NextResponse.json({ error: 'Letter not found' }, { status: 404 })
@@ -502,6 +512,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           updateData.owner = { disconnect: true }
         }
         break
+
+      case 'ijroDate': {
+        const parsed = value ? parseDateValue(value) : null
+        if (value && !parsed) {
+          return NextResponse.json({ error: 'Invalid ijro date' }, { status: 400 })
+        }
+        oldValue = letter.ijroDate ? letter.ijroDate.toISOString() : null
+        newValue = parsed ? parsed.toISOString() : null
+        updateData.ijroDate = parsed
+        break
+      }
+
+      case 'closeDate': {
+        const parsed = value ? parseDateValue(value) : null
+        if (value && !parsed) {
+          return NextResponse.json({ error: 'Invalid close date' }, { status: 400 })
+        }
+        oldValue = letter.closeDate ? letter.closeDate.toISOString() : null
+        newValue = parsed ? parsed.toISOString() : null
+        updateData.closeDate = parsed
+        break
+      }
 
       default:
         return NextResponse.json({ error: 'Invalid field' }, { status: 400 })

@@ -87,7 +87,10 @@ export const STATUSES: (LetterStatus | 'all')[] = [
   'ACCEPTED',
   'IN_PROGRESS',
   'CLARIFICATION',
+  'FROZEN',
+  'REJECTED',
   'READY',
+  'PROCESSED',
   'DONE',
 ]
 

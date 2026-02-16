@@ -77,6 +77,12 @@ export function buildLettersParams(
   if (search) {
     params.set('search', search)
   }
+  if (filters.dateFrom) {
+    params.set('dateFrom', filters.dateFrom)
+  }
+  if (filters.dateTo) {
+    params.set('dateTo', filters.dateTo)
+  }
 
   return params
 }

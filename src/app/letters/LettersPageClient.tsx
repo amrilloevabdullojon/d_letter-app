@@ -87,6 +87,7 @@ import {
   FileText,
   Users,
   ListPlus,
+  CalendarDays,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/components/Toast'
@@ -166,6 +167,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const [quickFilter, setQuickFilter] = useState(initialFilters.quickFilter)
   const [ownerFilter, setOwnerFilter] = useState(initialFilters.owner)
   const [typeFilter, setTypeFilter] = useState(initialFilters.type)
+  const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') || '')
+  const [dateTo, setDateTo] = useState(searchParams.get('dateTo') || '')
   const [viewMode, setViewMode] = useLocalStorage<ViewMode>('letters-view-mode', 'table')
   const [sortBy, setSortBy] = useState<SortField>(initialFilters.sortBy)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(initialFilters.sortOrder)
@@ -258,8 +261,10 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     if (quickFilter) count += 1
     if (ownerFilter) count += 1
     if (typeFilter) count += 1
+    if (dateFrom) count += 1
+    if (dateTo) count += 1
     return count
-  }, [search, statusFilter, quickFilter, ownerFilter, typeFilter])
+  }, [search, statusFilter, quickFilter, ownerFilter, typeFilter, dateFrom, dateTo])
 
   // ✅ PERF: Memoize letter stats instead of computing .filter() inline in JSX on every render
   const letterStats = useMemo(() => {
@@ -268,7 +273,14 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     let inProgress = 0
     const now = Date.now()
     for (const l of letters) {
-      if (l.status === 'DONE' || l.status === 'READY') continue
+      if (
+        l.status === 'DONE' ||
+        l.status === 'READY' ||
+        l.status === 'PROCESSED' ||
+        l.status === 'FROZEN' ||
+        l.status === 'REJECTED'
+      )
+        continue
       if (l.status === 'IN_PROGRESS') inProgress++
       const days = Math.ceil((new Date(l.deadlineDate).getTime() - now) / (1000 * 60 * 60 * 24))
       if (days < 0) overdue++
@@ -496,6 +508,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     if (quickFilter) params.set('filter', quickFilter)
     if (ownerFilter) params.set('owner', ownerFilter)
     if (typeFilter) params.set('type', typeFilter)
+    if (dateFrom) params.set('dateFrom', dateFrom)
+    if (dateTo) params.set('dateTo', dateTo)
     if (sortBy !== 'created') params.set('sortBy', sortBy)
     if (sortOrder !== 'desc') params.set('sortOrder', sortOrder)
     if (page !== 1) params.set('page', String(page))
@@ -504,7 +518,18 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     if (querySyncRef.current === nextQuery) return
     querySyncRef.current = nextQuery
     router.replace(nextQuery ? `/letters?${nextQuery}` : '/letters')
-  }, [statusFilter, quickFilter, ownerFilter, typeFilter, sortBy, sortOrder, page, router])
+  }, [
+    statusFilter,
+    quickFilter,
+    ownerFilter,
+    typeFilter,
+    dateFrom,
+    dateTo,
+    sortBy,
+    sortOrder,
+    page,
+    router,
+  ])
 
   // Data loading
   const loadLetters = useCallback(
@@ -529,6 +554,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
         if (quickFilter) params.set('filter', quickFilter)
         if (ownerFilter) params.set('owner', ownerFilter)
         if (typeFilter) params.set('type', typeFilter)
+        if (dateFrom) params.set('dateFrom', dateFrom)
+        if (dateTo) params.set('dateTo', dateTo)
         const currentSearch = searchRef.current
         if (currentSearch) params.set('search', currentSearch)
 
@@ -587,7 +614,18 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
         }
       }
     },
-    [page, limit, sortBy, sortOrder, statusFilter, quickFilter, ownerFilter, typeFilter]
+    [
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      statusFilter,
+      quickFilter,
+      ownerFilter,
+      typeFilter,
+      dateFrom,
+      dateTo,
+    ]
   )
 
   const loadUsers = useCallback(async () => {
@@ -666,6 +704,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     setQuickFilter('')
     setOwnerFilter('')
     setTypeFilter('')
+    setDateFrom('')
+    setDateTo('')
     setSortBy('created')
     setSortOrder('desc')
     goToPage(1)
@@ -733,7 +773,18 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     if (!session || isFirstFilterLoadRef.current) return
     // Используем contentOnly для показа локального лоадера вместо полной перезагрузки
     loadLetters({ showLoading: false, contentOnly: true })
-  }, [page, limit, sortBy, sortOrder, statusFilter, quickFilter, ownerFilter, typeFilter])
+  }, [
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    statusFilter,
+    quickFilter,
+    ownerFilter,
+    typeFilter,
+    dateFrom,
+    dateTo,
+  ])
 
   useEffect(() => {
     if (!session || !canManageUsers) return
@@ -1256,6 +1307,15 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                       {LETTER_TYPES.find((item) => item.value === typeFilter)?.label || typeFilter}
                     </span>
                   )}
+                  {(dateFrom || dateTo) && (
+                    <span className="rounded-lg bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-300 ring-1 ring-violet-500/20">
+                      {dateFrom && dateTo
+                        ? `${dateFrom} — ${dateTo}`
+                        : dateFrom
+                          ? `от ${dateFrom}`
+                          : `до ${dateTo}`}
+                    </span>
+                  )}
                   <button
                     onClick={resetFilters}
                     className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300 ring-1 ring-red-500/20 transition hover:bg-red-500/20"
@@ -1340,6 +1400,44 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Date from filter */}
+                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px]">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20">
+                    <CalendarDays className="h-4 w-4 text-violet-400" />
+                  </div>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => {
+                      setDateFrom(e.target.value)
+                      goToPage(1)
+                    }}
+                    disabled={filtersDisabled}
+                    className="h-8 min-w-0 flex-1 bg-transparent text-sm text-white [color-scheme:dark] focus:outline-none disabled:opacity-50"
+                    aria-label="Дата от"
+                    title="Дата от"
+                  />
+                </div>
+
+                {/* Date to filter */}
+                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px]">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20">
+                    <CalendarDays className="h-4 w-4 text-violet-400" />
+                  </div>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => {
+                      setDateTo(e.target.value)
+                      goToPage(1)
+                    }}
+                    disabled={filtersDisabled}
+                    className="h-8 min-w-0 flex-1 bg-transparent text-sm text-white [color-scheme:dark] focus:outline-none disabled:opacity-50"
+                    aria-label="Дата до"
+                    title="Дата до"
+                  />
                 </div>
 
                 {activeFiltersCount > 0 && (

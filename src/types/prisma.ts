@@ -5,7 +5,10 @@ export type LetterStatus =
   | 'ACCEPTED'
   | 'IN_PROGRESS'
   | 'CLARIFICATION'
+  | 'FROZEN'
+  | 'REJECTED'
   | 'READY'
+  | 'PROCESSED'
   | 'DONE'
 
 export type RequestCategory =

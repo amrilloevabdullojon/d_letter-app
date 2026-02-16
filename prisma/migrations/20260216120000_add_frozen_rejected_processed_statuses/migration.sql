@@ -1,0 +1,4 @@
+-- AlterEnum
+ALTER TYPE "LetterStatus" ADD VALUE 'FROZEN';
+ALTER TYPE "LetterStatus" ADD VALUE 'REJECTED';
+ALTER TYPE "LetterStatus" ADD VALUE 'PROCESSED';

@@ -25,7 +25,10 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
     accepted,
     inProgress,
     clarification,
+    frozen,
+    rejected,
     ready,
+    processed,
     done,
     overdue,
     dueToday,
@@ -42,7 +45,10 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
     prisma.letter.count({ where: { ...where, status: 'ACCEPTED' } }),
     prisma.letter.count({ where: { ...where, status: 'IN_PROGRESS' } }),
     prisma.letter.count({ where: { ...where, status: 'CLARIFICATION' } }),
+    prisma.letter.count({ where: { ...where, status: 'FROZEN' } }),
+    prisma.letter.count({ where: { ...where, status: 'REJECTED' } }),
     prisma.letter.count({ where: { ...where, status: 'READY' } }),
+    prisma.letter.count({ where: { ...where, status: 'PROCESSED' } }),
     prisma.letter.count({ where: { ...where, status: 'DONE' } }),
 
     // Просроченные
@@ -50,7 +56,7 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
       where: {
         ...where,
         deadlineDate: { lt: new Date() },
-        status: { not: 'DONE' },
+        status: { notIn: ['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'] },
       },
     }),
 
@@ -62,7 +68,7 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
           gte: new Date(new Date().setHours(0, 0, 0, 0)),
           lt: new Date(new Date().setHours(23, 59, 59, 999)),
         },
-        status: { not: 'DONE' },
+        status: { notIn: ['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'] },
       },
     }),
 
@@ -74,7 +80,7 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
           gte: new Date(),
           lt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
-        status: { not: 'DONE' },
+        status: { notIn: ['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'] },
       },
     }),
 
@@ -96,7 +102,10 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
       ACCEPTED: accepted,
       IN_PROGRESS: inProgress,
       CLARIFICATION: clarification,
+      FROZEN: frozen,
+      REJECTED: rejected,
       READY: ready,
+      PROCESSED: processed,
       DONE: done,
     },
     deadlines: {
@@ -142,8 +151,12 @@ export async function getLetterTrends(
     const current = grouped.get(key) || { created: 0, done: 0, overdue: 0 }
 
     current.created++
-    if (letter.status === 'DONE') current.done++
-    if (new Date(letter.deadlineDate) < new Date() && letter.status !== 'DONE') {
+    if (letter.status === 'DONE' || letter.status === 'PROCESSED' || letter.status === 'READY')
+      current.done++
+    if (
+      new Date(letter.deadlineDate) < new Date() &&
+      !['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'].includes(letter.status)
+    ) {
       current.overdue++
     }
 
@@ -174,13 +187,15 @@ export async function getOrganizationStats(filters: AnalyticsFilters = {}, limit
     orgs.map(async (org) => {
       const [total, done, overdue, avgPriority] = await Promise.all([
         prisma.letter.count({ where: { ...where, org: org.org } }),
-        prisma.letter.count({ where: { ...where, org: org.org, status: 'DONE' } }),
+        prisma.letter.count({
+          where: { ...where, org: org.org, status: { in: ['DONE', 'READY', 'PROCESSED'] } },
+        }),
         prisma.letter.count({
           where: {
             ...where,
             org: org.org,
             deadlineDate: { lt: new Date() },
-            status: { not: 'DONE' },
+            status: { notIn: ['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'] },
           },
         }),
         prisma.letter.aggregate({
@@ -232,13 +247,19 @@ export async function getUserStats(filters: AnalyticsFilters = {}, limit = 10) {
           select: { id: true, name: true, email: true },
         }),
         prisma.letter.count({ where: { ...where, ownerId: user.ownerId } }),
-        prisma.letter.count({ where: { ...where, ownerId: user.ownerId, status: 'DONE' } }),
+        prisma.letter.count({
+          where: {
+            ...where,
+            ownerId: user.ownerId,
+            status: { in: ['DONE', 'READY', 'PROCESSED'] },
+          },
+        }),
         prisma.letter.count({
           where: {
             ...where,
             ownerId: user.ownerId,
             deadlineDate: { lt: new Date() },
-            status: { not: 'DONE' },
+            status: { notIn: ['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'] },
           },
         }),
         prisma.letter.count({
@@ -295,7 +316,7 @@ export async function getPerformanceMetrics(filters: AnalyticsFilters = {}) {
     where: {
       ...where,
       answer: { not: null },
-      status: 'DONE',
+      status: { in: ['DONE', 'READY', 'PROCESSED'] },
     },
     select: {
       id: true,

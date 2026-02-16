@@ -8,7 +8,10 @@ export const STATUS_LABELS: Record<LetterStatus, string> = {
   ACCEPTED: 'принят',
   IN_PROGRESS: 'взято в работу',
   CLARIFICATION: 'на уточнении',
+  FROZEN: 'заморожен',
+  REJECTED: 'отклонён',
   READY: 'готово',
+  PROCESSED: 'обработано',
   DONE: 'сделано',
 }
 
@@ -17,11 +20,14 @@ export const STATUS_LABELS: Record<LetterStatus, string> = {
  */
 export const STATUS_FROM_LABEL: Record<string, LetterStatus> = {
   'не рассмотрен': 'NOT_REVIEWED',
-  'принят': 'ACCEPTED',
+  принят: 'ACCEPTED',
   'взято в работу': 'IN_PROGRESS',
   'на уточнении': 'CLARIFICATION',
-  'готово': 'READY',
-  'сделано': 'DONE',
+  заморожен: 'FROZEN',
+  отклонён: 'REJECTED',
+  готово: 'READY',
+  обработано: 'PROCESSED',
+  сделано: 'DONE',
 }
 
 /**
@@ -32,7 +38,10 @@ export const STATUS_COLORS: Record<LetterStatus, string> = {
   ACCEPTED: 'bg-sky-500/20 text-sky-200 ring-1 ring-sky-400/30',
   IN_PROGRESS: 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/40',
   CLARIFICATION: 'bg-cyan-500/20 text-cyan-200 ring-1 ring-cyan-400/40',
+  FROZEN: 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/30',
+  REJECTED: 'bg-red-500/20 text-red-200 ring-1 ring-red-400/30',
   READY: 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40',
+  PROCESSED: 'bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-400/40',
   DONE: 'bg-teal-500/20 text-teal-200 ring-1 ring-teal-400/40',
 }
 
@@ -40,5 +49,5 @@ export const STATUS_COLORS: Record<LetterStatus, string> = {
  * Check if status represents a completed state
  */
 export function isDoneStatus(status: LetterStatus): boolean {
-  return status === 'READY' || status === 'DONE'
+  return status === 'READY' || status === 'DONE' || status === 'PROCESSED'
 }

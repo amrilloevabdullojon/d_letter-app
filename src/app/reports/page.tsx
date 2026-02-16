@@ -106,7 +106,10 @@ const STATUS_CHART_COLORS: Record<LetterStatus, string> = {
   ACCEPTED: '#3b82f6',
   IN_PROGRESS: '#f59e0b',
   CLARIFICATION: '#8b5cf6',
+  FROZEN: '#60a5fa',
+  REJECTED: '#ef4444',
   READY: '#22c55e',
+  PROCESSED: '#6366f1',
   DONE: '#10b981',
 }
 
@@ -115,7 +118,10 @@ const REPORT_STATUS_OPTIONS: LetterStatus[] = [
   'ACCEPTED',
   'IN_PROGRESS',
   'CLARIFICATION',
+  'FROZEN',
+  'REJECTED',
   'READY',
+  'PROCESSED',
   'DONE',
 ]
 
@@ -2583,5 +2589,3 @@ export default function ReportsPage() {
     </div>
   )
 }
-
-

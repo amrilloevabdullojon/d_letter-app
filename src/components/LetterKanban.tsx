@@ -49,7 +49,10 @@ const KANBAN_STATUSES: LetterStatus[] = [
   'ACCEPTED',
   'IN_PROGRESS',
   'CLARIFICATION',
+  'FROZEN',
+  'REJECTED',
   'READY',
+  'PROCESSED',
   'DONE',
 ]
 
@@ -59,7 +62,10 @@ const DEFAULT_WIP_LIMITS: Record<LetterStatus, number> = {
   ACCEPTED: 10,
   IN_PROGRESS: 5,
   CLARIFICATION: 5,
+  FROZEN: 0, // 0 = без лимита
+  REJECTED: 0, // 0 = без лимита
   READY: 10,
+  PROCESSED: 0, // 0 = без лимита
   DONE: 0, // 0 = без лимита
 }
 
@@ -91,11 +97,29 @@ const STATUS_COLORS: Record<
     text: 'text-purple-400',
     glow: 'shadow-purple-500/20',
   },
+  FROZEN: {
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-400/30',
+    text: 'text-blue-300',
+    glow: 'shadow-blue-500/20',
+  },
+  REJECTED: {
+    bg: 'bg-red-500/10',
+    border: 'border-red-500/30',
+    text: 'text-red-400',
+    glow: 'shadow-red-500/20',
+  },
   READY: {
     bg: 'bg-emerald-500/10',
     border: 'border-emerald-500/30',
     text: 'text-emerald-400',
     glow: 'shadow-emerald-500/20',
+  },
+  PROCESSED: {
+    bg: 'bg-indigo-500/10',
+    border: 'border-indigo-500/30',
+    text: 'text-indigo-400',
+    glow: 'shadow-indigo-500/20',
   },
   DONE: {
     bg: 'bg-teal-500/10',

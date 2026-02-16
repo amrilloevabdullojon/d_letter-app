@@ -63,7 +63,10 @@ export class LetterQueryBuilder {
           | 'ACCEPTED'
           | 'IN_PROGRESS'
           | 'CLARIFICATION'
+          | 'FROZEN'
+          | 'REJECTED'
           | 'READY'
+          | 'PROCESSED'
           | 'DONE'
         )[],
       }
@@ -73,7 +76,10 @@ export class LetterQueryBuilder {
         | 'ACCEPTED'
         | 'IN_PROGRESS'
         | 'CLARIFICATION'
+        | 'FROZEN'
+        | 'REJECTED'
         | 'READY'
+        | 'PROCESSED'
         | 'DONE'
     }
     return this
@@ -148,7 +154,7 @@ export class LetterQueryBuilder {
    */
   overdue(): this {
     this.where.deadlineDate = { lt: new Date() }
-    this.where.status = { notIn: ['DONE', 'READY'] }
+    this.where.status = { notIn: ['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'] }
     return this
   }
 
@@ -159,7 +165,7 @@ export class LetterQueryBuilder {
     const now = new Date()
     const deadline = new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
     this.where.deadlineDate = { gte: now, lte: deadline }
-    this.where.status = { notIn: ['DONE', 'READY'] }
+    this.where.status = { notIn: ['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'] }
     return this
   }
 

@@ -43,7 +43,7 @@ export class LetterService {
     } else if (filters.filter === 'urgent') {
       builder.urgent()
     } else if (filters.filter === 'done') {
-      builder.status(['READY', 'DONE'])
+      builder.status(['READY', 'PROCESSED', 'DONE'])
     } else if (filters.filter === 'active') {
       builder.status(['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'])
     } else if (filters.filter === 'favorites') {
@@ -64,6 +64,13 @@ export class LetterService {
 
     if (filters.search) {
       builder.search(filters.search)
+    }
+
+    if (filters.dateFrom || filters.dateTo) {
+      builder.createdBetween(
+        filters.dateFrom ? new Date(filters.dateFrom) : undefined,
+        filters.dateTo ? new Date(filters.dateTo + 'T23:59:59.999Z') : undefined
+      )
     }
 
     const sortBy = filters.sortBy || 'created'
@@ -416,16 +423,16 @@ export class LetterService {
     // Special filters
     if (filters.filter === 'overdue') {
       where.deadlineDate = { lt: new Date() }
-      where.status = { notIn: ['READY', 'DONE'] }
+      where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
     } else if (filters.filter === 'urgent') {
       const threeDaysLater = new Date()
       threeDaysLater.setDate(threeDaysLater.getDate() + 3)
       where.deadlineDate = { lte: threeDaysLater, gte: new Date() }
-      where.status = { notIn: ['READY', 'DONE'] }
+      where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
     } else if (filters.filter === 'done') {
-      where.status = { in: ['READY', 'DONE'] }
+      where.status = { in: ['READY', 'PROCESSED', 'DONE'] }
     } else if (filters.filter === 'active') {
-      where.status = { notIn: ['READY', 'DONE'] }
+      where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
     } else if (filters.filter === 'favorites') {
       where.favorites = { some: { userId } }
     } else if (filters.filter === 'unassigned') {
@@ -442,6 +449,13 @@ export class LetterService {
         { content: { contains: filters.search, mode: 'insensitive' } },
         { applicantName: { contains: filters.search, mode: 'insensitive' } },
       ]
+    }
+
+    // Date range filter
+    if (filters.dateFrom || filters.dateTo) {
+      where.createdAt = {}
+      if (filters.dateFrom) where.createdAt.gte = new Date(filters.dateFrom)
+      if (filters.dateTo) where.createdAt.lte = new Date(filters.dateTo + 'T23:59:59.999Z')
     }
 
     return where
@@ -480,7 +494,7 @@ export class LetterService {
       where: {
         ownerId: { in: userIds },
         deletedAt: null,
-        status: { notIn: ['READY', 'DONE'] },
+        status: { notIn: ['READY', 'PROCESSED', 'DONE'] },
       },
       _count: { _all: true },
     })
@@ -502,7 +516,7 @@ export class LetterService {
     newStatus: LetterStatus
   ): Promise<void> {
     // Set close date when marking as done
-    if (newStatus === 'DONE' || newStatus === 'READY') {
+    if (newStatus === 'DONE' || newStatus === 'READY' || newStatus === 'PROCESSED') {
       await prisma.letter.update({
         where: { id: letterId },
         data: { closeDate: new Date() },

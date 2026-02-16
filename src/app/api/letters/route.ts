@@ -62,7 +62,7 @@ const resolveAutoOwnerId = async (): Promise<string | null> => {
       FROM "Letter" l
       WHERE l."ownerId" = u.id
         AND l."deletedAt" IS NULL
-        AND l."status" NOT IN ('READY', 'DONE')
+        AND l."status" NOT IN ('READY', 'PROCESSED', 'DONE')
     ) ASC, u.id ASC
     LIMIT 1
   `

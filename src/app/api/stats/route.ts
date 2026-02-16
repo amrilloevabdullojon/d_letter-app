@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
         where: {
           deletedAt: null,
           deadlineDate: { lt: now },
-          status: { notIn: ['READY', 'DONE'] },
+          status: { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] },
         },
       }),
       // Срочные (N дней)
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
             gte: now,
             lte: new Date(now.getTime() + URGENT_DAYS * 24 * 60 * 60 * 1000),
           },
-          status: { notIn: ['READY', 'DONE'] },
+          status: { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] },
         },
       }),
       // Дедлайн сегодня
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
         where: {
           deletedAt: null,
           deadlineDate: { gte: today, lt: tomorrow },
-          status: { notIn: ['READY', 'DONE'] },
+          status: { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] },
         },
       }),
       // Дедлайн на этой неделе
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
         where: {
           deletedAt: null,
           deadlineDate: { gte: today, lt: weekEnd },
-          status: { notIn: ['READY', 'DONE'] },
+          status: { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] },
         },
       }),
       // Новых за месяц
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
         where: {
           deletedAt: null,
           closeDate: { gte: startOfMonth },
-          status: { in: ['READY', 'DONE'] },
+          status: { in: ['READY', 'PROCESSED', 'DONE'] },
         },
       }),
       // По ответственным
@@ -172,14 +172,17 @@ export async function GET(request: NextRequest) {
       ACCEPTED: 0,
       IN_PROGRESS: 0,
       CLARIFICATION: 0,
+      FROZEN: 0,
+      REJECTED: 0,
       READY: 0,
+      PROCESSED: 0,
       DONE: 0,
     }
     statusCounts.forEach((item) => {
       byStatus[item.status] = item._count.status
     })
 
-    const doneCount = byStatus.READY + byStatus.DONE
+    const doneCount = byStatus.READY + byStatus.DONE + byStatus.PROCESSED
     const inProgressCount = byStatus.IN_PROGRESS + byStatus.ACCEPTED + byStatus.CLARIFICATION
 
     // Статистика по ответственным (используем уже загруженных пользователей)
@@ -220,22 +223,22 @@ export async function GET(request: NextRequest) {
       FROM "Letter"
       WHERE "deletedAt" IS NULL
         AND "closeDate" >= ${yearAgo}
-        AND status IN ('READY', 'DONE')
+        AND status IN ('READY', 'PROCESSED', 'DONE')
       GROUP BY DATE_TRUNC('month', "closeDate")
       ORDER BY month DESC
     `
 
     // Преобразуем результаты в Map для быстрого поиска
     const createdByMonth = new Map(
-      monthlyCreatedRaw.map(r => [
+      monthlyCreatedRaw.map((r) => [
         new Date(r.month).toLocaleDateString('ru-RU', { month: 'short' }),
-        Number(r.count)
+        Number(r.count),
       ])
     )
     const doneByMonth = new Map(
-      monthlyDoneRaw.map(r => [
+      monthlyDoneRaw.map((r) => [
         new Date(r.month).toLocaleDateString('ru-RU', { month: 'short' }),
-        Number(r.count)
+        Number(r.count),
       ])
     )
 
@@ -305,29 +308,31 @@ export async function GET(request: NextRequest) {
 
     // ✅ ОПТИМИЗАЦИЯ: Загружаем данные для отчета только если запрошено, с LIMIT
     const reportLetters = includeReport
-      ? await prisma.letter.findMany({
-          where: {
-            deletedAt: null,
-            createdAt: { gte: periodStart },
-          },
-          select: {
-            createdAt: true,
-            org: true,
-            type: true,
-            status: true,
-            ownerId: true,
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 5000, // Лимит для безопасности
-        }).then(letters =>
-          letters.map((letter) => ({
-            createdAt: letter.createdAt.toISOString(),
-            org: normalizeOrganization(letter.org),
-            type: normalizeLetterType(letter.type),
-            status: letter.status,
-            ownerId: letter.ownerId,
-          }))
-        )
+      ? await prisma.letter
+          .findMany({
+            where: {
+              deletedAt: null,
+              createdAt: { gte: periodStart },
+            },
+            select: {
+              createdAt: true,
+              org: true,
+              type: true,
+              status: true,
+              ownerId: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 5000, // Лимит для безопасности
+          })
+          .then((letters) =>
+            letters.map((letter) => ({
+              createdAt: letter.createdAt.toISOString(),
+              org: normalizeOrganization(letter.org),
+              type: normalizeLetterType(letter.type),
+              status: letter.status,
+              ownerId: letter.ownerId,
+            }))
+          )
       : []
 
     // ✅ ОПТИМИЗАЦИЯ: SQL AVG вместо загрузки всех завершенных писем
@@ -336,7 +341,7 @@ export async function GET(request: NextRequest) {
         AVG(EXTRACT(DAY FROM ("closeDate" - "date"))::numeric) as avg_days
       FROM "Letter"
       WHERE "deletedAt" IS NULL
-        AND status IN ('READY', 'DONE')
+        AND status IN ('READY', 'PROCESSED', 'DONE')
         AND "closeDate" IS NOT NULL
         AND "closeDate" >= "date"
     `
