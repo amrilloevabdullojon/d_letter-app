@@ -8,7 +8,7 @@ interface EditableFieldProps {
   value: string | null
   field: string
   onSave: (field: string, value: string) => Promise<void>
-  type?: 'text' | 'textarea' | 'url'
+  type?: 'text' | 'textarea' | 'url' | 'date'
   placeholder?: string
   rows?: number
   collapsible?: boolean
