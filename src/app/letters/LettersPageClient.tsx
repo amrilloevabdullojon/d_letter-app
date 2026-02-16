@@ -1415,6 +1415,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                       goToPage(1)
                     }}
                     disabled={filtersDisabled}
+                    lang="ru"
+                    placeholder="дд.мм.гггг"
                     className="h-8 min-w-0 flex-1 bg-transparent text-sm text-white [color-scheme:dark] focus:outline-none disabled:opacity-50"
                     aria-label="Дата от"
                     title="Дата от"
@@ -1434,6 +1436,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                       goToPage(1)
                     }}
                     disabled={filtersDisabled}
+                    lang="ru"
+                    placeholder="дд.мм.гггг"
                     className="h-8 min-w-0 flex-1 bg-transparent text-sm text-white [color-scheme:dark] focus:outline-none disabled:opacity-50"
                     aria-label="Дата до"
                     title="Дата до"
