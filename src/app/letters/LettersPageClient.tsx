@@ -1328,12 +1328,12 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
 
               <div
                 id="letters-filters"
-                className={`${filtersOpen ? 'flex' : 'hidden'} w-full flex-col gap-3 sm:flex sm:w-full sm:flex-row sm:flex-wrap lg:w-auto xl:flex-nowrap`}
+                className={`${filtersOpen ? 'grid' : 'hidden'} w-full grid-cols-2 gap-2 sm:flex sm:w-full sm:flex-row sm:flex-wrap sm:gap-3 lg:w-auto xl:flex-nowrap`}
               >
                 {/* Status filter */}
-                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px]">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20">
-                    <Filter className="h-4 w-4 text-blue-400" />
+                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px] sm:gap-2 sm:rounded-xl sm:p-1.5">
+                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-blue-500/20 sm:flex sm:h-8 sm:w-8">
+                    <Filter className="h-3.5 w-3.5 text-blue-400 sm:h-4 sm:w-4" />
                   </div>
                   <select
                     value={statusFilter}
@@ -1343,7 +1343,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                       goToPage(1)
                     }}
                     disabled={filtersDisabled}
-                    className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
+                    className="h-7 min-w-0 flex-1 appearance-none bg-transparent pr-6 text-xs text-white focus:outline-none disabled:opacity-50 sm:h-8 sm:pr-8 sm:text-sm"
                     aria-label="Статус"
                   >
                     <option value="all">Все статусы</option>
@@ -1355,9 +1355,9 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   </select>
                 </div>
 
-                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[210px]">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
-                    <Users className="h-4 w-4 text-emerald-400" />
+                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[210px] sm:gap-2 sm:rounded-xl sm:p-1.5">
+                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 sm:flex sm:h-8 sm:w-8">
+                    <Users className="h-3.5 w-3.5 text-emerald-400 sm:h-4 sm:w-4" />
                   </div>
                   <select
                     value={ownerFilter}
@@ -1367,7 +1367,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                       goToPage(1)
                     }}
                     disabled={filtersDisabled}
-                    className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
+                    className="h-7 min-w-0 flex-1 appearance-none bg-transparent pr-6 text-xs text-white focus:outline-none disabled:opacity-50 sm:h-8 sm:pr-8 sm:text-sm"
                     aria-label="Исполнитель"
                   >
                     <option value="">Все исполнители</option>
@@ -1379,9 +1379,9 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   </select>
                 </div>
 
-                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px]">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20">
-                    <FileText className="h-4 w-4 text-amber-400" />
+                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px] sm:gap-2 sm:rounded-xl sm:p-1.5">
+                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 sm:flex sm:h-8 sm:w-8">
+                    <FileText className="h-3.5 w-3.5 text-amber-400 sm:h-4 sm:w-4" />
                   </div>
                   <select
                     value={typeFilter}
@@ -1390,7 +1390,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                       goToPage(1)
                     }}
                     disabled={filtersDisabled}
-                    className="h-8 min-w-0 flex-1 appearance-none bg-transparent pr-8 text-sm text-white focus:outline-none disabled:opacity-50"
+                    className="h-7 min-w-0 flex-1 appearance-none bg-transparent pr-6 text-xs text-white focus:outline-none disabled:opacity-50 sm:h-8 sm:pr-8 sm:text-sm"
                     aria-label="Тип"
                   >
                     <option value="">Все типы</option>
@@ -1403,9 +1403,9 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                 </div>
 
                 {/* Date from filter */}
-                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px]">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20">
-                    <CalendarDays className="h-4 w-4 text-violet-400" />
+                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px] sm:gap-2 sm:rounded-xl sm:p-1.5">
+                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 sm:flex sm:h-8 sm:w-8">
+                    <CalendarDays className="h-3.5 w-3.5 text-violet-400 sm:h-4 sm:w-4" />
                   </div>
                   <input
                     type="date"
@@ -1417,16 +1417,16 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     disabled={filtersDisabled}
                     lang="ru"
                     placeholder="дд.мм.гггг"
-                    className="h-8 min-w-0 flex-1 bg-transparent text-sm text-white [color-scheme:dark] focus:outline-none disabled:opacity-50"
+                    className="h-7 min-w-0 flex-1 bg-transparent text-xs text-white [color-scheme:dark] focus:outline-none disabled:opacity-50 sm:h-8 sm:text-sm"
                     aria-label="Дата от"
                     title="Дата от"
                   />
                 </div>
 
                 {/* Date to filter */}
-                <div className="group flex w-full items-center gap-2 rounded-xl bg-slate-700/30 p-1.5 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px]">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20">
-                    <CalendarDays className="h-4 w-4 text-violet-400" />
+                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px] sm:gap-2 sm:rounded-xl sm:p-1.5">
+                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 sm:flex sm:h-8 sm:w-8">
+                    <CalendarDays className="h-3.5 w-3.5 text-violet-400 sm:h-4 sm:w-4" />
                   </div>
                   <input
                     type="date"
@@ -1438,7 +1438,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     disabled={filtersDisabled}
                     lang="ru"
                     placeholder="дд.мм.гггг"
-                    className="h-8 min-w-0 flex-1 bg-transparent text-sm text-white [color-scheme:dark] focus:outline-none disabled:opacity-50"
+                    className="h-7 min-w-0 flex-1 bg-transparent text-xs text-white [color-scheme:dark] focus:outline-none disabled:opacity-50 sm:h-8 sm:text-sm"
                     aria-label="Дата до"
                     title="Дата до"
                   />
@@ -1447,7 +1447,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={resetFilters}
-                    className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 text-sm font-medium text-red-300 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 hover:text-red-200 sm:w-auto"
+                    className="group col-span-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-red-500/10 px-3 text-xs font-medium text-red-300 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 hover:text-red-200 sm:col-span-1 sm:h-11 sm:w-auto sm:gap-2 sm:rounded-xl sm:px-4 sm:text-sm"
                     aria-label="Сбросить фильтры"
                   >
                     <XCircle className="h-4 w-4 transition-transform group-hover:rotate-90" />
