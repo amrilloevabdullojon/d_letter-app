@@ -1403,7 +1403,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                 </div>
 
                 {/* Date from filter */}
-                <div className="group col-span-2 flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:col-span-1 sm:w-auto sm:min-w-[170px] sm:gap-2 sm:rounded-xl sm:p-1.5">
+                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px] sm:gap-2 sm:rounded-xl sm:p-1.5">
                   <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 sm:flex sm:h-8 sm:w-8">
                     <CalendarDays className="h-3.5 w-3.5 text-violet-400 sm:h-4 sm:w-4" />
                   </div>
@@ -1424,7 +1424,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                 </div>
 
                 {/* Date to filter */}
-                <div className="group col-span-2 flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:col-span-1 sm:w-auto sm:min-w-[170px] sm:gap-2 sm:rounded-xl sm:p-1.5">
+                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px] sm:gap-2 sm:rounded-xl sm:p-1.5">
                   <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 sm:flex sm:h-8 sm:w-8">
                     <CalendarDays className="h-3.5 w-3.5 text-violet-400 sm:h-4 sm:w-4" />
                   </div>
@@ -1447,7 +1447,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={resetFilters}
-                    className="group col-span-2 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-red-500/10 px-3 text-xs font-medium text-red-300 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 hover:text-red-200 sm:col-span-1 sm:h-11 sm:w-auto sm:gap-2 sm:rounded-xl sm:px-4 sm:text-sm"
+                    className="group inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-red-500/10 px-3 text-xs font-medium text-red-300 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 hover:text-red-200 sm:h-11 sm:w-auto sm:gap-2 sm:rounded-xl sm:px-4 sm:text-sm"
                     aria-label="Сбросить фильтры"
                   >
                     <XCircle className="h-4 w-4 transition-transform group-hover:rotate-90" />
