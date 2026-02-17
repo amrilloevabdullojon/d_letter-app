@@ -1447,12 +1447,13 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={resetFilters}
-                    className="group order-last inline-flex h-9 w-full flex-shrink-0 items-center justify-center gap-1.5 rounded-lg bg-red-500/10 px-3 text-xs font-medium text-red-300 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 hover:text-red-200 sm:h-11 sm:w-auto sm:gap-2 sm:rounded-xl sm:px-4 sm:text-sm"
+                    className="group order-last inline-flex h-9 w-full flex-shrink-0 items-center justify-center gap-1.5 rounded-lg bg-red-500/10 px-3 text-xs font-medium text-red-300 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 hover:text-red-200 sm:h-11 sm:w-11 sm:gap-0 sm:rounded-xl sm:px-0 lg:w-auto lg:gap-2 lg:px-4"
                     aria-label="Сбросить фильтры"
+                    title={`Сбросить фильтры (${activeFiltersCount})`}
                   >
                     <XCircle className="h-3.5 w-3.5 transition-transform group-hover:rotate-90 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Сброс ({activeFiltersCount})</span>
-                    <span className="sm:hidden">×{activeFiltersCount}</span>
+                    <span className="sm:hidden lg:inline">Сброс ({activeFiltersCount})</span>
+                    <span className="hidden sm:inline lg:hidden">{activeFiltersCount}</span>
                   </button>
                 )}
               </div>
