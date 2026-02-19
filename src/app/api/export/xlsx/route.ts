@@ -151,7 +151,7 @@ export const GET = withValidation<any, never, ExportQuery>(
       const buffer = await workbook.xlsx.writeBuffer()
 
       const filename = `letters_${new Date().toISOString().split('T')[0]}.xlsx`
-      return new NextResponse(buffer as Buffer, {
+      return new NextResponse(buffer as ArrayBuffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'Content-Disposition': `attachment; filename="${filename}"`,
