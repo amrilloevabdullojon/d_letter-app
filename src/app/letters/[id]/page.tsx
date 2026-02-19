@@ -62,6 +62,7 @@ function LetterDetailPageContent() {
     escalate,
     printPage,
     ConfirmDialog,
+    PostponeDialog,
   } = useLetterActions({
     letter,
     onUpdate: loadLetter,
@@ -249,7 +250,12 @@ function LetterDetailPageContent() {
       onToggleReplyThread={toggleReplyThread}
       onToggleCommentHistory={toggleCommentHistory}
       canEditComment={canEditComment}
-      dialog={ConfirmDialog}
+      dialog={
+        <>
+          {ConfirmDialog}
+          {PostponeDialog}
+        </>
+      }
     />
   )
 }

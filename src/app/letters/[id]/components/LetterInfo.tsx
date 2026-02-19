@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useState, useEffect, useMemo, useCallback } from 'react'
+import { memo, useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Calendar,
   Clock,
@@ -57,6 +57,15 @@ function EditableDate({
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Очистка таймера при размонтировании
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    }
+  }, [])
 
   const startEditing = () => {
     // Преобразуем дату в формат YYYY-MM-DD для input
@@ -64,6 +73,7 @@ function EditableDate({
     const formatted = date.toISOString().split('T')[0]
     setEditValue(formatted)
     setIsEditing(true)
+    setSaved(false)
   }
 
   const cancelEditing = () => {
@@ -76,7 +86,13 @@ function EditableDate({
     setSaving(true)
     try {
       await onSave(field, new Date(editValue).toISOString())
-      setIsEditing(false)
+      // Показать галочку успеха на 1.5с, затем закрыть
+      setSaved(true)
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+      savedTimerRef.current = setTimeout(() => {
+        setSaved(false)
+        setIsEditing(false)
+      }, 1500)
     } catch {
       // Error handled by parent
     } finally {
@@ -87,37 +103,49 @@ function EditableDate({
   if (isEditing) {
     return (
       <div className="flex items-center gap-3">
-        <Icon className="h-5 w-5 text-slate-500" />
+        <Icon
+          className={`h-5 w-5 ${saved ? 'text-emerald-400' : 'text-slate-500'} transition-colors`}
+        />
         <div className="flex-1">
           <div className="text-xs text-slate-500">{label}</div>
           <div className="mt-1 flex items-center gap-2">
-            <input
-              type="date"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="rounded-lg border border-slate-600 bg-slate-700/50 px-2 py-1 text-sm text-white focus:border-emerald-500 focus:outline-none"
-              autoFocus
-            />
-            <button
-              onClick={saveDate}
-              disabled={saving}
-              className="rounded-lg bg-emerald-500/20 p-1.5 text-emerald-400 transition hover:bg-emerald-500/30 disabled:opacity-50"
-              title="Сохранить"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4" />
-              )}
-            </button>
-            <button
-              onClick={cancelEditing}
-              disabled={saving}
-              className="rounded-lg bg-red-500/20 p-1.5 text-red-400 transition hover:bg-red-500/30 disabled:opacity-50"
-              title="Отмена"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            {saved ? (
+              /* Индикатор успешного сохранения */
+              <div className="flex items-center gap-2 text-sm text-emerald-400">
+                <CheckCircle2 className="h-4 w-4 animate-[pulse_0.4s_ease-out]" />
+                <span>Сохранено</span>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="date"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  className="rounded-lg border border-slate-600 bg-slate-700/50 px-2 py-1 text-sm text-white focus:border-emerald-500 focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={saveDate}
+                  disabled={saving}
+                  className="rounded-lg bg-emerald-500/20 p-1.5 text-emerald-400 transition hover:bg-emerald-500/30 disabled:opacity-50"
+                  title="Сохранить"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                </button>
+                <button
+                  onClick={cancelEditing}
+                  disabled={saving}
+                  className="rounded-lg bg-red-500/20 p-1.5 text-red-400 transition hover:bg-red-500/30 disabled:opacity-50"
+                  title="Отмена"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -198,17 +226,20 @@ export const LetterInfo = memo(function LetterInfo({
     }
 
     loadUsers()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [canManageLetters])
 
-  const currentOwner: OwnerOption | null = useMemo(() =>
-    letter.owner
-      ? {
-          id: letter.owner.id,
-          name: letter.owner.name,
-          email: letter.owner.email,
-        }
-      : null,
+  const currentOwner: OwnerOption | null = useMemo(
+    () =>
+      letter.owner
+        ? {
+            id: letter.owner.id,
+            name: letter.owner.name,
+            email: letter.owner.email,
+          }
+        : null,
     [letter.owner?.id, letter.owner?.name, letter.owner?.email]
   )
 

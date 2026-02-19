@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/Toast'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { usePostponeDialog } from '@/components/PostponeDialog'
 import { addWorkingDays, parseDateValue } from '@/lib/utils'
 import type { Letter } from '../types'
 
@@ -39,6 +40,7 @@ interface UseLetterActionsReturn {
   copyPageLink: () => Promise<void>
   printPage: () => void
   ConfirmDialog: React.ReactNode
+  PostponeDialog: React.ReactNode
 }
 
 export function useLetterActions({
@@ -50,6 +52,37 @@ export function useLetterActions({
   const router = useRouter()
   const toast = useToast()
   const { confirm: confirmDialog, Dialog } = useConfirmDialog()
+
+  // Postpone deadline dialog — определяем здесь, логику передадим ниже через ref-функцию
+  // Используем паттерн: сначала объявляем хук, callback задаём через saveField после его объявления
+  const handlePostponeConfirm = useCallback(
+    async (days: number) => {
+      if (!letter) return
+      const currentDeadline = parseDateValue(letter.deadlineDate)
+      if (!currentDeadline) {
+        toast.error('Не удалось прочитать дату дедлайна')
+        return
+      }
+      const nextDeadline = addWorkingDays(currentDeadline, days)
+      const res = await fetch(`/api/letters/${letter.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: 'deadlineDate', value: nextDeadline.toISOString() }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(data?.error || 'Не удалось обновить дедлайн')
+        throw new Error(data?.error || 'Failed to update')
+      }
+      toast.success('Дедлайн обновлён')
+      await onUpdate()
+    },
+    [letter, toast, onUpdate]
+  )
+
+  const { open: openPostponeDialog, Dialog: PostponeDialogNode } = usePostponeDialog({
+    onConfirm: handlePostponeConfirm,
+  })
 
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -195,6 +228,9 @@ export function useLetterActions({
 
   const toggleFavorite = useCallback(async () => {
     if (!letter) return
+    // Оптимистичное обновление — меняем UI немедленно
+    const newValue = !letter.isFavorite
+    onLetterChange({ isFavorite: newValue })
     setTogglingFavorite(true)
     try {
       const res = await fetch('/api/favorites', {
@@ -202,15 +238,20 @@ export function useLetterActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ letterId: letter.id }),
       })
-      if (res.ok) {
-        onLetterChange({ isFavorite: !letter.isFavorite })
+      if (!res.ok) {
+        // Откат при ошибке
+        onLetterChange({ isFavorite: !newValue })
+        toast.error('Не удалось обновить избранное')
       }
     } catch (err) {
       console.error('Failed to toggle favorite:', err)
+      // Откат при сетевой ошибке
+      onLetterChange({ isFavorite: !newValue })
+      toast.error('Ошибка при обновлении избранного')
     } finally {
       setTogglingFavorite(false)
     }
-  }, [letter, onLetterChange])
+  }, [letter, onLetterChange, toast])
 
   const toggleWatch = useCallback(async () => {
     if (!letter) return
@@ -265,29 +306,8 @@ export function useLetterActions({
 
   const postponeDeadline = useCallback(async () => {
     if (!letter) return
-    const input = window.prompt('На сколько рабочих дней перенести дедлайн?', '3')
-    if (!input) return
-
-    const delta = Number.parseInt(input, 10)
-    if (!Number.isFinite(delta) || delta === 0) {
-      toast.error('Введите число рабочих дней')
-      return
-    }
-
-    const currentDeadline = parseDateValue(letter.deadlineDate)
-    if (!currentDeadline) {
-      toast.error('Не удалось прочитать дату дедлайна')
-      return
-    }
-
-    const nextDeadline = addWorkingDays(currentDeadline, delta)
-    try {
-      await saveField('deadlineDate', nextDeadline.toISOString())
-      toast.success('Дедлайн обновлён')
-    } catch {
-      // saveField already notifies on error
-    }
-  }, [letter, saveField, toast])
+    openPostponeDialog()
+  }, [letter, openPostponeDialog])
 
   const escalate = useCallback(async () => {
     if (!letter) return
@@ -385,5 +405,6 @@ export function useLetterActions({
     copyPageLink,
     printPage,
     ConfirmDialog: Dialog,
+    PostponeDialog: PostponeDialogNode,
   }
 }

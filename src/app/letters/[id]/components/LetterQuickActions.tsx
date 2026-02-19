@@ -1,11 +1,26 @@
 'use client'
 
 import { memo } from 'react'
-import { RefreshCw, Copy, Link2, Bell, Printer, Loader2, Zap, BellOff } from 'lucide-react'
+import {
+  RefreshCw,
+  Copy,
+  Link2,
+  Bell,
+  Printer,
+  Loader2,
+  Zap,
+  BellOff,
+  FileText,
+} from 'lucide-react'
 import { useToast } from '@/components/Toast'
+import { formatDate, STATUS_LABELS } from '@/lib/utils'
+import type { LetterStatus } from '@/types/prisma'
 
 interface LetterQuickActionsProps {
   letterNumber: string
+  letterOrg?: string
+  letterStatus?: LetterStatus
+  letterDeadline?: string | null
   isWatching: boolean
   togglingWatch: boolean
   onRefresh: () => void
@@ -15,6 +30,9 @@ interface LetterQuickActionsProps {
 
 export const LetterQuickActions = memo(function LetterQuickActions({
   letterNumber,
+  letterOrg,
+  letterStatus,
+  letterDeadline,
   isWatching,
   togglingWatch,
   onRefresh,
@@ -42,6 +60,15 @@ export const LetterQuickActions = memo(function LetterQuickActions({
     void copyText(window.location.href, 'Ссылка скопирована')
   }
 
+  const handleCopyAsText = () => {
+    const parts: string[] = [`№${letterNumber}`]
+    if (letterOrg) parts.push(letterOrg)
+    if (letterStatus) parts.push(STATUS_LABELS[letterStatus] || letterStatus)
+    if (letterDeadline) parts.push(`Дедлайн: ${formatDate(letterDeadline)}`)
+    const text = parts.join(' | ')
+    void copyText(text, 'Письмо скопировано как текст')
+  }
+
   return (
     <div className="rounded-2xl border border-slate-700/50 bg-slate-800/30 p-4">
       <div className="mb-3 flex items-center gap-2">
@@ -54,6 +81,12 @@ export const LetterQuickActions = memo(function LetterQuickActions({
         <ActionButton icon={Printer} label="Печать" shortcut="p" onClick={onPrint} />
         <ActionButton icon={Copy} label="Номер" onClick={handleCopyNumber} />
         <ActionButton icon={Link2} label="Ссылка" onClick={handleCopyLink} />
+        <ActionButton
+          icon={FileText}
+          label="Как текст"
+          onClick={handleCopyAsText}
+          className="col-span-2"
+        />
       </div>
 
       {/* Watch toggle - full width */}
@@ -93,15 +126,23 @@ interface ActionButtonProps {
   shortcut?: string
   onClick: () => void
   disabled?: boolean
+  className?: string
 }
 
-function ActionButton({ icon: Icon, label, shortcut, onClick, disabled }: ActionButtonProps) {
+function ActionButton({
+  icon: Icon,
+  label,
+  shortcut,
+  onClick,
+  disabled,
+  className,
+}: ActionButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="group flex flex-col items-center gap-1.5 rounded-xl bg-slate-800/40 px-3 py-3 text-center transition hover:bg-slate-700/50 disabled:opacity-50"
+      className={`group flex flex-col items-center gap-1.5 rounded-xl bg-slate-800/40 px-3 py-3 text-center transition hover:bg-slate-700/50 disabled:opacity-50 ${className ?? ''}`}
     >
       <Icon className="h-5 w-5 text-slate-400 transition group-hover:text-teal-400" />
       <span className="text-xs text-slate-300">{label}</span>

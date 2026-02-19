@@ -331,6 +331,9 @@ export const LetterPageLayout = memo(function LetterPageLayout({
 
             <LetterQuickActions
               letterNumber={letter.number}
+              letterOrg={letter.org}
+              letterStatus={letter.status}
+              letterDeadline={letter.deadlineDate}
               isWatching={letter.isWatching}
               togglingWatch={togglingWatch}
               onRefresh={onRefresh}
