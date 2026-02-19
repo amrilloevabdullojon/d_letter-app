@@ -6,7 +6,7 @@ import { buildApplicantPortalLink, sendMultiChannelNotification } from '@/lib/no
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
-import { randomUUID } from 'crypto'
+import { generatePortalToken } from '@/lib/token'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -34,18 +34,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Letter not found' }, { status: 404 })
     }
 
-    const token = randomUUID()
+    const { raw, hashed } = generatePortalToken()
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90)
 
     const updated = await prisma.letter.update({
       where: { id },
       data: {
-        applicantAccessToken: token,
+        applicantAccessToken: hashed,
         applicantAccessTokenExpiresAt: expiresAt,
       },
     })
 
-    const link = buildApplicantPortalLink(token)
+    const link = buildApplicantPortalLink(raw)
 
     const hasApplicantContact = !!(
       updated.applicantEmail ||

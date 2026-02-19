@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { sanitizeInput } from '@/lib/utils'
 import { withValidation } from '@/lib/api-handler'
 import { buildApplicantPortalLink, sendMultiChannelNotification } from '@/lib/notifications'
+import { hashToken } from '@/lib/token'
 
 const contactSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
@@ -29,7 +30,7 @@ export const POST = withValidation(
     }
 
     const letter = await prisma.letter.findFirst({
-      where: { applicantAccessToken: token },
+      where: { applicantAccessToken: hashToken(token) },
       select: {
         id: true,
         number: true,
@@ -77,7 +78,7 @@ export const POST = withValidation(
       },
     })
 
-    const link = buildApplicantPortalLink(token)
+    const link = buildApplicantPortalLink(token) // token здесь — raw токен из URL
     const subject = `\u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u043d\u0430 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f \u043f\u043e \u043f\u0438\u0441\u044c\u043c\u0443 \u2116-${letter.number}`
     const text = `\u0412\u044b \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u043b\u0438\u0441\u044c \u043d\u0430 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f \u043f\u043e \u043f\u0438\u0441\u044c\u043c\u0443 \u2116-${letter.number}.\n\n${link}`
     const telegram = `\n<b>\u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f \u043f\u043e \u043f\u0438\u0441\u044c\u043c\u0443 \u2116-${letter.number}</b>\n${letter.org}\n\n<a href="${link}">\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0440\u0442\u0430\u043b</a>`

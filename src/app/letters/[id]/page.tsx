@@ -7,6 +7,7 @@ import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { hasPermission } from '@/lib/permissions'
 import { useLetterData, useLetterActions, useLetterComments } from './hooks'
 import { LetterPageLayout, LetterPageLoading, LetterPageError } from './components'
+import { PageErrorBoundary } from '@/components/PageErrorBoundary'
 
 const isEditableElement = (target: EventTarget | null) => {
   const element = target as HTMLElement | null
@@ -16,7 +17,7 @@ const isEditableElement = (target: EventTarget | null) => {
   return element.isContentEditable
 }
 
-export default function LetterDetailPage() {
+function LetterDetailPageContent() {
   const { data: session, status: authStatus } = useSession()
   useAuthRedirect(authStatus)
 
@@ -250,5 +251,13 @@ export default function LetterDetailPage() {
       canEditComment={canEditComment}
       dialog={ConfirmDialog}
     />
+  )
+}
+
+export default function LetterDetailPage() {
+  return (
+    <PageErrorBoundary pageName="Письмо">
+      <LetterDetailPageContent />
+    </PageErrorBoundary>
   )
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
 import { extname } from 'path'
+import { generatePortalToken } from '@/lib/token'
 import { prisma } from '@/lib/prisma'
 import { createLetterSchema } from '@/lib/schemas'
 import { addWorkingDays, sanitizeInput } from '@/lib/utils'
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ownerId = await resolveAutoOwnerId()
-    const applicantAccessToken = randomUUID()
+    const portalToken = generatePortalToken()
     const applicantAccessTokenExpiresAt = new Date(
       Date.now() + 1000 * 60 * 60 * 24 * PORTAL_TOKEN_EXPIRY_DAYS
     )
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
         applicantEmail: data.applicantEmail || null,
         applicantPhone: data.applicantPhone || null,
         applicantTelegramChatId: data.applicantTelegramChatId || null,
-        applicantAccessToken,
+        applicantAccessToken: portalToken.hashed,
         applicantAccessTokenExpiresAt,
         ownerId,
         status: 'NOT_REVIEWED',
@@ -396,7 +396,7 @@ export async function POST(request: NextRequest) {
       savedFiles += 1
     }
 
-    const portalLink = buildApplicantPortalLink(applicantAccessToken)
+    const portalLink = buildApplicantPortalLink(portalToken.raw)
     const subject = `\u0412\u0430\u0448\u0435 \u043f\u0438\u0441\u044c\u043c\u043e \u2116-${letter.number} \u043f\u0440\u0438\u043d\u044f\u0442\u043e`
     const text = `\u041f\u0438\u0441\u044c\u043c\u043e \u043f\u0440\u0438\u043d\u044f\u0442\u043e \u0432 \u0440\u0430\u0431\u043e\u0442\u0443.\n\n\u041d\u043e\u043c\u0435\u0440: ${letter.number}\n\u041e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f: ${letter.org}\n\u0414\u0435\u0434\u043b\u0430\u0439\u043d: ${new Date(letter.deadlineDate).toLocaleDateString('ru-RU')}\n\n\u0421\u0441\u044b\u043b\u043a\u0430: ${portalLink}`
     const telegram = `\n<b>\u041f\u0438\u0441\u044c\u043c\u043e \u043f\u0440\u0438\u043d\u044f\u0442\u043e</b>\n\n\u2116-${letter.number}\n${letter.org}\n\u0414\u0435\u0434\u043b\u0430\u0439\u043d: ${new Date(letter.deadlineDate).toLocaleDateString('ru-RU')}\n\n<a href="${portalLink}">\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0441\u0442\u0430\u0442\u0443\u0441</a>`

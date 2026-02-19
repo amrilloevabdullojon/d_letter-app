@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { sanitizeInput } from '@/lib/utils'
 import { withValidation } from '@/lib/api-handler'
 import { dispatchNotification } from '@/lib/notification-dispatcher'
+import { hashToken } from '@/lib/token'
 
 const commentSchema = z.object({
   text: z.string().min(1).max(2000),
@@ -49,7 +50,7 @@ export const POST = withValidation(
     }
 
     const letter = await prisma.letter.findFirst({
-      where: { applicantAccessToken: token },
+      where: { applicantAccessToken: hashToken(token) },
       select: {
         id: true,
         number: true,

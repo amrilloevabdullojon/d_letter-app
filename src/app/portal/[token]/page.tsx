@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { LetterStatus } from '@/types/prisma'
 import { prisma } from '@/lib/prisma'
+import { hashToken } from '@/lib/token'
 import {
   STATUS_LABELS,
   formatDate,
@@ -212,7 +213,7 @@ export default async function ApplicantPortalPage({ params, searchParams }: Page
 
   const letter = await prisma.letter.findFirst({
     where: {
-      applicantAccessToken: token,
+      applicantAccessToken: hashToken(token),
     },
     include: {
       comments: {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
+import { PageErrorBoundary } from '@/components/PageErrorBoundary'
 import { Header } from '@/components/Header'
 import { VirtualLetterList, VirtualLetterTable } from '@/components/VirtualLetterList'
 import { ScrollIndicator } from '@/components/mobile/ScrollIndicator'
@@ -1052,9 +1053,24 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     ...(selectedIds.size > 0 ? { ids: Array.from(selectedIds).join(',') } : {}),
                   }).toString()}`}
                   className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600/50 bg-slate-700/50 px-4 py-2.5 text-sm font-medium text-slate-200 transition-all hover:border-slate-500 hover:bg-slate-700 hover:text-white"
+                  title="Скачать CSV"
                 >
                   <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
-                  Экспорт
+                  CSV
+                </a>
+                <a
+                  href={`/api/export/xlsx?${new URLSearchParams({
+                    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+                    ...(quickFilter ? { filter: quickFilter } : {}),
+                    ...(ownerFilter ? { owner: ownerFilter } : {}),
+                    ...(typeFilter ? { type: typeFilter } : {}),
+                    ...(selectedIds.size > 0 ? { ids: Array.from(selectedIds).join(',') } : {}),
+                  }).toString()}`}
+                  className="group inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-700/20 px-4 py-2.5 text-sm font-medium text-emerald-200 transition-all hover:border-emerald-500 hover:bg-emerald-700/30 hover:text-white"
+                  title="Скачать Excel"
+                >
+                  <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                  Excel
                 </a>
                 <button
                   type="button"
@@ -1589,14 +1605,16 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
 
 export default function LettersPage({ initialData }: LettersPageClientProps) {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-transparent">
-          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-teal-500"></div>
-        </div>
-      }
-    >
-      <LettersPageContent initialData={initialData} />
-    </Suspense>
+    <PageErrorBoundary pageName="Письма">
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-transparent">
+            <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-teal-500"></div>
+          </div>
+        }
+      >
+        <LettersPageContent initialData={initialData} />
+      </Suspense>
+    </PageErrorBoundary>
   )
 }

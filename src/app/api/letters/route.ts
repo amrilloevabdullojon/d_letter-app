@@ -14,8 +14,8 @@ import { CACHE_TTL } from '@/lib/cache'
 import { getLettersListCached, invalidateLettersCache } from '@/lib/list-cache'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
+import { generatePortalToken } from '@/lib/token'
 import { z } from 'zod'
-import { randomUUID } from 'crypto'
 import type { LetterSummary, PaginationMeta } from '@/types/dto'
 
 // Схема валидации для создания письма
@@ -172,7 +172,8 @@ export async function POST(request: NextRequest) {
       data.applicantPhone ||
       data.applicantTelegramChatId
     )
-    const applicantAccessToken = hasApplicantContact ? randomUUID() : null
+    const portalToken = hasApplicantContact ? generatePortalToken() : null
+    const applicantAccessToken = portalToken?.hashed ?? null
     const applicantAccessTokenExpiresAt = hasApplicantContact
       ? new Date(Date.now() + 1000 * 60 * 60 * 24 * PORTAL_TOKEN_EXPIRY_DAYS)
       : null
@@ -254,8 +255,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (hasApplicantContact && applicantAccessToken) {
-      const portalLink = buildApplicantPortalLink(applicantAccessToken)
+    if (hasApplicantContact && portalToken) {
+      const portalLink = buildApplicantPortalLink(portalToken.raw)
       const subject = `Ваше обращение №${letter.number} зарегистрировано`
       const text = `Ваше обращение зарегистрировано.
 
