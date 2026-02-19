@@ -79,6 +79,7 @@ export interface Letter {
   sendStatus: string | null
   ijroDate: string | null
   closeDate: string | null
+  frozenAt: string | null
   owner: LetterOwner | null
   files: LetterFile[]
   comments: CommentItem[]

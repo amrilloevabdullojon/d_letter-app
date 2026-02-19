@@ -1,14 +1,17 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Clock, CheckCircle, AlertTriangle, XCircle } from 'lucide-react'
+import { Clock, CheckCircle, AlertTriangle, XCircle, Pause } from 'lucide-react'
 import { getWorkingDaysUntilDeadline, parseDateValue, pluralizeDays } from '@/lib/utils'
+
+const PAUSE_STATUSES = ['FROZEN', 'REJECTED']
 
 interface SLAIndicatorProps {
   createdAt: string
   deadlineDate: string
   status: string
   closedAt?: string | null
+  frozenAt?: string | null
   showLabel?: boolean
   size?: 'sm' | 'md' | 'lg'
 }
@@ -18,6 +21,7 @@ export function SLAIndicator({
   deadlineDate,
   status,
   closedAt,
+  frozenAt,
   showLabel = true,
   size = 'md',
 }: SLAIndicatorProps) {
@@ -30,15 +34,11 @@ export function SLAIndicator({
     if (!created || !deadline) {
       return {
         progress: 0,
-        daysLeft: 0,
-        totalDays: 0,
-        isCompleted: false,
-        isOverdue: false,
         statusInfo: {
           color: 'text-slate-400',
           bgColor: 'bg-slate-500',
           icon: Clock,
-          label: '\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445',
+          label: 'Нет данных',
         },
       }
     }
@@ -46,19 +46,25 @@ export function SLAIndicator({
     const totalDaysRaw = getWorkingDaysUntilDeadline(deadline, created)
     const totalDays = Math.max(1, Math.abs(totalDaysRaw))
 
-    const isCompleted = status === 'DONE' || status === 'READY'
+    const isCompleted = status === 'DONE' || status === 'READY' || status === 'PROCESSED'
+    const isPaused = PAUSE_STATUSES.includes(status)
+
     const endDate = closed || now
     const elapsedDaysRaw = getWorkingDaysUntilDeadline(endDate, created)
     const elapsedDays = Math.min(totalDays, Math.max(0, Math.abs(elapsedDaysRaw)))
 
     const daysLeft = getWorkingDaysUntilDeadline(deadline, now)
-    const isOverdue = !isCompleted && daysLeft < 0
+    // Пауза защищает от просрочки — FROZEN/REJECTED не считаются просроченными
+    const isOverdue = !isCompleted && !isPaused && daysLeft < 0
 
     let progress = (elapsedDays / totalDays) * 100
     if (isCompleted && closed) {
       progress = Math.min(100, progress)
     } else if (isOverdue) {
       progress = 100
+    } else if (isPaused) {
+      // Прогресс зафиксирован в момент заморозки
+      progress = Math.min(100, progress)
     }
     progress = Math.min(100, Math.max(0, progress))
 
@@ -70,16 +76,29 @@ export function SLAIndicator({
           color: 'text-emerald-400',
           bgColor: 'bg-emerald-500',
           icon: CheckCircle,
-          label: '\u0417\u0430\u043a\u0440\u044b\u0442\u043e \u0432 \u0441\u0440\u043e\u043a',
+          label: 'Закрыто в срок',
         }
       } else {
         statusInfo = {
           color: 'text-amber-400',
           bgColor: 'bg-amber-500',
           icon: CheckCircle,
-          label:
-            '\u0417\u0430\u043a\u0440\u044b\u0442\u043e \u0441 \u043e\u043f\u043e\u0437\u0434\u0430\u043d\u0438\u0435\u043c',
+          label: 'Закрыто с опозданием',
         }
+      }
+    } else if (isPaused) {
+      // Показать сколько дней письмо заморожено
+      const frozenDate = frozenAt ? parseDateValue(frozenAt) : null
+      const frozenDays = frozenDate ? Math.abs(getWorkingDaysUntilDeadline(now, frozenDate)) : 0
+      const statusLabel = status === 'FROZEN' ? 'Заморожено' : 'Отклонено'
+      statusInfo = {
+        color: 'text-blue-300',
+        bgColor: 'bg-blue-500/50',
+        icon: Pause,
+        label:
+          frozenDays > 0
+            ? `${statusLabel} (${frozenDays} раб. ${pluralizeDays(frozenDays)})`
+            : statusLabel,
       }
     } else if (isOverdue) {
       const absDays = Math.abs(daysLeft)
@@ -87,7 +106,7 @@ export function SLAIndicator({
         color: 'text-red-400',
         bgColor: 'bg-red-500',
         icon: XCircle,
-        label: `\u041f\u0440\u043e\u0441\u0440\u043e\u0447\u0435\u043d\u043e \u043d\u0430 ${absDays} \u0440\u0430\u0431. ${pluralizeDays(absDays)}`,
+        label: `Просрочено на ${absDays} раб. ${pluralizeDays(absDays)}`,
       }
     } else if (daysLeft <= 2) {
       statusInfo = {
@@ -96,20 +115,20 @@ export function SLAIndicator({
         icon: AlertTriangle,
         label:
           daysLeft === 0
-            ? '\u0414\u0435\u0434\u043b\u0430\u0439\u043d \u0441\u0435\u0433\u043e\u0434\u043d\u044f'
-            : `\u0414\u043e \u0434\u0435\u0434\u043b\u0430\u0439\u043d\u0430 ${daysLeft} \u0440\u0430\u0431. ${pluralizeDays(daysLeft)}`,
+            ? 'Дедлайн сегодня'
+            : `До дедлайна ${daysLeft} раб. ${pluralizeDays(daysLeft)}`,
       }
     } else {
       statusInfo = {
         color: 'text-blue-400',
         bgColor: 'bg-blue-500',
         icon: Clock,
-        label: `\u0414\u043e \u0434\u0435\u0434\u043b\u0430\u0439\u043d\u0430 ${daysLeft} \u0440\u0430\u0431. ${pluralizeDays(daysLeft)}`,
+        label: `До дедлайна ${daysLeft} раб. ${pluralizeDays(daysLeft)}`,
       }
     }
 
     return { progress, statusInfo }
-  }, [createdAt, deadlineDate, status, closedAt])
+  }, [createdAt, deadlineDate, status, closedAt, frozenAt])
 
   const sizeClasses = {
     sm: { bar: 'h-1.5', icon: 'h-3 w-3', text: 'text-xs' },
@@ -118,6 +137,7 @@ export function SLAIndicator({
   }
 
   const Icon = statusInfo.icon
+  const isPaused = PAUSE_STATUSES.includes(status)
 
   return (
     <div className="w-full">
@@ -133,21 +153,15 @@ export function SLAIndicator({
 
       <div className={`overflow-hidden rounded-full bg-gray-700 ${sizeClasses[size].bar}`}>
         <div
-          className={`${sizeClasses[size].bar} rounded-full transition-all duration-500 ${statusInfo.bgColor}`}
+          className={`${sizeClasses[size].bar} rounded-full transition-all duration-500 ${statusInfo.bgColor} ${isPaused ? 'opacity-60' : ''}`}
           style={{ width: `${progress}%` }}
         />
       </div>
 
       {showLabel && (
         <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-          <span>
-            {'\u0421\u043e\u0437\u0434\u0430\u043d\u043e:'}{' '}
-            {new Date(createdAt).toLocaleDateString('ru-RU')}
-          </span>
-          <span>
-            {'\u0414\u0435\u0434\u043b\u0430\u0439\u043d:'}{' '}
-            {new Date(deadlineDate).toLocaleDateString('ru-RU')}
-          </span>
+          <span>Создано: {new Date(createdAt).toLocaleDateString('ru-RU')}</span>
+          <span>Дедлайн: {new Date(deadlineDate).toLocaleDateString('ru-RU')}</span>
         </div>
       )}
     </div>

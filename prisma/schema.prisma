@@ -292,6 +292,7 @@ model Letter {
   applicantAccessToken String? @unique
   applicantAccessTokenExpiresAt DateTime?
   closeDate     DateTime?    // Дата закрытия
+  frozenAt      DateTime?    // Момент заморозки (FROZEN/REJECTED) — для паузы SLA
   jiraLink      String?      // Ссылка на Jira
   priority      Int          @default(50) // Приоритет (0-100)
   attachmentsFolderId String?

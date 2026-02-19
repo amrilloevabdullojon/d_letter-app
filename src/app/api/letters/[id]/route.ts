@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
-import { sanitizeInput, isDoneStatus, parseDateValue, STATUS_LABELS } from '@/lib/utils'
+import {
+  sanitizeInput,
+  isDoneStatus,
+  parseDateValue,
+  addWorkingDays,
+  getWorkingDaysUntilDeadline,
+  STATUS_LABELS,
+} from '@/lib/utils'
 import type { LetterStatus, Prisma } from '@prisma/client'
 import { sendMultiChannelNotification } from '@/lib/notifications'
 import { dispatchNotification } from '@/lib/notification-dispatcher'
@@ -376,17 +383,39 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         break
       }
 
-      case 'status':
+      case 'status': {
         const newStatus = value as LetterStatus
         oldValue = letter.status
         newValue = newStatus
         updateData.status = newStatus
 
-        // Если статус "готово" или "сделано", установить дату закрытия
-        if (isDoneStatus(newStatus) && !letter.closeDate) {
-          updateData.closeDate = new Date()
+        const PAUSE_STATUSES: LetterStatus[] = ['FROZEN', 'REJECTED']
+        const wasPaused = PAUSE_STATUSES.includes(letter.status as LetterStatus)
+        const willPause = PAUSE_STATUSES.includes(newStatus)
+
+        // Переход В паузу — сохранить момент заморозки
+        if (willPause && !wasPaused) {
+          updateData.frozenAt = new Date()
+        }
+
+        // Переход ИЗ паузы в активный статус — сдвинуть дедлайн на время заморозки
+        if (wasPaused && !willPause && letter.frozenAt) {
+          const frozenDays = getWorkingDaysUntilDeadline(new Date(), letter.frozenAt)
+          if (frozenDays > 0) {
+            updateData.deadlineDate = addWorkingDays(letter.deadlineDate, frozenDays)
+          }
+          updateData.frozenAt = null
+        }
+
+        // Если статус "готово" или "сделано", установить дату закрытия и снять паузу
+        if (isDoneStatus(newStatus)) {
+          if (!letter.closeDate) {
+            updateData.closeDate = new Date()
+          }
+          updateData.frozenAt = null
         }
         break
+      }
 
       case 'owner':
         oldValue = letter.ownerId

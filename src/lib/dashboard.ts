@@ -150,10 +150,10 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
     >`
       SELECT
         COUNT(*) AS total,
-        COUNT(*) FILTER (WHERE "deadlineDate" < ${now} AND "status" NOT IN ('READY', 'DONE')) AS overdue,
-        COUNT(*) FILTER (WHERE "deadlineDate" >= ${now} AND "deadlineDate" <= ${urgentDeadline} AND "status" NOT IN ('READY', 'DONE')) AS urgent,
-        COUNT(*) FILTER (WHERE "deadlineDate" >= ${today} AND "deadlineDate" < ${tomorrow} AND "status" NOT IN ('READY', 'DONE')) AS today_deadlines,
-        COUNT(*) FILTER (WHERE "deadlineDate" >= ${today} AND "deadlineDate" < ${weekEnd} AND "status" NOT IN ('READY', 'DONE')) AS week_deadlines,
+        COUNT(*) FILTER (WHERE "deadlineDate" < ${now} AND "status" NOT IN ('READY', 'DONE', 'PROCESSED', 'FROZEN', 'REJECTED')) AS overdue,
+        COUNT(*) FILTER (WHERE "deadlineDate" >= ${now} AND "deadlineDate" <= ${urgentDeadline} AND "status" NOT IN ('READY', 'DONE', 'PROCESSED', 'FROZEN', 'REJECTED')) AS urgent,
+        COUNT(*) FILTER (WHERE "deadlineDate" >= ${today} AND "deadlineDate" < ${tomorrow} AND "status" NOT IN ('READY', 'DONE', 'PROCESSED', 'FROZEN', 'REJECTED')) AS today_deadlines,
+        COUNT(*) FILTER (WHERE "deadlineDate" >= ${today} AND "deadlineDate" < ${weekEnd} AND "status" NOT IN ('READY', 'DONE', 'PROCESSED', 'FROZEN', 'REJECTED')) AS week_deadlines,
         COUNT(*) FILTER (WHERE "createdAt" >= ${startOfMonth}) AS month_new,
         COUNT(*) FILTER (WHERE "closeDate" >= ${startOfMonth} AND "status" IN ('READY', 'DONE')) AS month_done,
         COUNT(*) FILTER (WHERE "status" = 'NOT_REVIEWED') AS cnt_not_reviewed,

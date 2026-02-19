@@ -226,6 +226,7 @@ export function previewTemplate(text: string): string {
     applicantAccessToken: null,
     applicantAccessTokenExpiresAt: null,
     closeDate: null,
+    frozenAt: null,
     jiraLink: 'https://jira.example.com/PROJ-123',
     priority: 50,
     attachmentsFolderId: null,

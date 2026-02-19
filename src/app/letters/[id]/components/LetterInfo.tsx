@@ -273,6 +273,7 @@ export const LetterInfo = memo(function LetterInfo({
             deadlineDate={letter.deadlineDate}
             status={letter.status}
             closedAt={letter.closeDate}
+            frozenAt={letter.frozenAt}
             size="md"
           />
         </div>
