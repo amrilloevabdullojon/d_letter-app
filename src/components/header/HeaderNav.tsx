@@ -66,7 +66,7 @@ export const HeaderNav = memo(function HeaderNav({
             <span>{item.label}</span>
             {item.href === '/letters' && lettersBadge.overdue > 0 && (
               <span
-                className="ml-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+                className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white"
                 title={`${lettersBadge.overdue} просроченных`}
               >
                 {lettersBadge.overdue > 99 ? '99+' : lettersBadge.overdue}
@@ -74,7 +74,7 @@ export const HeaderNav = memo(function HeaderNav({
             )}
             {item.href === '/letters' && lettersBadge.overdue === 0 && lettersBadge.urgent > 0 && (
               <span
-                className="ml-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+                className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
                 title={`${lettersBadge.urgent} срочных`}
               >
                 {lettersBadge.urgent > 99 ? '99+' : lettersBadge.urgent}

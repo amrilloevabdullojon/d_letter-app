@@ -69,13 +69,8 @@ export const HeaderUserMenu = memo(function HeaderUserMenu({
         </Link>
       )}
 
-      {/* Search Button with Ctrl+K hint */}
-      <div className="relative" title="Поиск (Ctrl+K)">
-        <SearchButton />
-        <kbd className="pointer-events-none absolute -bottom-1.5 -right-1 hidden select-none rounded bg-slate-700/80 px-1 py-0.5 text-[9px] font-medium leading-none text-slate-400 ring-1 ring-white/10 lg:block">
-          ⌘K
-        </kbd>
-      </div>
+      {/* Search Button */}
+      <SearchButton />
 
       {/* Theme Toggle */}
       <ThemeToggle />
@@ -114,16 +109,16 @@ export const HeaderUserMenu = memo(function HeaderUserMenu({
               <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-slate-900 bg-emerald-500" />
             </div>
 
-            {/* Name + Role badge */}
-            <div className="hidden max-w-[110px] items-center gap-1.5 xl:flex">
+            {/* Name + Role badge — compact on xl+ */}
+            <div className="hidden max-w-[90px] items-center gap-1 xl:flex">
               <span className="truncate text-sm font-medium text-slate-200 group-hover:text-white">
-                {user.name || user.email?.split('@')[0] || 'Профиль'}
+                {(user.name || user.email?.split('@')[0] || 'Профиль').split(' ')[0]}
               </span>
               {roleBadge && (
                 <span
-                  className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none ring-1 ${roleBadge.className}`}
+                  className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase leading-none ring-1 ${roleBadge.className}`}
                 >
-                  {roleBadge.label}
+                  {user.role === 'SUPERADMIN' ? 'SA' : 'ADM'}
                 </span>
               )}
             </div>
