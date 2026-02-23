@@ -6,10 +6,21 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { X, Menu, User, LogOut, Settings, RefreshCw, FileText, Inbox, TrendingUp } from 'lucide-react'
+import {
+  X,
+  Menu,
+  User,
+  LogOut,
+  Settings,
+  RefreshCw,
+  FileText,
+  Inbox,
+  TrendingUp,
+} from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
 import { NAV_ITEMS, QUICK_CREATE_ITEMS, isActivePath, getRoleLabel } from './header-constants'
+import { useLettersBadge } from './useLettersBadge'
 import type { RecentItem, SyncDirection } from './header-types'
 import { scheduleFallbackNavigation } from './header-utils'
 
@@ -40,6 +51,7 @@ export const HeaderMobileSheet = memo(function HeaderMobileSheet({
   onSync,
 }: HeaderMobileSheetProps) {
   const pathname = usePathname()
+  const lettersBadge = useLettersBadge()
 
   const handleNavClick = useCallback(
     (event: MouseEvent<HTMLElement>, href?: string) => {
@@ -148,44 +160,52 @@ export const HeaderMobileSheet = memo(function HeaderMobileSheet({
 
             {/* Recent Items */}
             {recentItems.length > 0 && (
-              <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                  Недавнее
-                </div>
-                <div className="space-y-1">
-                  {recentItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={(event) => handleNavClick(event, item.href)}
-                      className="flex items-center gap-3 rounded-lg px-2 py-2 transition-all hover:bg-white/10"
-                    >
-                      <div
-                        className={`rounded-lg p-1.5 ${
-                          item.kind === 'letter' ? 'bg-blue-500/10' : 'bg-emerald-500/10'
-                        }`}
+              <>
+                <div className="my-3 border-t border-white/10" />
+                <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                    Недавнее
+                  </div>
+                  <div className="space-y-1">
+                    {recentItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={(event) => handleNavClick(event, item.href)}
+                        className="flex items-center gap-3 rounded-lg px-2 py-2 transition-all hover:bg-white/10"
                       >
-                        {item.kind === 'letter' ? (
-                          <FileText className="h-4 w-4 text-blue-400" />
-                        ) : (
-                          <Inbox className="h-4 w-4 text-emerald-400" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-slate-200">{item.label}</span>
-                        {item.subtitle && (
-                          <span className="block truncate text-xs text-slate-500">
-                            {item.subtitle}
+                        <div
+                          className={`rounded-lg p-1.5 ${
+                            item.kind === 'letter' ? 'bg-blue-500/10' : 'bg-emerald-500/10'
+                          }`}
+                        >
+                          {item.kind === 'letter' ? (
+                            <FileText className="h-4 w-4 text-blue-400" />
+                          ) : (
+                            <Inbox className="h-4 w-4 text-emerald-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-sm text-slate-200">
+                            {item.label}
                           </span>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
+                          {item.subtitle && (
+                            <span className="block truncate text-xs text-slate-500">
+                              {item.subtitle}
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Navigation */}
+            <div className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Навигация
+            </div>
             <div className="space-y-1">
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon
@@ -203,7 +223,19 @@ export const HeaderMobileSheet = memo(function HeaderMobileSheet({
                     }`}
                   >
                     <Icon className={`h-5 w-5 ${isActive ? 'text-teal-400' : ''}`} />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {item.href === '/letters' && lettersBadge.overdue > 0 && (
+                      <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                        {lettersBadge.overdue > 99 ? '99+' : lettersBadge.overdue}
+                      </span>
+                    )}
+                    {item.href === '/letters' &&
+                      lettersBadge.overdue === 0 &&
+                      lettersBadge.urgent > 0 && (
+                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                          {lettersBadge.urgent > 99 ? '99+' : lettersBadge.urgent}
+                        </span>
+                      )}
                   </Link>
                 )
               })}

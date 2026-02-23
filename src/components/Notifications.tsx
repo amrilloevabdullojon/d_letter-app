@@ -548,9 +548,20 @@ export function Notifications() {
         aria-label="Уведомления"
       >
         <Bell className="h-5 w-5" />
-        {totalCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-            {totalCount > 9 ? '9+' : totalCount}
+        {/* Two badges: unread (red) + deadlines (amber) */}
+        {counts.unread > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-0.5 text-[10px] font-semibold text-white">
+            {counts.unread > 9 ? '9+' : counts.unread}
+          </span>
+        )}
+        {counts.deadlines > 0 && counts.unread === 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-0.5 text-[10px] font-semibold text-white">
+            {counts.deadlines > 9 ? '9+' : counts.deadlines}
+          </span>
+        )}
+        {counts.deadlines > 0 && counts.unread > 0 && (
+          <span className="absolute -bottom-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-0.5 text-[9px] font-semibold text-white">
+            {counts.deadlines > 9 ? '9+' : counts.deadlines}
           </span>
         )}
       </button>

@@ -18,9 +18,21 @@ interface HeaderUserMenuProps {
     name?: string | null
     email?: string | null
     image?: string | null
+    role?: string | null
   } | null
   primaryAction?: PrimaryAction | null
   onCloseMenus: () => void
+}
+
+const ROLE_BADGE: Record<string, { label: string; className: string }> = {
+  SUPERADMIN: {
+    label: 'SUPERADMIN',
+    className: 'bg-violet-500/20 text-violet-300 ring-violet-500/30',
+  },
+  ADMIN: {
+    label: 'ADMIN',
+    className: 'bg-amber-500/20 text-amber-300 ring-amber-500/30',
+  },
 }
 
 export const HeaderUserMenu = memo(function HeaderUserMenu({
@@ -28,6 +40,7 @@ export const HeaderUserMenu = memo(function HeaderUserMenu({
   primaryAction,
   onCloseMenus,
 }: HeaderUserMenuProps) {
+  const roleBadge = user?.role ? ROLE_BADGE[user.role] : undefined
   const handleNavClick = useCallback(
     (event: MouseEvent<HTMLElement>, href?: string) => {
       hapticLight()
@@ -56,8 +69,13 @@ export const HeaderUserMenu = memo(function HeaderUserMenu({
         </Link>
       )}
 
-      {/* Search Button */}
-      <SearchButton />
+      {/* Search Button with Ctrl+K hint */}
+      <div className="relative" title="Поиск (Ctrl+K)">
+        <SearchButton />
+        <kbd className="pointer-events-none absolute -bottom-1.5 -right-1 hidden select-none rounded bg-slate-700/80 px-1 py-0.5 text-[9px] font-medium leading-none text-slate-400 ring-1 ring-white/10 lg:block">
+          ⌘K
+        </kbd>
+      </div>
 
       {/* Theme Toggle */}
       <ThemeToggle />
@@ -65,38 +83,57 @@ export const HeaderUserMenu = memo(function HeaderUserMenu({
       {user && (
         <>
           {/* Notifications */}
-          <Notifications />
+          <div title="Уведомления">
+            <Notifications />
+          </div>
 
           {/* Profile Link */}
           <Link
             href="/profile"
             onClick={(event) => handleNavClick(event, '/profile')}
-            className="group relative flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-transparent transition-all hover:ring-teal-400/50"
-            title="Профиль"
+            className="group flex items-center gap-2 rounded-xl px-2 py-1.5 transition-all hover:bg-white/10"
+            title={`Профиль${user.role ? ` · ${user.role}` : ''}`}
             aria-label="Перейти в профиль"
           >
-            {user.image ? (
-              <Image
-                src={user.image}
-                alt={user.name || user.email || 'User'}
-                width={36}
-                height={36}
-                className="h-9 w-9 rounded-full object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-800">
-                <User className="h-5 w-5 text-slate-300" />
-              </div>
-            )}
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-slate-900 bg-emerald-500" />
+            {/* Avatar */}
+            <div className="relative shrink-0">
+              {user.image ? (
+                <Image
+                  src={user.image}
+                  alt={user.name || user.email || 'User'}
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 rounded-full object-cover ring-2 ring-transparent transition-all group-hover:ring-teal-400/50"
+                  unoptimized
+                />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-800 ring-2 ring-transparent transition-all group-hover:ring-teal-400/50">
+                  <User className="h-4 w-4 text-slate-300" />
+                </div>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-slate-900 bg-emerald-500" />
+            </div>
+
+            {/* Name + Role badge */}
+            <div className="hidden max-w-[110px] items-center gap-1.5 xl:flex">
+              <span className="truncate text-sm font-medium text-slate-200 group-hover:text-white">
+                {user.name || user.email?.split('@')[0] || 'Профиль'}
+              </span>
+              {roleBadge && (
+                <span
+                  className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none ring-1 ${roleBadge.className}`}
+                >
+                  {roleBadge.label}
+                </span>
+              )}
+            </div>
           </Link>
 
           {/* Sign Out */}
           <button
             onClick={handleSignOut}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400"
-            title="Выйти"
+            title="Выйти из аккаунта"
             aria-label="Выйти из аккаунта"
           >
             <LogOut className="h-[18px] w-[18px]" />

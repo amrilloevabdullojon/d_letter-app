@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { Header } from '@/components/Header'
+import { Breadcrumb } from '@/components/Breadcrumb'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
@@ -163,8 +164,12 @@ export default function UserProfilePage() {
       setActivity(data.activity || null)
     } catch (err) {
       console.error('Failed to load profile:', err)
-      setError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c')
-      toastError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c')
+      setError(
+        '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c'
+      )
+      toastError(
+        '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c'
+      )
     } finally {
       setLoading(false)
     }
@@ -244,11 +249,15 @@ export default function UserProfilePage() {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'Failed to assign letter')
       }
-      toastSuccess('\u041f\u0438\u0441\u044c\u043c\u043e \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043e')
+      toastSuccess(
+        '\u041f\u0438\u0441\u044c\u043c\u043e \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043e'
+      )
       setActionOpen(null)
     } catch (error) {
       console.error('Failed to assign letter:', error)
-      toastError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u043f\u0438\u0441\u044c\u043c\u043e')
+      toastError(
+        '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u043f\u0438\u0441\u044c\u043c\u043e'
+      )
     } finally {
       setActionSubmitting(false)
     }
@@ -267,11 +276,15 @@ export default function UserProfilePage() {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'Failed to send comment')
       }
-      toastSuccess('\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d')
+      toastSuccess(
+        '\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d'
+      )
       setActionOpen(null)
     } catch (error) {
       console.error('Failed to send comment:', error)
-      toastError('\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439')
+      toastError(
+        '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439'
+      )
     } finally {
       setActionSubmitting(false)
     }
@@ -279,8 +292,8 @@ export default function UserProfilePage() {
 
   if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
     return (
-      <div className="min-h-screen app-shell flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      <div className="app-shell flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
   }
@@ -293,56 +306,63 @@ export default function UserProfilePage() {
   const coverUrl = profile?.coverUrl
 
   return (
-    <div className="min-h-screen app-shell">
+    <div className="app-shell min-h-screen">
       <Header />
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-pageIn">
+      <main className="animate-pageIn mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <Breadcrumb
+          className="mb-4"
+          items={[
+            { label: 'Настройки', href: '/settings' },
+            { label: user?.name || user?.email || 'Профиль' },
+          ]}
+        />
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-display font-semibold text-white">
-            {'\u041f\u0440\u043e\u0444\u0438\u043b\u044c'}
+          <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
+            {'Профиль'}
           </h1>
-          <p className="text-muted text-sm mt-2">
-            {user?.name || user?.email || '\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c'}
-          </p>
+          <p className="mt-2 text-sm text-muted">{user?.name || user?.email || 'Пользователь'}</p>
         </div>
 
         {!error && user && (
           <div
             ref={actionPanelRef}
-            className="panel panel-glass rounded-2xl p-4 mb-6 relative z-40 isolate"
+            className="panel panel-glass relative isolate z-40 mb-6 rounded-2xl p-4"
           >
             <div className="flex flex-wrap items-center gap-2">
               <Link
                 href={`/letters?owner=${user.id}`}
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition text-sm w-full sm:w-auto"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10 sm:w-auto"
               >
-                <ExternalLink className="w-4 h-4" />
-                {'\u041f\u0438\u0441\u044c\u043c\u0430 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f'}
+                <ExternalLink className="h-4 w-4" />
+                {
+                  '\u041f\u0438\u0441\u044c\u043c\u0430 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f'
+                }
               </Link>
               <button
-                onClick={() =>
-                  setActionOpen(actionOpen === 'assign' ? null : 'assign')
-                }
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition text-sm w-full sm:w-auto"
+                onClick={() => setActionOpen(actionOpen === 'assign' ? null : 'assign')}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10 sm:w-auto"
               >
-                <UserCheck className="w-4 h-4" />
-                {'\u041d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u043f\u0438\u0441\u044c\u043c\u043e'}
+                <UserCheck className="h-4 w-4" />
+                {
+                  '\u041d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u043f\u0438\u0441\u044c\u043c\u043e'
+                }
               </button>
               <button
-                onClick={() =>
-                  setActionOpen(actionOpen === 'comment' ? null : 'comment')
-                }
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition text-sm w-full sm:w-auto"
+                onClick={() => setActionOpen(actionOpen === 'comment' ? null : 'comment')}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10 sm:w-auto"
               >
-                <MessageSquarePlus className="w-4 h-4" />
-                {'\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439'}
+                <MessageSquarePlus className="h-4 w-4" />
+                {
+                  '\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439'
+                }
               </button>
             </div>
 
             {actionOpen && (
-              <div className="absolute left-0 right-0 mt-3 z-[70] md:left-auto md:right-0 md:w-[520px]">
-                <div className="panel panel-glass rounded-2xl p-5 border border-white/10 shadow-xl animate-scaleIn origin-top">
-                  <div className="flex items-center justify-between mb-4">
+              <div className="absolute left-0 right-0 z-[70] mt-3 md:left-auto md:right-0 md:w-[520px]">
+                <div className="panel panel-glass animate-scaleIn origin-top rounded-2xl border border-white/10 p-5 shadow-xl">
+                  <div className="mb-4 flex items-center justify-between">
                     <div className="text-lg font-semibold text-white">
                       {actionOpen === 'assign'
                         ? '\u041d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u043f\u0438\u0441\u044c\u043c\u043e'
@@ -350,32 +370,36 @@ export default function UserProfilePage() {
                     </div>
                     <button
                       onClick={() => setActionOpen(null)}
-                      className="p-2 text-gray-400 hover:text-white transition"
+                      className="p-2 text-gray-400 transition hover:text-white"
                       aria-label="Close"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
 
                   <div className="space-y-3">
                     <div className="relative">
-                      <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                       <input
                         value={actionSearch}
                         onChange={(e) => setActionSearch(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-400 focus:outline-none focus:border-teal-400/80 focus:ring-1 focus:ring-teal-400/40"
-                        placeholder={'\u041f\u043e\u0438\u0441\u043a \u043f\u043e \u043d\u043e\u043c\u0435\u0440\u0443 \u0438\u043b\u0438 \u043e\u0440\u0433\u0430\u043d\u0443'}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-white placeholder-slate-400 focus:border-teal-400/80 focus:outline-none focus:ring-1 focus:ring-teal-400/40"
+                        placeholder={
+                          '\u041f\u043e\u0438\u0441\u043a \u043f\u043e \u043d\u043e\u043c\u0435\u0440\u0443 \u0438\u043b\u0438 \u043e\u0440\u0433\u0430\u043d\u0443'
+                        }
                         aria-label="Search letters"
                       />
                     </div>
                     <select
                       value={selectedLetterId}
                       onChange={(e) => setSelectedLetterId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-teal-400/80 focus:ring-1 focus:ring-teal-400/40"
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-teal-400/80 focus:outline-none focus:ring-1 focus:ring-teal-400/40"
                       aria-label="Select letter"
                     >
                       <option value="">
-                        {'\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u0438\u0441\u044c\u043c\u043e'}
+                        {
+                          '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u0438\u0441\u044c\u043c\u043e'
+                        }
                       </option>
                       {actionLetters.map((letter) => (
                         <option key={letter.id} value={letter.id}>
@@ -385,15 +409,19 @@ export default function UserProfilePage() {
                     </select>
                     {actionLoading && (
                       <div className="text-xs text-gray-500">
-                        {'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043f\u0438\u0441\u0435\u043c...'}
+                        {
+                          '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043f\u0438\u0441\u0435\u043c...'
+                        }
                       </div>
                     )}
                     {actionOpen === 'comment' && (
                       <textarea
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        className="w-full min-h-[120px] px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-400 focus:outline-none focus:border-teal-400/80 focus:ring-1 focus:ring-teal-400/40"
-                        placeholder={'\u0422\u0435\u043a\u0441\u0442 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u044f'}
+                        className="min-h-[120px] w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-400 focus:border-teal-400/80 focus:outline-none focus:ring-1 focus:ring-teal-400/40"
+                        placeholder={
+                          '\u0422\u0435\u043a\u0441\u0442 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u044f'
+                        }
                         aria-label="Comment"
                       />
                     )}
@@ -402,7 +430,7 @@ export default function UserProfilePage() {
                   <div className="mt-4 flex items-center justify-end gap-2">
                     <button
                       onClick={() => setActionOpen(null)}
-                      className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition text-sm"
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
                     >
                       {'\u041e\u0442\u043c\u0435\u043d\u0430'}
                     </button>
@@ -413,12 +441,12 @@ export default function UserProfilePage() {
                         !selectedLetterId ||
                         (actionOpen === 'comment' && !commentText.trim())
                       }
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg btn-primary text-white disabled:opacity-60 text-sm"
+                      className="btn-primary inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-white disabled:opacity-60"
                     >
                       {actionSubmitting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Send className="w-4 h-4" />
+                        <Send className="h-4 w-4" />
                       )}
                       {actionOpen === 'assign'
                         ? '\u041d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c'
@@ -432,13 +460,13 @@ export default function UserProfilePage() {
         )}
 
         {error ? (
-          <div className="panel panel-glass rounded-2xl p-6 flex items-center gap-3 text-gray-300">
-            <Info className="w-5 h-5 text-amber-400" />
+          <div className="panel panel-glass flex items-center gap-3 rounded-2xl p-6 text-gray-300">
+            <Info className="h-5 w-5 text-amber-400" />
             <span>{error}</span>
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-3">
-            <div className="panel panel-glass rounded-2xl p-6 space-y-6">
+            <div className="panel panel-glass space-y-6 rounded-2xl p-6">
               <div className="flex items-center gap-3">
                 {displayAvatar ? (
                   <Image
@@ -446,12 +474,12 @@ export default function UserProfilePage() {
                     alt={user?.name || user?.email || 'User'}
                     width={64}
                     height={64}
-                    className="w-16 h-16 rounded-full object-cover"
+                    className="h-16 w-16 rounded-full object-cover"
                     unoptimized
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-                    <UserCircle className="w-8 h-8 text-slate-300" />
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+                    <UserCircle className="h-8 w-8 text-slate-300" />
                   </div>
                 )}
                 <div>
@@ -459,8 +487,8 @@ export default function UserProfilePage() {
                     {user?.name || '\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438'}
                   </div>
                   {user?.email && (
-                    <div className="text-xs text-gray-400 flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <Mail className="h-3.5 w-3.5" />
                       <span className="truncate">{user.email}</span>
                     </div>
                   )}
@@ -469,12 +497,12 @@ export default function UserProfilePage() {
 
               {user && (
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${ROLE_BADGE_CLASSES[user.role]}`}
+                  className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs ${ROLE_BADGE_CLASSES[user.role]}`}
                 >
                   {user.role === 'SUPERADMIN' ? (
-                    <Crown className="w-3 h-3 text-yellow-200" />
+                    <Crown className="h-3 w-3 text-yellow-200" />
                   ) : (
-                    <Shield className="w-3 h-3" />
+                    <Shield className="h-3 w-3" />
                   )}
                   {ROLE_LABELS[user.role]}
                 </span>
@@ -483,17 +511,19 @@ export default function UserProfilePage() {
               {user && (
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="panel-soft panel-glass rounded-xl p-2 text-center">
-                    <FileText className="w-4 h-4 text-emerald-300 mx-auto mb-1" />
+                    <FileText className="mx-auto mb-1 h-4 w-4 text-emerald-300" />
                     <div className="text-white">{user._count.letters}</div>
                     <div className="text-gray-500">{'\u041f\u0438\u0441\u044c\u043c\u0430'}</div>
                   </div>
                   <div className="panel-soft panel-glass rounded-xl p-2 text-center">
-                    <MessageSquare className="w-4 h-4 text-blue-300 mx-auto mb-1" />
+                    <MessageSquare className="mx-auto mb-1 h-4 w-4 text-blue-300" />
                     <div className="text-white">{user._count.comments}</div>
-                    <div className="text-gray-500">{'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u044b'}</div>
+                    <div className="text-gray-500">
+                      {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u044b'}
+                    </div>
                   </div>
                   <div className="panel-soft panel-glass rounded-xl p-2 text-center">
-                    <Clock className="w-4 h-4 text-amber-300 mx-auto mb-1" />
+                    <Clock className="mx-auto mb-1 h-4 w-4 text-amber-300" />
                     <div className="text-white">{user._count.sessions}</div>
                     <div className="text-gray-500">{'\u0421\u0435\u0441\u0441\u0438\u0438'}</div>
                   </div>
@@ -501,26 +531,31 @@ export default function UserProfilePage() {
               )}
 
               {user?.lastLoginAt && (
-                <div className="text-xs text-gray-400 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  {'\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0432\u0445\u043e\u0434:'} {formatDate(user.lastLoginAt)}
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <Clock className="h-4 w-4" />
+                  {
+                    '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0432\u0445\u043e\u0434:'
+                  }{' '}
+                  {formatDate(user.lastLoginAt)}
                 </div>
               )}
 
               <div className="space-y-2">
-                <div className="text-xs text-gray-400">{'\u041e\u0431\u043b\u043e\u0436\u043a\u0430'}</div>
-                <div className="rounded-xl overflow-hidden h-20 bg-white/10 border border-white/10">
+                <div className="text-xs text-gray-400">
+                  {'\u041e\u0431\u043b\u043e\u0436\u043a\u0430'}
+                </div>
+                <div className="h-20 overflow-hidden rounded-xl border border-white/10 bg-white/10">
                   {coverUrl ? (
                     <Image
                       src={coverUrl}
                       alt="Cover"
                       width={600}
                       height={160}
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-cover"
                       unoptimized
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                    <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
                       {'\u041d\u0435\u0442 \u043e\u0431\u043b\u043e\u0436\u043a\u0438'}
                     </div>
                   )}
@@ -528,13 +563,13 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            <div className="lg:col-span-2 panel panel-glass rounded-2xl p-6 space-y-6">
+            <div className="panel panel-glass space-y-6 rounded-2xl p-6 lg:col-span-2">
               {profile?.bio && (
                 <div>
-                  <div className="text-sm text-gray-300 mb-2">
+                  <div className="mb-2 text-sm text-gray-300">
                     {'\u041e \u0441\u0435\u0431\u0435'}
                   </div>
-                  <div className="panel-soft panel-glass rounded-xl p-4 text-sm text-slate-200 whitespace-pre-wrap">
+                  <div className="panel-soft panel-glass whitespace-pre-wrap rounded-xl p-4 text-sm text-slate-200">
                     {profile.bio}
                   </div>
                 </div>
@@ -543,52 +578,62 @@ export default function UserProfilePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {profile?.position && (
                   <div className="flex items-start gap-3">
-                    <Briefcase className="w-4 h-4 text-emerald-400 mt-1" />
+                    <Briefcase className="mt-1 h-4 w-4 text-emerald-400" />
                     <div>
-                      <div className="text-xs text-gray-400">{'\u0414\u043e\u043b\u0436\u043d\u043e\u0441\u0442\u044c'}</div>
+                      <div className="text-xs text-gray-400">
+                        {'\u0414\u043e\u043b\u0436\u043d\u043e\u0441\u0442\u044c'}
+                      </div>
                       <div className="text-sm text-white">{profile.position}</div>
                     </div>
                   </div>
                 )}
                 {profile?.department && (
                   <div className="flex items-start gap-3">
-                    <Building2 className="w-4 h-4 text-emerald-400 mt-1" />
+                    <Building2 className="mt-1 h-4 w-4 text-emerald-400" />
                     <div>
-                      <div className="text-xs text-gray-400">{'\u041e\u0442\u0434\u0435\u043b'}</div>
+                      <div className="text-xs text-gray-400">
+                        {'\u041e\u0442\u0434\u0435\u043b'}
+                      </div>
                       <div className="text-sm text-white">{profile.department}</div>
                     </div>
                   </div>
                 )}
                 {profile?.location && (
                   <div className="flex items-start gap-3">
-                    <MapPin className="w-4 h-4 text-emerald-400 mt-1" />
+                    <MapPin className="mt-1 h-4 w-4 text-emerald-400" />
                     <div>
-                      <div className="text-xs text-gray-400">{'\u041b\u043e\u043a\u0430\u0446\u0438\u044f'}</div>
+                      <div className="text-xs text-gray-400">
+                        {'\u041b\u043e\u043a\u0430\u0446\u0438\u044f'}
+                      </div>
                       <div className="text-sm text-white">{profile.location}</div>
                     </div>
                   </div>
                 )}
                 {profile?.timezone && (
                   <div className="flex items-start gap-3">
-                    <Globe2 className="w-4 h-4 text-emerald-400 mt-1" />
+                    <Globe2 className="mt-1 h-4 w-4 text-emerald-400" />
                     <div>
-                      <div className="text-xs text-gray-400">{'\u0427\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441'}</div>
+                      <div className="text-xs text-gray-400">
+                        {'\u0427\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441'}
+                      </div>
                       <div className="text-sm text-white">{profile.timezone}</div>
                     </div>
                   </div>
                 )}
                 {profile?.phone && (
                   <div className="flex items-start gap-3">
-                    <Phone className="w-4 h-4 text-emerald-400 mt-1" />
+                    <Phone className="mt-1 h-4 w-4 text-emerald-400" />
                     <div>
-                      <div className="text-xs text-gray-400">{'\u0422\u0435\u043b\u0435\u0444\u043e\u043d'}</div>
+                      <div className="text-xs text-gray-400">
+                        {'\u0422\u0435\u043b\u0435\u0444\u043e\u043d'}
+                      </div>
                       <div className="text-sm text-white">{profile.phone}</div>
                     </div>
                   </div>
                 )}
                 {user?.email && (
                   <div className="flex items-start gap-3">
-                    <Mail className="w-4 h-4 text-emerald-400 mt-1" />
+                    <Mail className="mt-1 h-4 w-4 text-emerald-400" />
                     <div>
                       <div className="text-xs text-gray-400">Email</div>
                       <div className="text-sm text-white">{user.email}</div>
@@ -599,14 +644,14 @@ export default function UserProfilePage() {
 
               {skills.length > 0 && (
                 <div>
-                  <div className="text-sm text-gray-300 mb-2">
+                  <div className="mb-2 text-sm text-gray-300">
                     {'\u041d\u0430\u0432\u044b\u043a\u0438'}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {skills.map((skill) => (
                       <span
                         key={skill}
-                        className="px-2 py-1 rounded-full text-xs bg-white/10 border border-white/10 text-slate-200"
+                        className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-xs text-slate-200"
                       >
                         {skill}
                       </span>
@@ -616,12 +661,12 @@ export default function UserProfilePage() {
               )}
 
               <div className="panel-soft panel-glass rounded-2xl p-4">
-                <div className="flex items-center gap-2 text-sm text-gray-300 mb-4">
-                  <Clock className="w-4 h-4 text-emerald-400" />
+                <div className="mb-4 flex items-center gap-2 text-sm text-gray-300">
+                  <Clock className="h-4 w-4 text-emerald-400" />
                   {'\u0410\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c'}
                 </div>
                 {activity ? (
-                  <div className="grid gap-4 md:grid-cols-3 text-xs">
+                  <div className="grid gap-4 text-xs md:grid-cols-3">
                     <div className="space-y-2">
                       <div className="text-gray-400">{'\u041f\u0438\u0441\u044c\u043c\u0430'}</div>
                       {activity.letters.length > 0 ? (
@@ -629,59 +674,74 @@ export default function UserProfilePage() {
                           <Link
                             key={item.id}
                             href={`/letters/${item.id}`}
-                            className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 hover:bg-white/10 transition"
+                            className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:bg-white/10"
                           >
                             <div className="font-medium">#{item.number}</div>
-                            <div className="text-gray-500 truncate">{item.org}</div>
+                            <div className="truncate text-gray-500">{item.org}</div>
                           </Link>
                         ))
                       ) : (
-                        <div className="text-gray-500">{'\u041d\u0435\u0442 \u043f\u0438\u0441\u0435\u043c'}</div>
+                        <div className="text-gray-500">
+                          {'\u041d\u0435\u0442 \u043f\u0438\u0441\u0435\u043c'}
+                        </div>
                       )}
                     </div>
                     <div className="space-y-2">
-                      <div className="text-gray-400">{'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0438'}</div>
+                      <div className="text-gray-400">
+                        {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0438'}
+                      </div>
                       {activity.comments.length > 0 ? (
                         activity.comments.map((item) => (
                           <Link
                             key={item.id}
                             href={`/letters/${item.letter.id}`}
-                            className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 hover:bg-white/10 transition"
+                            className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:bg-white/10"
                           >
                             <div className="font-medium">#{item.letter.number}</div>
-                            <div className="text-gray-500 truncate">{item.text}</div>
+                            <div className="truncate text-gray-500">{item.text}</div>
                           </Link>
                         ))
                       ) : (
-                        <div className="text-gray-500">{'\u041d\u0435\u0442 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432'}</div>
+                        <div className="text-gray-500">
+                          {
+                            '\u041d\u0435\u0442 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432'
+                          }
+                        </div>
                       )}
                     </div>
                     <div className="space-y-2">
-                      <div className="text-gray-400">{'\u041d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f'}</div>
+                      <div className="text-gray-400">
+                        {'\u041d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f'}
+                      </div>
                       {activity.assignments.length > 0 ? (
                         activity.assignments.map((item) => (
                           <Link
                             key={item.id}
                             href={`/letters/${item.letter.id}`}
-                            className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 hover:bg-white/10 transition"
+                            className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:bg-white/10"
                           >
                             <div className="font-medium">#{item.letter.number}</div>
-                            <div className="text-gray-500 truncate">{item.letter.org}</div>
+                            <div className="truncate text-gray-500">{item.letter.org}</div>
                           </Link>
                         ))
                       ) : (
-                        <div className="text-gray-500">{'\u041d\u0435\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0439'}</div>
+                        <div className="text-gray-500">
+                          {
+                            '\u041d\u0435\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0439'
+                          }
+                        </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="text-xs text-gray-500">{'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...'}</div>
+                  <div className="text-xs text-gray-500">
+                    {'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...'}
+                  </div>
                 )}
               </div>
             </div>
           </div>
         )}
-
       </main>
     </div>
   )

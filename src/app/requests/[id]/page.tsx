@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { Header } from '@/components/Header'
 import { QuickActionsMenu } from '@/components/QuickActionsMenu'
+import { Breadcrumb } from '@/components/Breadcrumb'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useToast } from '@/components/Toast'
 import { formatDate } from '@/lib/utils'
@@ -342,13 +343,13 @@ export default function RequestDetailPage() {
       <Header />
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link
-          href="/requests"
-          className="mb-6 inline-flex items-center gap-2 text-gray-400 transition hover:text-white"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          {'К списку заявок'}
-        </Link>
+        <Breadcrumb
+          className="mb-6"
+          items={[
+            { label: 'Заявки', href: '/requests' },
+            { label: request.organization || `Заявка #${params.id}` },
+          ]}
+        />
 
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>

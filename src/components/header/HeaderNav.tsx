@@ -8,6 +8,7 @@ import { Settings, ChevronDown, RefreshCw } from 'lucide-react'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
 import { scheduleFallbackNavigation } from './header-utils'
 import { NAV_ITEMS, isActivePath } from './header-constants'
+import { useLettersBadge } from './useLettersBadge'
 import type { SyncDirection } from './header-types'
 
 interface HeaderNavProps {
@@ -28,6 +29,7 @@ export const HeaderNav = memo(function HeaderNav({
   onSync,
 }: HeaderNavProps) {
   const pathname = usePathname()
+  const lettersBadge = useLettersBadge()
 
   const handleNavClick = useCallback(
     (event: MouseEvent<HTMLElement>, href?: string) => {
@@ -62,6 +64,22 @@ export const HeaderNav = memo(function HeaderNav({
               }`}
             />
             <span>{item.label}</span>
+            {item.href === '/letters' && lettersBadge.overdue > 0 && (
+              <span
+                className="ml-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+                title={`${lettersBadge.overdue} просроченных`}
+              >
+                {lettersBadge.overdue > 99 ? '99+' : lettersBadge.overdue}
+              </span>
+            )}
+            {item.href === '/letters' && lettersBadge.overdue === 0 && lettersBadge.urgent > 0 && (
+              <span
+                className="ml-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+                title={`${lettersBadge.urgent} срочных`}
+              >
+                {lettersBadge.urgent > 99 ? '99+' : lettersBadge.urgent}
+              </span>
+            )}
             {isActive && (
               <span className="absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-gradient-to-r from-teal-400 to-emerald-400" />
             )}
