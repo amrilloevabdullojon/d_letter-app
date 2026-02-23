@@ -41,10 +41,16 @@ export const HeaderNav = memo(function HeaderNav({
   )
 
   return (
-    <nav className="hidden items-center gap-0.5 md:flex" aria-label="Основная навигация">
+    <nav className="hidden shrink-0 items-center gap-0.5 md:flex" aria-label="Основная навигация">
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon
         const isActive = isActivePath(pathname, item.matchPath)
+        const overdueCount =
+          item.href === '/letters' && lettersBadge.overdue > 0 ? lettersBadge.overdue : 0
+        const urgentCount =
+          item.href === '/letters' && lettersBadge.overdue === 0 && lettersBadge.urgent > 0
+            ? lettersBadge.urgent
+            : 0
 
         return (
           <Link
@@ -52,34 +58,37 @@ export const HeaderNav = memo(function HeaderNav({
             href={item.href}
             onClick={(event) => handleNavClick(event, item.href)}
             aria-current={isActive ? 'page' : undefined}
-            className={`group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+            className={`group relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all ${
               isActive
                 ? 'bg-white/10 text-white'
                 : 'text-slate-300 hover:bg-white/5 hover:text-white'
             }`}
           >
-            <Icon
-              className={`h-4 w-4 transition-transform group-hover:scale-110 ${
-                isActive ? 'text-teal-400' : ''
-              }`}
-            />
+            {/* Icon + badge */}
+            <span className="relative shrink-0">
+              <Icon
+                className={`h-4 w-4 transition-transform group-hover:scale-110 ${
+                  isActive ? 'text-teal-400' : ''
+                }`}
+              />
+              {overdueCount > 0 && (
+                <span
+                  className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold leading-none text-white"
+                  title={`${overdueCount} просроченных`}
+                >
+                  {overdueCount > 99 ? '99+' : overdueCount}
+                </span>
+              )}
+              {urgentCount > 0 && (
+                <span
+                  className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-amber-500 px-0.5 text-[9px] font-bold leading-none text-white"
+                  title={`${urgentCount} срочных`}
+                >
+                  {urgentCount > 99 ? '99+' : urgentCount}
+                </span>
+              )}
+            </span>
             <span>{item.label}</span>
-            {item.href === '/letters' && lettersBadge.overdue > 0 && (
-              <span
-                className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white"
-                title={`${lettersBadge.overdue} просроченных`}
-              >
-                {lettersBadge.overdue > 99 ? '99+' : lettersBadge.overdue}
-              </span>
-            )}
-            {item.href === '/letters' && lettersBadge.overdue === 0 && lettersBadge.urgent > 0 && (
-              <span
-                className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
-                title={`${lettersBadge.urgent} срочных`}
-              >
-                {lettersBadge.urgent > 99 ? '99+' : lettersBadge.urgent}
-              </span>
-            )}
             {isActive && (
               <span className="absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-gradient-to-r from-teal-400 to-emerald-400" />
             )}

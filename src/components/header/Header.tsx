@@ -159,7 +159,7 @@ export function Header() {
             />
 
             {/* Desktop Right Section */}
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden shrink-0 items-center gap-1 md:flex">
               {/* Quick Create */}
               <HeaderQuickCreate
                 isOpen={quickCreateOpen}
