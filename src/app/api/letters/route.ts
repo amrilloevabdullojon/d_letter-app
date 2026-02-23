@@ -37,6 +37,7 @@ const createLetterSchema = z.object({
   contacts: z.string().max(500).optional(),
   jiraLink: z.string().max(500).optional(),
   ownerId: z.string().optional(),
+  priority: z.number().int().min(0).max(100).optional(),
   applicantName: z.string().max(200).optional(),
   applicantEmail: z.string().max(320).optional(),
   applicantPhone: z.string().max(50).optional(),
@@ -208,7 +209,7 @@ export async function POST(request: NextRequest) {
           applicantAccessTokenExpiresAt,
           ownerId,
           status: 'NOT_REVIEWED',
-          priority: 50,
+          priority: data.priority ?? 50,
         },
         include: {
           owner: {

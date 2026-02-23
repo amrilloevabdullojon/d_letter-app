@@ -16,10 +16,12 @@ import {
   Trash2,
   Upload,
   X,
+  User,
 } from 'lucide-react'
 import Link from 'next/link'
 import { QuickLetterUpload } from '@/components/QuickLetterUpload'
 import { OrganizationAutocomplete } from '@/components/OrganizationAutocomplete'
+import { OwnerSelector, type OwnerOption } from '@/components/OwnerSelector'
 import { useToast } from '@/components/Toast'
 import {
   ALLOWED_FILE_EXTENSIONS,
@@ -29,6 +31,9 @@ import {
 } from '@/lib/constants'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { quickLetterUploadSchema, type QuickLetterUploadInput } from '@/lib/schemas'
+import { calculateDeadline, formatDateForInput } from '@/lib/parseLetterFilename'
+import { DEFAULT_DEADLINE_WORKING_DAYS } from '@/lib/constants'
+import { getWorkingDaysUntilDeadline } from '@/lib/utils'
 
 // Extend schema for this form with additional fields
 type CreateLetterFormValues = QuickLetterUploadInput & {
@@ -44,6 +49,9 @@ export default function NewLetterPage() {
   const toast = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [users, setUsers] = useState<OwnerOption[]>([])
+  const [selectedOwner, setSelectedOwner] = useState<OwnerOption | null>(null)
+  const [priority, setPriority] = useState(50)
 
   const [mode, setMode] = useState<'quick' | 'manual'>('quick')
   const [attachment, setAttachment] = useState<File | null>(null)
@@ -52,6 +60,15 @@ export default function NewLetterPage() {
   const [isDragging, setIsDragging] = useState(false)
 
   const DRAFT_KEY = 'letter-draft'
+
+  // Загрузка пользователей для выбора исполнителя
+  useEffect(() => {
+    if (mode !== 'manual') return
+    fetch('/api/users')
+      .then((r) => r.json())
+      .then((d) => setUsers(d.users || []))
+      .catch(() => {})
+  }, [mode])
 
   const {
     register,
@@ -143,7 +160,11 @@ export default function NewLetterPage() {
       const res = await fetch('/api/letters', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          ownerId: selectedOwner?.id || undefined,
+          priority,
+        }),
       })
 
       const result = await res.json()
@@ -354,6 +375,18 @@ export default function NewLetterPage() {
                   <input
                     type="date"
                     {...register('date')}
+                    onChange={(e) => {
+                      setValue('date', e.target.value)
+                      if (e.target.value) {
+                        const dateObj = new Date(e.target.value)
+                        setValue(
+                          'deadlineDate',
+                          formatDateForInput(
+                            calculateDeadline(dateObj, DEFAULT_DEADLINE_WORKING_DAYS)
+                          )
+                        )
+                      }
+                    }}
                     className={`w-full rounded-lg border ${errors.date ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none`}
                   />
                   {errors.date && (
@@ -370,9 +403,20 @@ export default function NewLetterPage() {
                     {...register('deadlineDate')}
                     className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Если не указано, будет рассчитано автоматически (+7 рабочих дней)
-                  </p>
+                  {watch('deadlineDate') ? (
+                    (() => {
+                      const days = getWorkingDaysUntilDeadline(watch('deadlineDate') as string)
+                      return days < 0 ? (
+                        <p className="mt-1 text-xs text-red-400">Дедлайн в прошлом</p>
+                      ) : (
+                        <p className="mt-1 text-xs text-slate-400">{days} раб. дн. до дедлайна</p>
+                      )
+                    })()
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Если не указано, будет рассчитано автоматически (+7 рабочих дней)
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -530,8 +574,16 @@ export default function NewLetterPage() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">
+                    <label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-300">
                       Telegram chat id
+                      <a
+                        href="https://t.me/userinfobot"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-normal text-blue-400 hover:text-blue-300"
+                      >
+                        (как найти?)
+                      </a>
                     </label>
                     <input
                       type="text"
@@ -551,6 +603,40 @@ export default function NewLetterPage() {
                   className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                   placeholder="Внутренний комментарий"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-300">Приоритет</label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(Number(e.target.value))}
+                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  >
+                    <option value={25}>Низкий (25)</option>
+                    <option value={50}>Средний (50)</option>
+                    <option value={75}>Высокий (75)</option>
+                    <option value={100}>Критический (100)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-300">
+                    <User className="h-4 w-4" />
+                    Исполнитель
+                  </label>
+                  <OwnerSelector
+                    currentOwner={selectedOwner}
+                    users={users}
+                    onSelect={async (id) => {
+                      const found = id ? (users.find((u) => u.id === id) ?? null) : null
+                      setSelectedOwner(found)
+                    }}
+                    disabled={false}
+                    canEdit={true}
+                    placeholder="Назначить исполнителя"
+                  />
+                </div>
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">

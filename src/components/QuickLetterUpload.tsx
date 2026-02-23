@@ -20,6 +20,8 @@ import {
   MapPin,
   FileCode,
   Bot,
+  ExternalLink,
+  Plus,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import {
@@ -31,6 +33,8 @@ import {
 import { DEFAULT_DEADLINE_WORKING_DAYS, LETTER_TYPES } from '@/lib/constants'
 import { recommendLetterType } from '@/lib/recommendLetterType'
 import { quickLetterUploadSchema, type QuickLetterUploadInput } from '@/lib/schemas'
+import { OrganizationAutocomplete } from '@/components/OrganizationAutocomplete'
+import { getWorkingDaysUntilDeadline } from '@/lib/utils'
 
 interface ParsedPdfData {
   number: string | null
@@ -63,6 +67,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   const [creating, setCreating] = useState(false)
   const [parsing, setParsing] = useState(false)
   const [parseSource, setParseSource] = useState<'ai' | 'pdf' | 'filename' | null>(null)
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [createdLetterId, setCreatedLetterId] = useState<string | null>(null)
 
   // Дополнительные поля (не в схеме)
   const [contentRussian, setContentRussian] = useState('')
@@ -93,7 +99,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     },
   })
 
-  const watchDate = watch('date')
+  const watchDeadline = watch('deadlineDate')
 
   /**
    * Парсит PDF через API
@@ -130,6 +136,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       setFile(f)
       setParsing(true)
       setParseSource(null)
+      setServerError(null)
+      setCreatedLetterId(null)
 
       const isPdf = f.name.toLowerCase().endsWith('.pdf')
 
@@ -251,6 +259,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
 
   const onSubmit = async (data: QuickLetterUploadInput) => {
     setCreating(true)
+    setServerError(null)
     const toastId = toast.loading('Создание письма...')
 
     try {
@@ -265,6 +274,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
           deadlineDate: data.deadlineDate || undefined,
           type: data.type || undefined,
           content: data.content || undefined,
+          contacts: region ? `Регион: ${region}` : undefined,
           applicantName: data.applicantName || undefined,
           applicantEmail: data.applicantEmail || undefined,
           applicantPhone: data.applicantPhone || undefined,
@@ -275,7 +285,10 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       const letterData = await letterRes.json()
 
       if (!letterRes.ok) {
-        throw new Error(letterData.error || 'Ошибка создания письма')
+        const errorMessage = letterData.error || 'Ошибка создания письма'
+        setServerError(errorMessage)
+        toast.removeToast(toastId)
+        return
       }
 
       const createdLetter = letterData.letter || letterData
@@ -306,10 +319,12 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       }
 
       toast.success('Письмо создано!', { id: toastId })
-      router.push(`/letters/${letterId}`)
+      setCreatedLetterId(letterId)
     } catch (error) {
       console.error('Create error:', error)
-      toast.error(error instanceof Error ? error.message : 'Ошибка создания', { id: toastId })
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка создания'
+      setServerError(errorMessage)
+      toast.error(errorMessage, { id: toastId })
     } finally {
       setCreating(false)
     }
@@ -320,6 +335,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     setParseSource(null)
     setContentRussian('')
     setRegion('')
+    setServerError(null)
+    setCreatedLetterId(null)
     resetForm()
   }
 
@@ -334,6 +351,9 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       )
     }
   }
+
+  // Счётчик рабочих дней до дедлайна
+  const deadlineDays = watchDeadline ? getWorkingDaysUntilDeadline(watchDeadline) : null
 
   return (
     <div className="rounded-xl border border-gray-700 bg-gray-800 p-6">
@@ -379,6 +399,32 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
             Перетащите файл сюда или <span className="text-emerald-400">выберите</span>
           </p>
           <p className="mt-2 text-xs text-gray-500">PDF, DOC, DOCX</p>
+        </div>
+      ) : createdLetterId ? (
+        // Баннер успешного создания
+        <div className="space-y-4">
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+            <div className="mb-3 flex items-center gap-2 text-emerald-400">
+              <Check className="h-5 w-5" />
+              <span className="font-semibold">Письмо создано!</span>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={() => router.push(`/letters/${createdLetterId}`)}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 font-medium text-white transition hover:bg-emerald-700"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Открыть письмо
+              </button>
+              <button
+                onClick={reset}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gray-700 px-4 py-2.5 font-medium text-white transition hover:bg-gray-600"
+              >
+                <Plus className="h-4 w-4" />
+                Создать ещё
+              </button>
+            </div>
+          </div>
         </div>
       ) : (
         // Form
@@ -428,6 +474,14 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
             </div>
           )}
 
+          {/* Server error */}
+          {serverError && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-400">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{serverError}</span>
+            </div>
+          )}
+
           {/* Form fields */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -451,11 +505,11 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
                 <Building2 className="h-4 w-4" />
                 Организация *
               </label>
-              <input
-                type="text"
-                {...register('org')}
-                className={`w-full rounded-lg border ${errors.org ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none`}
+              <OrganizationAutocomplete
+                value={watch('org')}
+                onChange={(value) => setValue('org', value, { shouldValidate: true })}
                 placeholder="3-son oilaviy poliklinika"
+                className={errors.org ? 'border-red-500' : ''}
               />
               {errors.org && <p className="mt-1 text-xs text-red-400">{errors.org.message}</p>}
             </div>
@@ -484,6 +538,12 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
                 {...register('deadlineDate')}
                 className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
               />
+              {deadlineDays !== null &&
+                (deadlineDays < 0 ? (
+                  <p className="mt-1 text-xs text-red-400">Дедлайн в прошлом</p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-400">{deadlineDays} раб. дн. до дедлайна</p>
+                ))}
             </div>
           </div>
 
@@ -570,7 +630,19 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400">Telegram chat id</label>
+                <label className="flex items-center gap-1 text-xs text-gray-400">
+                  Telegram chat id
+                  <a
+                    href="https://t.me/userinfobot"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-0.5 text-blue-400 hover:text-blue-300"
+                    title="Как найти Telegram chat id"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    (как найти?)
+                  </a>
+                </label>
                 <input
                   type="text"
                   {...register('applicantTelegramChatId')}
