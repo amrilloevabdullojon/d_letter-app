@@ -5,6 +5,42 @@ import { useRouter } from 'next/navigation'
 import type { Letter, Neighbors, CommentItem } from '../types'
 
 const COMMENTS_PAGE_SIZE = 10
+const FETCH_TIMEOUT_MS = 10_000
+const MAX_RETRY_ATTEMPTS = 3
+
+/**
+ * Выполняет fetch с автоматическим retry (exponential backoff) и таймаутом.
+ * Не повторяет запрос при 403/404 (ожидаемые ответы) или AbortError.
+ */
+async function fetchWithRetry(url: string, signal: AbortSignal): Promise<Response> {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+    if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+
+    // Объединяем внешний signal с таймаутом
+    const timeoutController = new AbortController()
+    const timeoutId = setTimeout(() => timeoutController.abort(), FETCH_TIMEOUT_MS)
+    const combined = AbortSignal.any ? AbortSignal.any([signal, timeoutController.signal]) : signal // fallback для старых сред
+
+    try {
+      const res = await fetch(url, { signal: combined })
+      clearTimeout(timeoutId)
+      // 403/404 — не ошибка сети, сразу возвращаем
+      if (res.ok || res.status === 403 || res.status === 404) return res
+      throw new Error(`HTTP ${res.status}`)
+    } catch (err) {
+      clearTimeout(timeoutId)
+      if ((err as DOMException).name === 'AbortError') throw err
+      lastError = err
+      if (attempt < MAX_RETRY_ATTEMPTS - 1) {
+        await new Promise((r) => setTimeout(r, 500 * 2 ** attempt))
+      }
+    }
+  }
+
+  throw lastError
+}
 
 interface UseLetterDataOptions {
   letterId: string
@@ -46,9 +82,10 @@ export function useLetterData({
         neighbors: '1',
       })
 
-      const res = await fetch(`/api/letters/${letterId}?${query.toString()}`, {
-        signal: controller.signal,
-      })
+      const res = await fetchWithRetry(
+        `/api/letters/${letterId}?${query.toString()}`,
+        controller.signal
+      )
 
       if (res.ok) {
         const data = await res.json()

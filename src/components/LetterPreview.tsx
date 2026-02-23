@@ -171,7 +171,7 @@ export function LetterPreview({ letterId, onClose }: LetterPreviewProps) {
               {/* Answer */}
               {letter.answer && (
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-gray-400">?????</h4>
+                  <h4 className="mb-2 text-sm font-medium text-gray-400">Ответ</h4>
                   <p className="whitespace-pre-wrap text-sm text-white">{letter.answer}</p>
                 </div>
               )}
@@ -195,7 +195,7 @@ export function LetterPreview({ letterId, onClose }: LetterPreviewProps) {
               {/* Comment */}
               {letter.comment && (
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-gray-400">???????????</h4>
+                  <h4 className="mb-2 text-sm font-medium text-gray-400">Комментарий</h4>
                   <p className="whitespace-pre-wrap text-sm text-gray-300">{letter.comment}</p>
                 </div>
               )}
@@ -230,5 +230,3 @@ export function LetterPreview({ letterId, onClose }: LetterPreviewProps) {
     </>
   )
 }
-
-

@@ -42,6 +42,11 @@ export const LettersBulkActions = memo(function LettersBulkActions({
 
   return (
     <div className="panel panel-soft mb-4 flex flex-col gap-3 rounded-2xl p-4">
+      {!bulkLoading && selectedCount >= 50 && (
+        <p className="text-xs text-amber-400/80">
+          ⚠ Большой объём — операция может занять несколько секунд
+        </p>
+      )}
       {bulkLoading && (
         <div className="space-y-1.5">
           <p className="text-xs text-slate-400">Обработка {selectedCount} писем...</p>

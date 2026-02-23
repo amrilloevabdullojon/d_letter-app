@@ -97,18 +97,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Даты
-    if (searchParams.get('dateFrom')) {
-      params.dateFrom = new Date(searchParams.get('dateFrom')!)
+    const parseDate = (str: string | null): Date | undefined => {
+      if (!str) return undefined
+      const d = new Date(str)
+      return isNaN(d.getTime()) ? undefined : d
     }
-    if (searchParams.get('dateTo')) {
-      params.dateTo = new Date(searchParams.get('dateTo')!)
-    }
-    if (searchParams.get('deadlineFrom')) {
-      params.deadlineFrom = new Date(searchParams.get('deadlineFrom')!)
-    }
-    if (searchParams.get('deadlineTo')) {
-      params.deadlineTo = new Date(searchParams.get('deadlineTo')!)
-    }
+
+    const dateFrom = parseDate(searchParams.get('dateFrom'))
+    const dateTo = parseDate(searchParams.get('dateTo'))
+    const deadlineFrom = parseDate(searchParams.get('deadlineFrom'))
+    const deadlineTo = parseDate(searchParams.get('deadlineTo'))
+
+    if (dateFrom) params.dateFrom = dateFrom
+    if (dateTo) params.dateTo = dateTo
+    if (deadlineFrom) params.deadlineFrom = deadlineFrom
+    if (deadlineTo) params.deadlineTo = deadlineTo
 
     // Приоритет
     if (searchParams.get('priorityMin')) {
@@ -153,9 +156,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy')
     if (
       sortBy &&
-      ['date', 'deadlineDate', 'priority', 'createdAt', 'updatedAt', 'relevance'].includes(
-        sortBy
-      )
+      ['date', 'deadlineDate', 'priority', 'createdAt', 'updatedAt', 'relevance'].includes(sortBy)
     ) {
       params.sortBy = sortBy as any
     }

@@ -389,8 +389,12 @@ export default function NewLetterPage() {
                     className={`w-full rounded-lg border ${errors.number ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none`}
                     placeholder="Например: 01-15/1234"
                   />
-                  {errors.number && (
+                  {errors.number ? (
                     <p className="mt-1 text-xs text-red-400">{errors.number.message}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Формат: XX-YY/ZZZZ (например, 01-15/1234)
+                    </p>
                   )}
                 </div>
 
@@ -415,8 +419,10 @@ export default function NewLetterPage() {
                     }}
                     className={`w-full rounded-lg border ${errors.date ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none`}
                   />
-                  {errors.date && (
+                  {errors.date ? (
                     <p className="mt-1 text-xs text-red-400">{errors.date.message}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">Дата письма от отправителя</p>
                   )}
                 </div>
               </div>
@@ -585,8 +591,12 @@ export default function NewLetterPage() {
                       className={`w-full rounded-lg border ${errors.applicantEmail ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none`}
                       placeholder="email@example.com"
                     />
-                    {errors.applicantEmail && (
+                    {errors.applicantEmail ? (
                       <p className="mt-1 text-xs text-red-400">{errors.applicantEmail.message}</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Email для обратной связи с заявителем
+                      </p>
                     )}
                   </div>
 
