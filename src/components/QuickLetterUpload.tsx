@@ -257,6 +257,15 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     if (f) handleFile(f)
   }
 
+  const handleContentBlur = useCallback(() => {
+    const content = watch('content')
+    const org = watch('org')
+    if (content && !watch('type')) {
+      const suggested = recommendLetterType({ content, organization: org || '' })
+      if (suggested) setValue('type', suggested, { shouldValidate: true })
+    }
+  }, [watch, setValue])
+
   const onSubmit = async (data: QuickLetterUploadInput) => {
     setCreating(true)
     setServerError(null)
@@ -590,6 +599,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
             </label>
             <textarea
               {...register('content')}
+              onBlur={handleContentBlur}
               rows={2}
               className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
               placeholder="Опишите содержание письма..."

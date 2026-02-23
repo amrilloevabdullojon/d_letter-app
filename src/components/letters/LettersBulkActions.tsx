@@ -41,99 +41,107 @@ export const LettersBulkActions = memo(function LettersBulkActions({
   if (selectedCount === 0) return null
 
   return (
-    <div className="panel panel-soft mb-4 flex flex-col gap-4 rounded-2xl p-4 lg:flex-row lg:items-center">
-      <div className="flex items-center gap-2">
-        <CheckSquare className="h-5 w-5 text-teal-300" />
-        <span className="font-medium text-white">Выбрано: {selectedCount}</span>
-      </div>
+    <div className="panel panel-soft mb-4 flex flex-col gap-3 rounded-2xl p-4">
+      {bulkLoading && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-slate-400">Обработка {selectedCount} писем...</p>
+          <div className="h-1 w-full overflow-hidden rounded-full bg-slate-700">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-500 [animation:pulse_1.2s_ease-in-out_infinite]" />
+          </div>
+        </div>
+      )}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div className="flex items-center gap-2">
+          <CheckSquare className="h-5 w-5 text-teal-300" />
+          <span className="font-medium text-white">Выбрано: {selectedCount}</span>
+        </div>
 
-      <div className="flex w-full flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-        <select
-          value={bulkAction || ''}
-          onChange={(e) => {
-            const value = e.target.value as 'status' | 'owner' | 'delete' | ''
-            onBulkActionChange(value || null)
-            onBulkValueChange('')
-          }}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white sm:w-auto"
-          aria-label="Действие"
-        >
-          <option value="">Выберите действие</option>
-          <option value="status">Сменить статус</option>
-          <option value="owner">Назначить исполнителя</option>
-          {(userRole === 'ADMIN' || userRole === 'SUPERADMIN') && (
-            <option value="delete">Удалить</option>
-          )}
-        </select>
-
-        {bulkAction === 'status' && (
+        <div className="flex w-full flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           <select
-            value={bulkValue}
-            onChange={(e) => onBulkValueChange(e.target.value)}
+            value={bulkAction || ''}
+            onChange={(e) => {
+              const value = e.target.value as 'status' | 'owner' | 'delete' | ''
+              onBulkActionChange(value || null)
+              onBulkValueChange('')
+            }}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white sm:w-auto"
-            aria-label="Статус"
+            aria-label="Действие"
           >
-            <option value="">Выберите статус</option>
-            {statuses
-              .filter((s) => s !== 'all')
-              .map((status) => (
-                <option key={status} value={status}>
-                  {STATUS_LABELS[status as LetterStatus]}
+            <option value="">Выберите действие</option>
+            <option value="status">Сменить статус</option>
+            <option value="owner">Назначить исполнителя</option>
+            {(userRole === 'ADMIN' || userRole === 'SUPERADMIN') && (
+              <option value="delete">Удалить</option>
+            )}
+          </select>
+
+          {bulkAction === 'status' && (
+            <select
+              value={bulkValue}
+              onChange={(e) => onBulkValueChange(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white sm:w-auto"
+              aria-label="Статус"
+            >
+              <option value="">Выберите статус</option>
+              {statuses
+                .filter((s) => s !== 'all')
+                .map((status) => (
+                  <option key={status} value={status}>
+                    {STATUS_LABELS[status as LetterStatus]}
+                  </option>
+                ))}
+            </select>
+          )}
+
+          {bulkAction === 'owner' && (
+            <select
+              value={bulkValue}
+              onChange={(e) => onBulkValueChange(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white sm:w-auto"
+              aria-label="Исполнитель"
+            >
+              <option value="">Выберите исполнителя</option>
+              <option value="">Без исполнителя</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name || user.email}
                 </option>
               ))}
-          </select>
-        )}
+            </select>
+          )}
 
-        {bulkAction === 'owner' && (
-          <select
-            value={bulkValue}
-            onChange={(e) => onBulkValueChange(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white sm:w-auto"
-            aria-label="Исполнитель"
-          >
-            <option value="">Выберите исполнителя</option>
-            <option value="">Без исполнителя</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name || user.email}
-              </option>
-            ))}
-          </select>
-        )}
+          {bulkAction && (bulkAction === 'delete' || bulkValue) && (
+            <button
+              onClick={onExecute}
+              disabled={bulkLoading}
+              className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-white transition sm:w-auto ${
+                bulkAction === 'delete'
+                  ? 'bg-red-500 hover:bg-red-600'
+                  : 'bg-emerald-500 hover:bg-emerald-600'
+              } disabled:opacity-50`}
+            >
+              {bulkLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : bulkAction === 'delete' ? (
+                <Trash2 className="h-4 w-4" />
+              ) : bulkAction === 'owner' ? (
+                <UserPlus className="h-4 w-4" />
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
+              Применить
+            </button>
+          )}
+        </div>
 
-        {bulkAction && (bulkAction === 'delete' || bulkValue) && (
-          <button
-            onClick={onExecute}
-            disabled={bulkLoading}
-            className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-white transition sm:w-auto ${
-              bulkAction === 'delete'
-                ? 'bg-red-500 hover:bg-red-600'
-                : 'bg-emerald-500 hover:bg-emerald-600'
-            } disabled:opacity-50`}
-          >
-            {bulkLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : bulkAction === 'delete' ? (
-              <Trash2 className="h-4 w-4" />
-            ) : bulkAction === 'owner' ? (
-              <UserPlus className="h-4 w-4" />
-            ) : (
-              <CheckCircle className="h-4 w-4" />
-            )}
-            Применить
-          </button>
-        )}
+        <button
+          onClick={onClear}
+          className="self-start rounded-lg p-2 text-slate-300 transition hover:bg-white/10 hover:text-white lg:self-auto"
+          aria-label="Снять выбор"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-
-      <button
-        onClick={onClear}
-        className="self-start rounded-lg p-2 text-slate-300 transition hover:bg-white/10 hover:text-white lg:self-auto"
-        aria-label="Снять выбор"
-      >
-        <X className="h-5 w-5" />
-      </button>
     </div>
   )
 })
-
-

@@ -214,7 +214,21 @@ export const LetterInfo = memo(function LetterInfo({
         const res = await fetch('/api/users')
         const data = await res.json()
         if (!cancelled) {
-          setUsers(data.users || [])
+          setUsers(
+            (data.users || []).map(
+              (u: {
+                id: string
+                name: string | null
+                email: string | null
+                _count?: { letters: number }
+              }) => ({
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                activeLetters: u._count?.letters ?? 0,
+              })
+            )
+          )
         }
       } catch (error) {
         console.error('Failed to load users:', error)

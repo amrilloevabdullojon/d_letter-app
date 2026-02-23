@@ -34,6 +34,7 @@ import { quickLetterUploadSchema, type QuickLetterUploadInput } from '@/lib/sche
 import { calculateDeadline, formatDateForInput } from '@/lib/parseLetterFilename'
 import { DEFAULT_DEADLINE_WORKING_DAYS } from '@/lib/constants'
 import { getWorkingDaysUntilDeadline } from '@/lib/utils'
+import { recommendLetterType } from '@/lib/recommendLetterType'
 
 // Extend schema for this form with additional fields
 type CreateLetterFormValues = QuickLetterUploadInput & {
@@ -66,7 +67,23 @@ export default function NewLetterPage() {
     if (mode !== 'manual') return
     fetch('/api/users')
       .then((r) => r.json())
-      .then((d) => setUsers(d.users || []))
+      .then((d) =>
+        setUsers(
+          (d.users || []).map(
+            (u: {
+              id: string
+              name: string | null
+              email: string | null
+              _count?: { letters: number }
+            }) => ({
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              activeLetters: u._count?.letters ?? 0,
+            })
+          )
+        )
+      )
       .catch(() => {})
   }, [mode])
 
@@ -151,6 +168,15 @@ export default function NewLetterPage() {
       }
     }
   }, [formValues, mode])
+
+  const handleContentBlur = useCallback(() => {
+    const content = watch('content')
+    const org = watch('org')
+    if (content && !watch('type')) {
+      const suggested = recommendLetterType({ content, organization: org || '' })
+      if (suggested) setValue('type', suggested, { shouldValidate: true })
+    }
+  }, [watch, setValue])
 
   const onSubmit = async (data: CreateLetterFormValues) => {
     setLoading(true)
@@ -522,6 +548,7 @@ export default function NewLetterPage() {
                 <textarea
                   rows={4}
                   {...register('content')}
+                  onBlur={handleContentBlur}
                   className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
                   placeholder="Краткое описание содержания письма"
                 />

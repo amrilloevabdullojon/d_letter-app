@@ -47,6 +47,12 @@ const fieldLabels: Record<string, string> = {
   deadlineDate: 'Дедлайн',
   priority: 'Приоритет',
   deleted: 'Удалено',
+  date: 'Дата письма',
+  number: 'Номер',
+  org: 'Организация',
+  type: 'Тип',
+  frozenAt: 'Дата заморозки',
+  ijroDate: 'Дата IJRO',
 }
 
 const statusLabels: Record<string, string> = {
@@ -54,7 +60,10 @@ const statusLabels: Record<string, string> = {
   ACCEPTED: 'Принято',
   IN_PROGRESS: 'В работе',
   CLARIFICATION: 'На уточнении',
+  FROZEN: 'Заморожено',
+  REJECTED: 'Отклонено',
   READY: 'Готово',
+  PROCESSED: 'Обработано',
   DONE: 'Завершено',
 }
 

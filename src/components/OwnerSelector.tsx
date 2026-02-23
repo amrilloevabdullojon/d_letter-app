@@ -10,6 +10,7 @@ export interface OwnerOption {
   name: string | null
   email: string | null
   image?: string | null
+  activeLetters?: number
 }
 
 interface OwnerSelectorProps {
@@ -269,6 +270,19 @@ export function OwnerSelector({
                     <div className="truncate text-xs text-slate-500">{user.email}</div>
                   )}
                 </div>
+                {typeof user.activeLetters === 'number' && (
+                  <span
+                    className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-xs tabular-nums ${
+                      user.activeLetters >= 5
+                        ? 'bg-red-500/20 text-red-400'
+                        : user.activeLetters >= 3
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : 'bg-slate-700/60 text-slate-400'
+                    }`}
+                  >
+                    {user.activeLetters}
+                  </span>
+                )}
                 {isSelected && <Check className="h-4 w-4 shrink-0 text-teal-400" />}
               </button>
             )

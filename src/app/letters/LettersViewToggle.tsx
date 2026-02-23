@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { List, LayoutGrid, Kanban } from 'lucide-react'
+import { List, LayoutGrid, Kanban, CalendarDays } from 'lucide-react'
 import type { ViewMode } from './letters-types'
 
 interface LettersViewToggleProps {
@@ -38,6 +38,14 @@ export const LettersViewToggle = memo(function LettersViewToggle({
         aria-label="Канбан"
       >
         <Kanban className="h-5 w-5" />
+      </button>
+      <button
+        onClick={() => onChange('calendar')}
+        className={`rounded-lg p-2 transition focus-visible:ring-2 focus-visible:ring-teal-400/50 ${value === 'calendar' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white'}`}
+        title="Календарь"
+        aria-label="Календарь дедлайнов"
+      >
+        <CalendarDays className="h-5 w-5" />
       </button>
     </div>
   )

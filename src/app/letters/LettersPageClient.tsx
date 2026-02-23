@@ -43,6 +43,16 @@ const LetterKanban = dynamic(
     ),
   }
 )
+const LettersCalendar = dynamic(
+  () => import('@/components/LettersCalendar').then((mod) => ({ default: mod.LettersCalendar })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center p-8">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+      </div>
+    ),
+  }
+)
 
 // Extracted components
 import { LettersQuickFilters, QUICK_FILTERS } from './LettersQuickFilters'
@@ -201,7 +211,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const [isMobile, setIsMobile] = useState(false)
   const isInitialLoading = loading && letters.length === 0
   const filtersDisabled = isInitialLoading
-  const effectiveViewMode = isMobile && viewMode !== 'kanban' ? 'cards' : viewMode
+  const effectiveViewMode =
+    isMobile && viewMode !== 'kanban' && viewMode !== 'calendar' ? 'cards' : viewMode
   const [filtersOpen, setFiltersOpen] = useState(true)
   const [showBulkCreate, setShowBulkCreate] = useState(false)
   const { confirm: confirmDialog, Dialog } = useConfirmDialog()
@@ -1524,6 +1535,11 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     />
                   ))}
                 </div>
+              ) : effectiveViewMode === 'calendar' ? (
+                <div
+                  className="animate-pulse rounded-2xl bg-white/5 p-4"
+                  style={{ minHeight: 340 }}
+                />
               ) : (
                 <TableSkeleton rows={10} />
               )
@@ -1533,6 +1549,11 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
               </div>
             ) : effectiveViewMode === 'kanban' ? (
               <LetterKanban letters={letters} onStatusChange={handleKanbanStatusChange} />
+            ) : effectiveViewMode === 'calendar' ? (
+              <LettersCalendar
+                letters={letters}
+                onLetterClick={(id) => router.push(`/letters/${id}`)}
+              />
             ) : effectiveViewMode === 'cards' ? (
               <VirtualLetterList
                 letters={letters}

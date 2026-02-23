@@ -34,7 +34,7 @@ export interface Pagination {
   totalPages: number
 }
 
-export type ViewMode = 'cards' | 'table' | 'kanban'
+export type ViewMode = 'cards' | 'table' | 'kanban' | 'calendar'
 export type SortField = 'created' | 'deadline' | 'date' | 'number' | 'org' | 'status' | 'priority'
 
 export type SavedView = {
