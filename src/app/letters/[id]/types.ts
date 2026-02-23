@@ -75,6 +75,7 @@ export interface Letter {
   priority: number
   jiraLink: string | null
   zordoc: string | null
+  processing: string | null
   answer: string | null
   sendStatus: string | null
   ijroDate: string | null

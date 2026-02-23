@@ -280,6 +280,7 @@ model Letter {
   type          String?      // Тип запроса
   content       String?      @db.Text // Содержание
   zordoc        String?      // ZorDoc номер
+  processing    String?      @db.Text // Обработка (заполненный шаблон)
   answer        String?      @db.Text // Ответ
   sendStatus    String?      // Статус отправки
   ijroDate      DateTime?    // Дата исполнения

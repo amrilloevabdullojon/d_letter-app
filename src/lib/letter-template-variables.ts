@@ -214,6 +214,7 @@ export function previewTemplate(text: string): string {
     type: 'Консультация',
     content: 'Пример содержания письма...',
     zordoc: 'ZD-2026-001',
+    processing: null,
     answer: null,
     sendStatus: null,
     ijroDate: null,

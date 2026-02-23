@@ -24,6 +24,14 @@ const TemplateSelector = dynamic(
   { ssr: false }
 )
 
+const LetterTemplateSelector = dynamic(
+  () =>
+    import('@/components/LetterTemplateSelector').then((mod) => ({
+      default: mod.LetterTemplateSelector,
+    })),
+  { ssr: false }
+)
+
 interface LetterDetailsProps {
   letter: Letter
   currentUserId: string
@@ -132,13 +140,35 @@ export const LetterDetails = memo(function LetterDetails({
 
       {/* Processing / Обработка */}
       <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 md:p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <div className="rounded-lg bg-indigo-500/15 p-2">
-            <ClipboardCheck className="h-4 w-4 text-indigo-400" />
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg bg-indigo-500/15 p-2">
+              <ClipboardCheck className="h-4 w-4 text-indigo-400" />
+            </div>
+            <h3 className="font-semibold text-white">Обработка</h3>
           </div>
-          <h3 className="font-semibold text-white">Обработка</h3>
+          <LetterTemplateSelector
+            letter={letter}
+            currentUserId={currentUserId}
+            field="processing"
+            onSelect={(content) => {
+              const newVal = letter.processing ? `${letter.processing}\n\n${content}` : content
+              onUpdate('processing', newVal)
+            }}
+          />
         </div>
         <div className="space-y-3">
+          <EditableField
+            label=""
+            value={letter.processing}
+            field="processing"
+            onSave={onSave}
+            type="textarea"
+            placeholder="Выберите шаблон или введите текст обработки..."
+            rows={5}
+            collapsible
+            maxPreviewChars={400}
+          />
           <div className="rounded-xl bg-slate-800/50 p-3">
             <div className="mb-1.5 text-xs font-medium text-slate-400">Дата исполнения</div>
             <EditableField

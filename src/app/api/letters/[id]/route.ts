@@ -464,6 +464,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         updateData.zordoc = newValue
         break
 
+      case 'processing':
+        oldValue = letter.processing
+        newValue = sanitizeInput(value, 10000)
+        updateData.processing = newValue
+        break
+
       case 'jiraLink':
         oldValue = letter.jiraLink
         newValue = sanitizeInput(value, 500)

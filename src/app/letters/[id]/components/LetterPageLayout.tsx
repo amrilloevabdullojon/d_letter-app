@@ -21,7 +21,7 @@ import { LetterApplicant } from './LetterApplicant'
 import { LetterInfo } from './LetterInfo'
 import type { CommentItem, CommentEditItem } from '../types'
 import type { LetterStatus } from '@/types/prisma'
-import { Copy, Link2, Bell, Send } from 'lucide-react'
+import { Copy, Link2, Bell, Send, CheckCircle2, CheckCheck, Zap } from 'lucide-react'
 
 const FileUpload = dynamic(
   () => import('@/components/FileUpload').then((mod) => ({ default: mod.FileUpload })),
@@ -74,6 +74,7 @@ interface LetterPageLayoutProps {
   currentUserId: string
   canManageLetters: boolean
   canEditIdentity: boolean
+  userRole?: string | null
   updating: boolean
   deleting: boolean
   duplicating: boolean
@@ -132,6 +133,7 @@ export const LetterPageLayout = memo(function LetterPageLayout({
   currentUserId,
   canManageLetters,
   canEditIdentity,
+  userRole,
   updating,
   deleting,
   duplicating,
@@ -355,6 +357,13 @@ export const LetterPageLayout = memo(function LetterPageLayout({
 
             <LetterApplicant letter={letter} onSave={onSaveField} onUpdate={onLoadLetter} />
 
+            <LetterWorkflowActions
+              status={letter.status}
+              userRole={userRole}
+              updating={updating}
+              onStatusChange={handleStatusChange}
+            />
+
             <LetterStatusChanger
               currentStatus={letter.status}
               updating={updating}
@@ -384,6 +393,75 @@ export const LetterPageLayout = memo(function LetterPageLayout({
     </div>
   )
 })
+
+// ── Ролевые быстрые действия ──────────────────────────────────────────────────
+
+const MANAGER_ROLES = ['MANAGER', 'ADMIN', 'SUPERADMIN']
+const DONE_STATUSES: LetterStatus[] = ['READY', 'PROCESSED', 'DONE']
+
+interface LetterWorkflowActionsProps {
+  status: LetterStatus
+  userRole?: string | null
+  updating: boolean
+  onStatusChange: (status: LetterStatus) => void
+}
+
+function LetterWorkflowActions({
+  status,
+  userRole,
+  updating,
+  onStatusChange,
+}: LetterWorkflowActionsProps) {
+  const isManager = MANAGER_ROLES.includes(userRole ?? '')
+  const isEmployee = userRole === 'EMPLOYEE'
+  const isDone = DONE_STATUSES.includes(status)
+
+  const showProcessed = (isEmployee || isManager) && !isDone && status !== 'PROCESSED'
+  const showInProgress = isManager && !isDone && status !== 'IN_PROGRESS'
+  const showDone = isManager && status !== 'DONE'
+
+  if (!showProcessed && !showInProgress && !showDone) return null
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+        Быстрые действия
+      </div>
+      <div className="flex flex-col gap-2">
+        {showProcessed && (
+          <button
+            onClick={() => onStatusChange('PROCESSED')}
+            disabled={updating}
+            className="flex items-center gap-2 rounded-xl bg-teal-500/15 px-3 py-2.5 text-sm font-medium text-teal-300 transition-all hover:bg-teal-500/25 disabled:opacity-50"
+          >
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Обработано
+          </button>
+        )}
+        {showInProgress && (
+          <button
+            onClick={() => onStatusChange('IN_PROGRESS')}
+            disabled={updating}
+            className="flex items-center gap-2 rounded-xl bg-blue-500/15 px-3 py-2.5 text-sm font-medium text-blue-300 transition-all hover:bg-blue-500/25 disabled:opacity-50"
+          >
+            <Zap className="h-4 w-4 shrink-0" />
+            Взять в работу
+          </button>
+        )}
+        {showDone && (
+          <button
+            onClick={() => onStatusChange('DONE')}
+            disabled={updating}
+            className="flex items-center gap-2 rounded-xl bg-emerald-500/15 px-3 py-2.5 text-sm font-medium text-emerald-300 transition-all hover:bg-emerald-500/25 disabled:opacity-50"
+          >
+            <CheckCheck className="h-4 w-4 shrink-0" />
+            Готово
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // Loading state component
 export const LetterPageLoading = memo(function LetterPageLoading() {

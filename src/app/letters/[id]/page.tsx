@@ -198,6 +198,7 @@ function LetterDetailPageContent() {
       currentUserId={currentUserId}
       canManageLetters={canManageLetters}
       canEditIdentity={canEditIdentity}
+      userRole={session?.user?.role ?? null}
       // Actions state
       updating={updating}
       deleting={deleting}

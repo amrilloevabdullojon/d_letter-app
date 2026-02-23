@@ -15,6 +15,7 @@ type LetterForTemplate = {
   type?: string | null
   content?: string | null
   zordoc?: string | null
+  processing?: string | null
   jiraLink?: string | null
   applicantName?: string | null
   applicantEmail?: string | null
@@ -23,8 +24,9 @@ type LetterForTemplate = {
   owner?: {
     name?: string | null
     email?: string | null
+    id?: string
+    telegramChatId?: string | null
   } | null
-  [key: string]: unknown // Разрешаем дополнительные поля
 }
 
 interface LetterTemplate {
@@ -48,7 +50,7 @@ interface LetterTemplateSelectorProps {
   onSelect: (content: string) => void
   currentUserId: string
   letter: LetterForTemplate
-  field?: 'answer' | 'content'
+  field?: 'answer' | 'content' | 'processing'
 }
 
 export function LetterTemplateSelector({
