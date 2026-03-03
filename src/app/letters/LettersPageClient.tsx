@@ -1372,7 +1372,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
 
               <div
                 id="letters-filters"
-                className={`${filtersOpen ? 'grid' : 'hidden'} w-full grid-cols-2 gap-2 sm:flex sm:w-full sm:flex-row sm:flex-wrap sm:gap-3 lg:w-auto xl:flex-nowrap`}
+                className={`${filtersOpen ? 'grid' : 'hidden'} w-full grid-cols-2 gap-2 sm:flex sm:w-full sm:flex-row sm:flex-wrap sm:gap-3 lg:w-auto`}
               >
                 {/* Status filter */}
                 <FilterSelect
