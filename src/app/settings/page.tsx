@@ -22,7 +22,6 @@ import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useIsMobileOrTablet } from '@/hooks/useMediaQuery'
 import dynamic from 'next/dynamic'
-import { SettingsToggle } from '@/components/settings/SettingsToggle'
 import { ScrollIndicator } from '@/components/mobile/ScrollIndicator'
 import { MobileTabs } from '@/components/mobile/MobileTabs'
 
@@ -141,6 +140,17 @@ type TabType =
   | 'personalization'
   | 'workflow'
   | 'statuses'
+
+const TAB_INFO: Record<TabType, string> = {
+  permissions: 'Роли и права доступа',
+  users: 'Управление аккаунтами',
+  sync: 'Интеграция с Google Sheets',
+  audit: 'Журнал входов и действий',
+  notifications: 'Каналы и события уведомлений',
+  personalization: 'Тема, язык и эффекты',
+  workflow: 'Параметры рабочего процесса',
+  statuses: 'Конфигурация статусов писем',
+}
 
 export default function SettingsPage() {
   const { data: session, status: authStatus } = useSession()
@@ -267,24 +277,18 @@ export default function SettingsPage() {
         </div>
 
         {/* Header with gradient */}
-        <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/80 via-slate-800/60 to-slate-900/80 p-6 md:p-8">
+        <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/80 via-slate-800/60 to-slate-900/80 p-4 sm:p-6">
           {/* Decorative elements */}
           <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-teal-500/10 blur-2xl" />
 
-          <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 p-3 shadow-lg shadow-purple-500/25">
-                <Settings className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="font-display text-2xl font-bold text-white sm:text-3xl md:text-4xl">
-                  Настройки
-                </h1>
-                <p className="mt-1 text-sm text-slate-400">
-                  Роли, доступ, уведомления и журнал безопасности
-                </p>
-              </div>
+          <div className="relative flex items-center gap-4">
+            <div className="rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 p-3 shadow-lg shadow-purple-500/25">
+              <Settings className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">Настройки</h1>
+              <p className="mt-0.5 text-sm text-slate-400">{TAB_INFO[activeTab]}</p>
             </div>
           </div>
         </div>
@@ -302,12 +306,12 @@ export default function SettingsPage() {
                   onClick={() => handleTabChange('permissions')}
                   className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                     activeTab === 'permissions'
-                      ? 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-300 shadow-lg shadow-red-500/10 ring-1 ring-red-500/30'
+                      ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
                       : 'text-slate-400 hover:bg-white/5 hover:text-white'
                   }`}
                 >
                   <div
-                    className={`rounded-lg p-1.5 ${activeTab === 'permissions' ? 'bg-red-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                    className={`rounded-lg p-1.5 ${activeTab === 'permissions' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
                   >
                     <Shield className="h-4 w-4" />
                   </div>
@@ -318,12 +322,12 @@ export default function SettingsPage() {
                 onClick={() => handleTabChange('users')}
                 className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeTab === 'users'
-                    ? 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-300 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/30'
+                    ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div
-                  className={`rounded-lg p-1.5 ${activeTab === 'users' ? 'bg-blue-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                  className={`rounded-lg p-1.5 ${activeTab === 'users' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
                 >
                   <Users className="h-4 w-4" />
                 </div>
@@ -333,7 +337,7 @@ export default function SettingsPage() {
                 onClick={() => handleTabChange('sync')}
                 className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeTab === 'sync'
-                    ? 'bg-gradient-to-r from-teal-500/20 to-teal-600/20 text-teal-300 shadow-lg shadow-teal-500/10 ring-1 ring-teal-500/30'
+                    ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
@@ -348,12 +352,12 @@ export default function SettingsPage() {
                 onClick={() => handleTabChange('audit')}
                 className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeTab === 'audit'
-                    ? 'bg-gradient-to-r from-amber-500/20 to-amber-600/20 text-amber-300 shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/30'
+                    ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div
-                  className={`rounded-lg p-1.5 ${activeTab === 'audit' ? 'bg-amber-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                  className={`rounded-lg p-1.5 ${activeTab === 'audit' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
                 >
                   <History className="h-4 w-4" />
                 </div>
@@ -363,12 +367,12 @@ export default function SettingsPage() {
                 onClick={() => handleTabChange('notifications')}
                 className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeTab === 'notifications'
-                    ? 'bg-gradient-to-r from-pink-500/20 to-pink-600/20 text-pink-300 shadow-lg shadow-pink-500/10 ring-1 ring-pink-500/30'
+                    ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div
-                  className={`rounded-lg p-1.5 ${activeTab === 'notifications' ? 'bg-pink-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                  className={`rounded-lg p-1.5 ${activeTab === 'notifications' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
                 >
                   <Bell className="h-4 w-4" />
                 </div>
@@ -378,12 +382,12 @@ export default function SettingsPage() {
                 onClick={() => handleTabChange('personalization')}
                 className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeTab === 'personalization'
-                    ? 'bg-gradient-to-r from-violet-500/20 to-violet-600/20 text-violet-300 shadow-lg shadow-violet-500/10 ring-1 ring-violet-500/30'
+                    ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div
-                  className={`rounded-lg p-1.5 ${activeTab === 'personalization' ? 'bg-violet-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                  className={`rounded-lg p-1.5 ${activeTab === 'personalization' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
                 >
                   <Palette className="h-4 w-4" />
                 </div>
@@ -393,12 +397,12 @@ export default function SettingsPage() {
                 onClick={() => handleTabChange('workflow')}
                 className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeTab === 'workflow'
-                    ? 'bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 text-emerald-300 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/30'
+                    ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div
-                  className={`rounded-lg p-1.5 ${activeTab === 'workflow' ? 'bg-emerald-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                  className={`rounded-lg p-1.5 ${activeTab === 'workflow' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
                 >
                   <Settings className="h-4 w-4" />
                 </div>
@@ -408,12 +412,12 @@ export default function SettingsPage() {
                 onClick={() => handleTabChange('statuses')}
                 className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeTab === 'statuses'
-                    ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 text-cyan-300 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-500/30'
+                    ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div
-                  className={`rounded-lg p-1.5 ${activeTab === 'statuses' ? 'bg-cyan-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                  className={`rounded-lg p-1.5 ${activeTab === 'statuses' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
                 >
                   <Tags className="h-4 w-4" />
                 </div>
