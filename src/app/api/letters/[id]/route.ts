@@ -629,6 +629,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         })
       }
 
+      // Уведомить owner когда письмо переходит в PROCESSED
+      if (newValue === 'PROCESSED' && letter.ownerId && letter.ownerId !== session.user.id) {
+        await dispatchNotification({
+          event: 'STATUS',
+          title: `Письмо №${letter.number} обработано`,
+          body: `${letter.org} — готово к проверке`,
+          letterId: letter.id,
+          actorId: session.user.id,
+          userIds: [letter.ownerId],
+          metadata: {
+            oldStatus: letter.status,
+            newStatus: 'PROCESSED',
+          },
+          dedupeKey: `PROCESSED:${letter.id}`,
+        })
+      }
+
       const applicantHasContact = !!(
         letter.applicantEmail ||
         letter.applicantPhone ||

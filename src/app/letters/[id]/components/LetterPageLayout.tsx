@@ -21,7 +21,7 @@ import { LetterApplicant } from './LetterApplicant'
 import { LetterInfo } from './LetterInfo'
 import type { CommentItem, CommentEditItem } from '../types'
 import type { LetterStatus } from '@/types/prisma'
-import { Copy, Link2, Bell, Send, CheckCircle2, CheckCheck, Zap } from 'lucide-react'
+import { Copy, Link2, Bell, Send, CheckCircle2, CheckCheck, Zap, Undo2 } from 'lucide-react'
 
 const FileUpload = dynamic(
   () => import('@/components/FileUpload').then((mod) => ({ default: mod.FileUpload })),
@@ -361,6 +361,7 @@ export const LetterPageLayout = memo(function LetterPageLayout({
               status={letter.status}
               userRole={userRole}
               updating={updating}
+              processingText={letter.processing}
               onStatusChange={handleStatusChange}
             />
 
@@ -403,6 +404,7 @@ interface LetterWorkflowActionsProps {
   status: LetterStatus
   userRole?: string | null
   updating: boolean
+  processingText?: string | null
   onStatusChange: (status: LetterStatus) => void
 }
 
@@ -410,51 +412,118 @@ function LetterWorkflowActions({
   status,
   userRole,
   updating,
+  processingText,
   onStatusChange,
 }: LetterWorkflowActionsProps) {
+  const [pendingStatus, setPendingStatus] = useState<LetterStatus | null>(null)
+  const [countdown, setCountdown] = useState(3)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const isManager = MANAGER_ROLES.includes(userRole ?? '')
   const isEmployee = userRole === 'EMPLOYEE'
   const isDone = DONE_STATUSES.includes(status)
+  const isProcessingEmpty = !processingText?.trim()
 
   const showProcessed = (isEmployee || isManager) && !isDone && status !== 'PROCESSED'
   const showInProgress = isManager && !isDone && status !== 'IN_PROGRESS'
   const showDone = isManager && status !== 'DONE'
 
+  const handleClick = (newStatus: LetterStatus) => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    setPendingStatus(newStatus)
+    setCountdown(3)
+    let t = 3
+    timerRef.current = setInterval(() => {
+      t -= 1
+      setCountdown(t)
+      if (t <= 0) {
+        clearInterval(timerRef.current!)
+        timerRef.current = null
+        onStatusChange(newStatus)
+        setPendingStatus(null)
+      }
+    }, 1000)
+  }
+
+  const handleUndo = () => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = null
+    setPendingStatus(null)
+  }
+
   if (!showProcessed && !showInProgress && !showDone) return null
+
+  const buttonsDisabled = updating || !!pendingStatus
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-        Быстрые действия
+      <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+        <span>Быстрые действия</span>
+        {showProcessed && isProcessingEmpty && (
+          <span className="flex items-center gap-1 text-amber-400">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+            Нужна обработка
+          </span>
+        )}
       </div>
+
+      {pendingStatus && (
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
+          <span className="flex-1 text-amber-200">
+            Изменится через <span className="font-semibold tabular-nums">{countdown}с</span>
+          </span>
+          <button
+            onClick={handleUndo}
+            className="flex items-center gap-1 text-amber-300 transition hover:text-amber-200"
+          >
+            <Undo2 className="h-3 w-3" />
+            Отменить
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         {showProcessed && (
           <button
-            onClick={() => onStatusChange('PROCESSED')}
-            disabled={updating}
-            className="flex items-center gap-2 rounded-xl bg-teal-500/15 px-3 py-2.5 text-sm font-medium text-teal-300 transition-all hover:bg-teal-500/25 disabled:opacity-50"
+            onClick={() => handleClick('PROCESSED')}
+            disabled={buttonsDisabled || isProcessingEmpty}
+            title={isProcessingEmpty ? 'Заполните поле «Обработка» перед отправкой' : undefined}
+            className="flex items-center gap-2 rounded-xl bg-teal-500/15 px-3 py-2.5 text-sm font-medium text-teal-300 transition-all hover:bg-teal-500/25 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {updating ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+            )}
             Обработано
+            {isProcessingEmpty && <span className="ml-auto text-[10px] opacity-60">Требуется</span>}
           </button>
         )}
         {showInProgress && (
           <button
-            onClick={() => onStatusChange('IN_PROGRESS')}
-            disabled={updating}
-            className="flex items-center gap-2 rounded-xl bg-blue-500/15 px-3 py-2.5 text-sm font-medium text-blue-300 transition-all hover:bg-blue-500/25 disabled:opacity-50"
+            onClick={() => handleClick('IN_PROGRESS')}
+            disabled={buttonsDisabled}
+            className="flex items-center gap-2 rounded-xl bg-blue-500/15 px-3 py-2.5 text-sm font-medium text-blue-300 transition-all hover:bg-blue-500/25 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Zap className="h-4 w-4 shrink-0" />
+            {updating ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            ) : (
+              <Zap className="h-4 w-4 shrink-0" />
+            )}
             Взять в работу
           </button>
         )}
         {showDone && (
           <button
-            onClick={() => onStatusChange('DONE')}
-            disabled={updating}
-            className="flex items-center gap-2 rounded-xl bg-emerald-500/15 px-3 py-2.5 text-sm font-medium text-emerald-300 transition-all hover:bg-emerald-500/25 disabled:opacity-50"
+            onClick={() => handleClick('DONE')}
+            disabled={buttonsDisabled}
+            className="flex items-center gap-2 rounded-xl bg-emerald-500/15 px-3 py-2.5 text-sm font-medium text-emerald-300 transition-all hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <CheckCheck className="h-4 w-4 shrink-0" />
+            {updating ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            ) : (
+              <CheckCheck className="h-4 w-4 shrink-0" />
+            )}
             Готово
           </button>
         )}
