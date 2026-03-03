@@ -51,3 +51,17 @@ export const STATUS_COLORS: Record<LetterStatus, string> = {
 export function isDoneStatus(status: LetterStatus): boolean {
   return status === 'READY' || status === 'DONE' || status === 'PROCESSED'
 }
+
+/**
+ * Check if status is terminal — closed in any way (done, rejected, frozen).
+ * Used for deadline tracking: terminal letters should not be flagged as overdue/urgent.
+ */
+export function isTerminalStatus(status: LetterStatus): boolean {
+  return (
+    status === 'READY' ||
+    status === 'DONE' ||
+    status === 'PROCESSED' ||
+    status === 'FROZEN' ||
+    status === 'REJECTED'
+  )
+}

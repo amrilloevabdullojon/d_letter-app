@@ -170,6 +170,15 @@ export class LetterQueryBuilder {
   }
 
   /**
+   * Фильтр писем без заполненного поля обработки (исключает терминальные статусы)
+   */
+  noProcessing(): this {
+    this.where.processing = null
+    this.where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
+    return this
+  }
+
+  /**
    * Исключить удалённые (soft delete)
    */
   notDeleted(): this {

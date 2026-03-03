@@ -18,6 +18,7 @@ import {
   getWorkingDaysUntilDeadline,
   getPriorityLabel,
   isDoneStatus,
+  isTerminalStatus,
   pluralizeDays,
 } from '@/lib/utils'
 import type { Letter } from '../types'
@@ -35,8 +36,9 @@ export const LetterQuickSummary = memo(function LetterQuickSummary({
 }: LetterQuickSummaryProps) {
   const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
   const isDone = isDoneStatus(letter.status)
-  const isOverdue = !isDone && daysLeft < 0
-  const isUrgent = !isDone && daysLeft <= 2 && daysLeft >= 0
+  const isTerminal = isTerminalStatus(letter.status)
+  const isOverdue = !isTerminal && daysLeft < 0
+  const isUrgent = !isTerminal && daysLeft <= 2 && daysLeft >= 0
   const priorityInfo = getPriorityLabel(letter.priority)
   const pendingFiles = letter.files.filter((f) => f.status && f.status !== 'READY').length
 

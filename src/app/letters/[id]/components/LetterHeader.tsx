@@ -21,6 +21,7 @@ import {
   getWorkingDaysUntilDeadline,
   pluralizeDays,
   isDoneStatus,
+  isTerminalStatus,
   getPriorityLabel,
 } from '@/lib/utils'
 import type { Letter } from '../types'
@@ -48,8 +49,9 @@ export const LetterHeader = memo(function LetterHeader({
 }: LetterHeaderProps) {
   const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
   const isDone = isDoneStatus(letter.status)
-  const isOverdue = !isDone && daysLeft < 0
-  const isUrgent = !isDone && daysLeft <= 2 && daysLeft >= 0
+  const isTerminal = isTerminalStatus(letter.status)
+  const isOverdue = !isTerminal && daysLeft < 0
+  const isUrgent = !isTerminal && daysLeft <= 2 && daysLeft >= 0
   const priorityInfo = getPriorityLabel(letter.priority)
 
   return (

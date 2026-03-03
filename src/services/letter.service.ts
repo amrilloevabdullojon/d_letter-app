@@ -52,6 +52,8 @@ export class LetterService {
       builder.owner(null)
     } else if (filters.filter === 'mine') {
       builder.owner(userId)
+    } else if (filters.filter === 'no_processing') {
+      builder.noProcessing()
     }
 
     if (filters.owner) {

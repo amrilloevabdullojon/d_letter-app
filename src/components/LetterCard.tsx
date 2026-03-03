@@ -10,6 +10,7 @@ import {
   pluralizeDays,
   getPriorityLabel,
   isDoneStatus,
+  isTerminalStatus,
 } from '@/lib/utils'
 import {
   Calendar,
@@ -84,8 +85,9 @@ function getGlowColor(isOverdue: boolean, isUrgent: boolean, isDone: boolean): s
 export const LetterCard = memo(function LetterCard({ letter, onToggleFavorite }: LetterCardProps) {
   const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
   const isDone = isDoneStatus(letter.status)
-  const isOverdue = !isDone && daysLeft < 0
-  const isUrgent = !isDone && daysLeft <= 2 && daysLeft >= 0
+  const isTerminal = isTerminalStatus(letter.status)
+  const isOverdue = !isTerminal && daysLeft < 0
+  const isUrgent = !isTerminal && daysLeft <= 2 && daysLeft >= 0
   const priorityInfo = getPriorityLabel(letter.priority)
   const progress = isDone ? 100 : getDeadlineProgress(letter.deadlineDate, letter.date)
   const progressStep = Math.min(100, Math.max(0, Math.round(progress / 5) * 5))

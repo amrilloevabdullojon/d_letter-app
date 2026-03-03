@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { ru } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
@@ -20,6 +20,7 @@ function toDateKey(dateStr: string): string {
 export function LettersCalendar({ letters, onLetterClick }: LettersCalendarProps) {
   const [month, setMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const nowRef = useRef(new Date())
 
   // Group letters by deadline date key
   const lettersByDate = useMemo(() => {
@@ -33,7 +34,7 @@ export function LettersCalendar({ letters, onLetterClick }: LettersCalendarProps
     return map
   }, [letters])
 
-  const now = new Date()
+  const now = nowRef.current
 
   // Build modifier date sets
   const { overdueModifier, urgentModifier, normalModifier } = useMemo(() => {
@@ -44,7 +45,12 @@ export function LettersCalendar({ letters, onLetterClick }: LettersCalendarProps
     for (const [key, dayLetters] of lettersByDate.entries()) {
       const date = new Date(key + 'T00:00:00')
       const hasActive = dayLetters.some(
-        (l) => l.status !== 'DONE' && l.status !== 'PROCESSED' && l.status !== 'READY'
+        (l) =>
+          l.status !== 'DONE' &&
+          l.status !== 'PROCESSED' &&
+          l.status !== 'READY' &&
+          l.status !== 'FROZEN' &&
+          l.status !== 'REJECTED'
       )
       if (!hasActive) {
         normal.push(date)
@@ -195,24 +201,21 @@ export function LettersCalendar({ letters, onLetterClick }: LettersCalendarProps
             <ul className="space-y-2">
               {selectedLetters.map((letter) => {
                 const daysLeft = getWorkingDaysUntilDeadline(new Date(letter.deadlineDate), now)
-                const isOverdue =
-                  daysLeft < 0 &&
-                  letter.status !== 'DONE' &&
-                  letter.status !== 'PROCESSED' &&
-                  letter.status !== 'READY'
-                const isUrgent =
-                  !isOverdue &&
-                  daysLeft <= 3 &&
-                  letter.status !== 'DONE' &&
-                  letter.status !== 'PROCESSED' &&
-                  letter.status !== 'READY'
+                const isTerminal =
+                  letter.status === 'DONE' ||
+                  letter.status === 'PROCESSED' ||
+                  letter.status === 'READY' ||
+                  letter.status === 'FROZEN' ||
+                  letter.status === 'REJECTED'
+                const isOverdue = !isTerminal && daysLeft < 0
+                const isUrgent = !isTerminal && !isOverdue && daysLeft <= 3
 
                 return (
                   <li key={letter.id}>
                     <button
                       type="button"
                       onClick={() => onLetterClick(letter.id)}
-                      className="w-full rounded-xl border border-slate-700/50 bg-slate-800/50 p-3 text-left transition hover:border-teal-500/40 hover:bg-slate-700/50"
+                      className="w-full overflow-hidden rounded-xl border border-slate-700/50 bg-slate-800/50 p-3 text-left transition hover:border-teal-500/40 hover:bg-slate-700/50"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -220,7 +223,7 @@ export function LettersCalendar({ letters, onLetterClick }: LettersCalendarProps
                             №{letter.number} — {letter.org}
                           </p>
                           {letter.content && (
-                            <p className="mt-0.5 truncate text-xs text-slate-400">
+                            <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">
                               {letter.content}
                             </p>
                           )}

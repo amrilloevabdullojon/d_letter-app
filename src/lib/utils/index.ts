@@ -16,6 +16,7 @@ export {
   STATUS_FROM_LABEL,
   STATUS_COLORS,
   isDoneStatus,
+  isTerminalStatus,
 } from './status'
 
 // Date utilities
@@ -28,14 +29,7 @@ export {
 } from './date'
 
 // Formatting utilities
-export {
-  pluralizeDays,
-  getPriorityLabel,
-  sanitizeInput,
-} from './format'
+export { pluralizeDays, getPriorityLabel, sanitizeInput } from './format'
 
 // Export utilities
-export {
-  exportLetterToPdf,
-  downloadCsv,
-} from './export'
+export { exportLetterToPdf, downloadCsv } from './export'

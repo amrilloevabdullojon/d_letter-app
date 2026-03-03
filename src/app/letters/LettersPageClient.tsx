@@ -1429,11 +1429,14 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   </select>
                 </div>
 
-                {/* Date from filter */}
-                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px] sm:gap-2 sm:rounded-xl sm:p-1.5">
-                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 sm:flex sm:h-8 sm:w-8">
+                {/* Date range filter */}
+                <div className="group flex w-full items-center gap-1 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:gap-1.5 sm:rounded-xl sm:p-1.5">
+                  <div className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 sm:flex sm:h-8 sm:w-8">
                     <CalendarDays className="h-3.5 w-3.5 text-violet-400 sm:h-4 sm:w-4" />
                   </div>
+                  <span className="shrink-0 text-[10px] font-medium text-slate-500 sm:text-xs">
+                    от
+                  </span>
                   <input
                     type="date"
                     value={dateFrom}
@@ -1443,18 +1446,13 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     }}
                     disabled={filtersDisabled}
                     lang="ru"
-                    placeholder="дд.мм.гггг"
-                    className="h-7 min-w-0 flex-1 bg-transparent text-xs text-white [color-scheme:dark] focus:outline-none disabled:opacity-50 sm:h-8 sm:text-sm"
+                    className="h-7 w-[105px] min-w-0 bg-transparent text-xs text-white [color-scheme:dark] focus:outline-none disabled:opacity-50 sm:h-8 sm:w-[120px] sm:text-sm"
                     aria-label="Дата от"
-                    title="Дата от"
                   />
-                </div>
-
-                {/* Date to filter */}
-                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[170px] sm:gap-2 sm:rounded-xl sm:p-1.5">
-                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 sm:flex sm:h-8 sm:w-8">
-                    <CalendarDays className="h-3.5 w-3.5 text-violet-400 sm:h-4 sm:w-4" />
-                  </div>
+                  <span className="shrink-0 text-slate-600">—</span>
+                  <span className="shrink-0 text-[10px] font-medium text-slate-500 sm:text-xs">
+                    до
+                  </span>
                   <input
                     type="date"
                     value={dateTo}
@@ -1464,10 +1462,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     }}
                     disabled={filtersDisabled}
                     lang="ru"
-                    placeholder="дд.мм.гггг"
-                    className="h-7 min-w-0 flex-1 bg-transparent text-xs text-white [color-scheme:dark] focus:outline-none disabled:opacity-50 sm:h-8 sm:text-sm"
+                    className="h-7 w-[105px] min-w-0 bg-transparent text-xs text-white [color-scheme:dark] focus:outline-none disabled:opacity-50 sm:h-8 sm:w-[120px] sm:text-sm"
                     aria-label="Дата до"
-                    title="Дата до"
                   />
                 </div>
 
