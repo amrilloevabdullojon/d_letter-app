@@ -135,7 +135,16 @@ export const letterFiltersSchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   filter: z
-    .enum(['overdue', 'urgent', 'done', 'active', 'favorites', 'unassigned', 'mine'])
+    .enum([
+      'overdue',
+      'urgent',
+      'done',
+      'active',
+      'favorites',
+      'unassigned',
+      'mine',
+      'no_processing',
+    ])
     .optional(),
   sortBy: z.enum(['created', 'deadline', 'date', 'priority', 'status', 'number', 'org']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),

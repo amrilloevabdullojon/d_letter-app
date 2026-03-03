@@ -46,6 +46,7 @@ export interface LetterSummary {
   status: LetterStatus
   type: string | null
   content: string | null
+  processing: string | null
   priority: number
   owner: UserSummary | null
   _count: {
@@ -137,7 +138,15 @@ export interface LetterFilters {
   search?: string
   dateFrom?: string
   dateTo?: string
-  filter?: 'overdue' | 'urgent' | 'done' | 'active' | 'favorites' | 'unassigned' | 'mine'
+  filter?:
+    | 'overdue'
+    | 'urgent'
+    | 'done'
+    | 'active'
+    | 'favorites'
+    | 'unassigned'
+    | 'mine'
+    | 'no_processing'
   sortBy?: 'created' | 'deadline' | 'date' | 'priority' | 'status' | 'number' | 'org'
   sortOrder?: 'asc' | 'desc'
 }

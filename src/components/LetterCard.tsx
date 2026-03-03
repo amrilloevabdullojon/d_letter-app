@@ -21,6 +21,7 @@ import {
   Clock,
   ArrowRight,
   Sparkles,
+  ClipboardCheck,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -34,6 +35,7 @@ interface LetterCardProps {
     status: LetterStatus
     type?: string | null
     content?: string | null
+    processing?: string | null
     priority: number
     isFavorite?: boolean
     owner?: {
@@ -228,6 +230,20 @@ export const LetterCard = memo(function LetterCard({ letter, onToggleFavorite }:
             <span className="inline-flex items-center gap-1 rounded-lg bg-slate-700/40 px-2 py-1.5 text-slate-300">
               <Eye className="h-3.5 w-3.5 text-slate-400" />
               {letter._count.watchers}
+            </span>
+          )}
+
+          {'processing' in letter && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium ${
+                letter.processing
+                  ? 'bg-indigo-500/10 text-indigo-300 ring-1 ring-indigo-500/20'
+                  : 'bg-slate-700/30 text-slate-500'
+              }`}
+              title={letter.processing ? 'Обработка заполнена' : 'Обработка не заполнена'}
+            >
+              <ClipboardCheck className="h-3 w-3" />
+              {letter.processing ? 'Обработка' : 'Нет обработки'}
             </span>
           )}
         </div>

@@ -94,6 +94,7 @@ export class LetterService {
           status: true,
           type: true,
           content: true,
+          processing: true,
           priority: true,
           owner: {
             select: { id: true, name: true, email: true, image: true },
@@ -439,6 +440,9 @@ export class LetterService {
       where.ownerId = null
     } else if (filters.filter === 'mine') {
       where.ownerId = userId
+    } else if (filters.filter === 'no_processing') {
+      where.processing = null
+      where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
     }
 
     // Search — uses GIN trigram indexes on number & org

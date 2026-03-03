@@ -18,6 +18,7 @@ export type DashboardSummary = {
   monthNew: number
   monthDone: number
   avgDays: number
+  needsProcessing: number
 }
 
 export type DashboardData = {
@@ -146,6 +147,7 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
         cnt_frozen: bigint
         cnt_rejected: bigint
         cnt_processed: bigint
+        needs_processing: bigint
       }>
     >`
       SELECT
@@ -164,7 +166,8 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
         COUNT(*) FILTER (WHERE "status" = 'DONE') AS cnt_done,
         COUNT(*) FILTER (WHERE "status" = 'FROZEN') AS cnt_frozen,
         COUNT(*) FILTER (WHERE "status" = 'REJECTED') AS cnt_rejected,
-        COUNT(*) FILTER (WHERE "status" = 'PROCESSED') AS cnt_processed
+        COUNT(*) FILTER (WHERE "status" = 'PROCESSED') AS cnt_processed,
+        COUNT(*) FILTER (WHERE "processing" IS NULL AND "status" NOT IN ('READY', 'DONE', 'PROCESSED', 'FROZEN', 'REJECTED')) AS needs_processing
       FROM "Letter"
       WHERE "deletedAt" IS NULL
     `
@@ -197,6 +200,7 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
       monthNew: Number(stats.month_new),
       monthDone: Number(stats.month_done),
       avgDays: 0,
+      needsProcessing: Number(stats.needs_processing),
     }
   }
 
@@ -273,6 +277,7 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
       monthNew: 0,
       monthDone: 0,
       avgDays: 0,
+      needsProcessing: 0,
     },
     byStatus,
     recentLetters,

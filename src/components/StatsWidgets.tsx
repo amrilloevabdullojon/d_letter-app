@@ -11,6 +11,7 @@ import {
   Users,
   Calendar,
   Loader2,
+  ClipboardX,
 } from 'lucide-react'
 
 interface StatsResponse {
@@ -23,6 +24,7 @@ interface StatsResponse {
     notReviewed: number
     todayDeadlines: number
     weekDeadlines: number
+    needsProcessing?: number
   }
 }
 
@@ -65,8 +67,8 @@ export function StatsWidgets({ summary, loading }: StatsWidgetsProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        {[...Array(5)].map((_, i) => (
           <div
             key={i}
             className="flex h-24 items-center justify-center rounded-xl border border-gray-700 bg-gray-800/50"
@@ -117,12 +119,21 @@ export function StatsWidgets({ summary, loading }: StatsWidgetsProps) {
       border: 'border-emerald-500/30',
       link: '/letters?filter=done',
     },
+    {
+      label: 'Без обработки',
+      value: stats.needsProcessing ?? 0,
+      icon: ClipboardX,
+      color: 'text-orange-400',
+      bg: 'bg-orange-500/10',
+      border: 'border-orange-500/30',
+      link: '/letters?filter=no_processing',
+    },
   ]
 
   return (
     <div className="space-y-4">
       {/* Main stats */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         {widgets.map((widget) => (
           <Link
             key={widget.label}

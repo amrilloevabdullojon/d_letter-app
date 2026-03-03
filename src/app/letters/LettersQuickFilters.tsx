@@ -11,6 +11,7 @@ import {
   Star,
   UserCheck,
   UserMinus,
+  ClipboardX,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -87,6 +88,14 @@ export const QUICK_FILTERS: QuickFilterItem[] = [
     color: 'text-emerald-400',
     activeColor: 'text-white',
     bgColor: 'bg-emerald-500/20',
+  },
+  {
+    value: 'no_processing',
+    label: 'Без обработки',
+    icon: ClipboardX,
+    color: 'text-orange-400',
+    activeColor: 'text-white',
+    bgColor: 'bg-orange-500/20',
   },
 ]
 

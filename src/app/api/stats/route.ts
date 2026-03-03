@@ -23,6 +23,7 @@ interface StatsData {
     monthNew: number
     monthDone: number
     avgDays: number
+    needsProcessing: number
   }
   byStatus: Record<LetterStatus, number>
   byOwner: Array<{ id: string; name: string; count: number }>
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
       byOwner,
       byType,
       allUsers, // Загружаем всех пользователей сразу, чтобы избежать N+1
+      needsProcessingCount,
     ] = await Promise.all([
       // Статистика по статусам
       prisma.letter.groupBy({
@@ -162,6 +164,14 @@ export async function GET(request: NextRequest) {
       // Все пользователи (для статистики по ответственным)
       prisma.user.findMany({
         select: { id: true, name: true, email: true },
+      }),
+      // Нужна обработка (активные письма без поля processing)
+      prisma.letter.count({
+        where: {
+          deletedAt: null,
+          processing: null,
+          status: { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] },
+        },
       }),
     ])
     const userById = new Map(allUsers.map((user) => [user.id, user]))
@@ -368,6 +378,7 @@ export async function GET(request: NextRequest) {
         monthNew: monthStats,
         monthDone,
         avgDays,
+        needsProcessing: needsProcessingCount,
       },
       byStatus,
       byOwner: ownerStats,

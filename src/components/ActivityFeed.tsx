@@ -53,6 +53,12 @@ const fieldLabels: Record<string, string> = {
   type: 'Тип',
   frozenAt: 'Дата заморозки',
   ijroDate: 'Дата IJRO',
+  processing: 'Обработка',
+  zordoc: 'ZorDoc',
+  jiraLink: 'Jira',
+  contacts: 'Контакты',
+  sendStatus: 'Статус отправки',
+  closeDate: 'Дата закрытия',
 }
 
 const statusLabels: Record<string, string> = {
