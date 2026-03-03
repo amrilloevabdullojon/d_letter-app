@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react'
+import { EnvelopeLoader } from '@/components/ui/EnvelopeLoader'
 
 export default function LettersLoading() {
   return (
@@ -21,8 +21,8 @@ export default function LettersLoading() {
         </div>
 
         {/* Content skeleton */}
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+        <div className="flex items-center justify-center py-16">
+          <EnvelopeLoader showDots={false} />
         </div>
       </div>
     </div>

@@ -10,14 +10,7 @@ interface SkeletonProps {
  * Base skeleton component with pulse animation.
  */
 export function Skeleton({ className }: SkeletonProps) {
-  return (
-    <div
-      className={cn(
-        'animate-pulse rounded-md bg-gray-700/50',
-        className
-      )}
-    />
-  )
+  return <div className={cn('skeleton', className)} />
 }
 
 /**
@@ -25,9 +18,9 @@ export function Skeleton({ className }: SkeletonProps) {
  */
 export function LetterCardSkeleton() {
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 space-y-3">
+    <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-800 p-4">
       <div className="flex items-start justify-between">
-        <div className="space-y-2 flex-1">
+        <div className="flex-1 space-y-2">
           <Skeleton className="h-5 w-24" />
           <Skeleton className="h-4 w-48" />
         </div>
@@ -53,11 +46,11 @@ export function LettersListSkeleton({ count = 5 }: { count?: number }) {
   return (
     <div className="space-y-4">
       {/* Filters skeleton */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="mb-6 flex flex-wrap gap-3">
         <Skeleton className="h-10 w-40" />
         <Skeleton className="h-10 w-32" />
         <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-10 w-24 ml-auto" />
+        <Skeleton className="ml-auto h-10 w-24" />
       </div>
 
       {/* Letter cards */}
@@ -66,7 +59,7 @@ export function LettersListSkeleton({ count = 5 }: { count?: number }) {
       ))}
 
       {/* Pagination skeleton */}
-      <div className="flex items-center justify-center gap-2 mt-6">
+      <div className="mt-6 flex items-center justify-center gap-2">
         <Skeleton className="h-10 w-10" />
         <Skeleton className="h-10 w-10" />
         <Skeleton className="h-10 w-10" />
@@ -80,9 +73,9 @@ export function LettersListSkeleton({ count = 5 }: { count?: number }) {
  */
 export function LetterDetailSkeleton() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
+    <div className="mx-auto max-w-5xl px-4 py-6">
       {/* Back button */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <Skeleton className="h-6 w-32" />
         <div className="flex gap-2">
           <Skeleton className="h-10 w-24" />
@@ -91,12 +84,12 @@ export function LetterDetailSkeleton() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Main content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Header card */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-            <div className="flex items-start justify-between mb-4">
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <div className="mb-4 flex items-start justify-between">
               <div className="space-y-2">
                 <Skeleton className="h-6 w-32" />
                 <Skeleton className="h-8 w-64" />
@@ -106,7 +99,7 @@ export function LetterDetailSkeleton() {
           </div>
 
           {/* Content card */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
+          <div className="space-y-4 rounded-lg border border-gray-700 bg-gray-800 p-6">
             <Skeleton className="h-6 w-48" />
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-6 w-32" />
@@ -116,7 +109,7 @@ export function LetterDetailSkeleton() {
           </div>
 
           {/* Comments card */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
+          <div className="space-y-4 rounded-lg border border-gray-700 bg-gray-800 p-6">
             <Skeleton className="h-6 w-32" />
             <div className="space-y-3">
               <Skeleton className="h-20 w-full" />
@@ -128,7 +121,7 @@ export function LetterDetailSkeleton() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Info card */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-4">
+          <div className="space-y-4 rounded-lg border border-gray-700 bg-gray-800 p-6">
             <Skeleton className="h-6 w-32" />
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3">
@@ -142,15 +135,15 @@ export function LetterDetailSkeleton() {
           </div>
 
           {/* Status card */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-2">
-            <Skeleton className="h-6 w-40 mb-4" />
+          <div className="space-y-2 rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <Skeleton className="mb-4 h-6 w-40" />
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
 
           {/* Files card */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-3">
+          <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-800 p-6">
             <Skeleton className="h-6 w-24" />
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
@@ -166,10 +159,10 @@ export function LetterDetailSkeleton() {
  */
 export function StatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-          <Skeleton className="h-4 w-24 mb-2" />
+        <div key={i} className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <Skeleton className="mb-2 h-4 w-24" />
           <Skeleton className="h-8 w-16" />
         </div>
       ))}
@@ -182,7 +175,7 @@ export function StatsSkeleton() {
  */
 export function UserCardSkeleton() {
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 flex items-center gap-4">
+    <div className="flex items-center gap-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
       <Skeleton className="h-12 w-12 rounded-full" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-5 w-32" />
@@ -213,8 +206,8 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
  */
 export function ChartSkeleton() {
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-      <Skeleton className="h-6 w-48 mb-4" />
+    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+      <Skeleton className="mb-4 h-6 w-48" />
       <Skeleton className="h-64 w-full" />
     </div>
   )
@@ -227,7 +220,7 @@ export function PageSkeleton() {
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Header skeleton */}
-      <div className="h-16 bg-gray-800 border-b border-gray-700 px-4 flex items-center justify-between">
+      <div className="flex h-16 items-center justify-between border-b border-gray-700 bg-gray-800 px-4">
         <Skeleton className="h-10 w-32" />
         <div className="flex items-center gap-4">
           <Skeleton className="h-8 w-24" />
@@ -237,8 +230,8 @@ export function PageSkeleton() {
       </div>
 
       {/* Content skeleton */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <Skeleton className="h-8 w-64 mb-6" />
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <Skeleton className="mb-6 h-8 w-64" />
         <LettersListSkeleton count={3} />
       </div>
     </div>
