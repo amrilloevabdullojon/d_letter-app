@@ -194,11 +194,7 @@ export default function SettingsPage() {
   }
 
   if (authStatus === 'loading') {
-    return (
-      <div className="app-shell flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
-      </div>
-    )
+    return null
   }
 
   if (!session || !hasPermission(session.user.role, 'MANAGE_USERS')) {
