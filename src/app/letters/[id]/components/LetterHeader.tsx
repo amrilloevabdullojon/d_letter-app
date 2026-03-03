@@ -87,35 +87,35 @@ export const LetterHeader = memo(function LetterHeader({
 
           <button
             onClick={onPrint}
-            className="rounded-lg p-2 text-slate-400 transition-all hover:bg-white/5 hover:text-white"
+            className="group rounded-lg p-2 text-slate-400 transition-all hover:bg-white/5 hover:text-white"
             title="Печать"
           >
-            <Printer className="h-5 w-5" />
+            <Printer className="h-5 w-5 transition-transform group-hover:scale-110" />
           </button>
 
           <button
             onClick={onDuplicate}
             disabled={duplicating}
-            className="rounded-lg p-2 text-slate-400 transition-all hover:bg-white/5 hover:text-white"
+            className="group rounded-lg p-2 text-slate-400 transition-all hover:bg-white/5 hover:text-white"
             title="Дублировать"
           >
             {duplicating ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <Copy className="h-5 w-5" />
+              <Copy className="h-5 w-5 transition-transform group-hover:scale-110" />
             )}
           </button>
 
           <button
             onClick={onDelete}
             disabled={deleting}
-            className="rounded-lg p-2 text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400"
+            className="group rounded-lg p-2 text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400"
             title="Удалить"
           >
             {deleting ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <Trash2 className="h-5 w-5" />
+              <Trash2 className="h-5 w-5 transition-transform group-hover:scale-110" />
             )}
           </button>
         </div>

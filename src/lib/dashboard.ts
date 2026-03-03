@@ -227,7 +227,7 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
         where: {
           deletedAt: null,
           deadlineDate: { gte: now, lte: urgentDeadline },
-          status: { notIn: ['READY', 'DONE'] },
+          status: { notIn: ['READY', 'DONE', 'PROCESSED', 'FROZEN', 'REJECTED'] },
         },
         orderBy: { deadlineDate: 'asc' },
         take: 5,
@@ -237,7 +237,7 @@ export async function getDashboardData(session: Session): Promise<DashboardData>
         where: {
           deletedAt: null,
           deadlineDate: { lt: now },
-          status: { notIn: ['READY', 'DONE'] },
+          status: { notIn: ['READY', 'DONE', 'PROCESSED', 'FROZEN', 'REJECTED'] },
         },
         orderBy: { deadlineDate: 'asc' },
         take: 5,

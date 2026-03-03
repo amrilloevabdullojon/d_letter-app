@@ -123,7 +123,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href="/request"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-white transition hover:bg-white/20"
+              className="btn-secondary inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 transition hover:brightness-110"
             >
               <Inbox className="h-5 w-5" />
               Подать заявку
@@ -450,7 +450,7 @@ export default async function HomePage() {
                 href="/letters/new"
                 className="panel-soft panel-glass group flex items-center gap-3 rounded-xl p-4 transition hover:bg-white/10"
               >
-                <div className="rounded-lg bg-teal-500/20 p-2">
+                <div className="rounded-lg bg-teal-500/20 p-2 transition-transform duration-200 group-hover:scale-110">
                   <Plus className="h-5 w-5 text-teal-400" />
                 </div>
                 <div>
@@ -463,7 +463,7 @@ export default async function HomePage() {
                 href="/request"
                 className="panel-soft panel-glass group flex items-center gap-3 rounded-xl p-4 transition hover:bg-white/10"
               >
-                <div className="rounded-lg bg-emerald-500/20 p-2">
+                <div className="rounded-lg bg-emerald-500/20 p-2 transition-transform duration-200 group-hover:scale-110">
                   <Inbox className="h-5 w-5 text-emerald-400" />
                 </div>
                 <div>
@@ -476,7 +476,7 @@ export default async function HomePage() {
                 href="/letters?status=NOT_REVIEWED"
                 className="panel-soft panel-glass group flex items-center gap-3 rounded-xl p-4 transition hover:bg-white/10"
               >
-                <div className="rounded-lg bg-amber-500/20 p-2">
+                <div className="rounded-lg bg-amber-500/20 p-2 transition-transform duration-200 group-hover:scale-110">
                   <Clock className="h-5 w-5 text-amber-400" />
                 </div>
                 <div>
@@ -489,7 +489,7 @@ export default async function HomePage() {
                 href="/letters?filter=favorites"
                 className="panel-soft panel-glass group flex items-center gap-3 rounded-xl p-4 transition hover:bg-white/10"
               >
-                <div className="rounded-lg bg-yellow-500/20 p-2">
+                <div className="rounded-lg bg-yellow-500/20 p-2 transition-transform duration-200 group-hover:scale-110">
                   <Star className="h-5 w-5 text-yellow-400" />
                 </div>
                 <div>

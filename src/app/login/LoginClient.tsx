@@ -2,8 +2,164 @@
 
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import Image from 'next/image'
+
+interface Particle {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  radius: number
+  opacity: number
+}
+
+function ParticleCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const mouseRef = useRef({ x: -1000, y: -1000 })
+  const animRef = useRef<number>(0)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let width = window.innerWidth
+    let height = window.innerHeight
+    canvas.width = width
+    canvas.height = height
+
+    const COUNT = 75
+    const MAX_DIST = 130
+    const MOUSE_RADIUS = 110
+
+    const particles: Particle[] = Array.from({ length: COUNT }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.45,
+      vy: (Math.random() - 0.5) * 0.45,
+      radius: Math.random() * 1.5 + 0.5,
+      opacity: Math.random() * 0.45 + 0.25,
+    }))
+
+    const onResize = () => {
+      width = window.innerWidth
+      height = window.innerHeight
+      canvas.width = width
+      canvas.height = height
+    }
+    const onMouseMove = (e: MouseEvent) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY }
+    }
+    const onMouseLeave = () => {
+      mouseRef.current = { x: -1000, y: -1000 }
+    }
+
+    window.addEventListener('resize', onResize)
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseleave', onMouseLeave)
+
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height)
+      const mx = mouseRef.current.x
+      const my = mouseRef.current.y
+
+      for (const p of particles) {
+        // Mouse repulsion
+        const dx = p.x - mx
+        const dy = p.y - my
+        const d = Math.sqrt(dx * dx + dy * dy)
+        if (d < MOUSE_RADIUS && d > 0) {
+          const force = ((MOUSE_RADIUS - d) / MOUSE_RADIUS) * 0.05
+          p.vx += (dx / d) * force
+          p.vy += (dy / d) * force
+        }
+
+        // Damping + speed cap
+        p.vx *= 0.985
+        p.vy *= 0.985
+        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
+        if (spd > 1.8) {
+          p.vx = (p.vx / spd) * 1.8
+          p.vy = (p.vy / spd) * 1.8
+        }
+
+        p.x += p.vx
+        p.y += p.vy
+
+        if (p.x < 0) {
+          p.x = 0
+          p.vx *= -1
+        }
+        if (p.x > width) {
+          p.x = width
+          p.vx *= -1
+        }
+        if (p.y < 0) {
+          p.y = 0
+          p.vy *= -1
+        }
+        if (p.y > height) {
+          p.y = height
+          p.vy *= -1
+        }
+
+        // Particle dot
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(45, 212, 191, ${p.opacity})`
+        ctx.fill()
+      }
+
+      // Connection lines
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i]
+          const b = particles[j]
+          const dx = a.x - b.x
+          const dy = a.y - b.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < MAX_DIST) {
+            const alpha = (1 - dist / MAX_DIST) * 0.2
+            ctx.beginPath()
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
+            ctx.strokeStyle = `rgba(99, 102, 241, ${alpha})`
+            ctx.lineWidth = 0.6
+            ctx.stroke()
+          }
+        }
+      }
+
+      // Soft cursor glow
+      if (mx > 0 && mx < width) {
+        const grad = ctx.createRadialGradient(mx, my, 0, mx, my, MOUSE_RADIUS)
+        grad.addColorStop(0, 'rgba(45, 212, 191, 0.07)')
+        grad.addColorStop(1, 'rgba(45, 212, 191, 0)')
+        ctx.beginPath()
+        ctx.arc(mx, my, MOUSE_RADIUS, 0, Math.PI * 2)
+        ctx.fillStyle = grad
+        ctx.fill()
+      }
+
+      animRef.current = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      cancelAnimationFrame(animRef.current)
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseleave', onMouseLeave)
+    }
+  }, [])
+
+  return (
+    <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-0" aria-hidden="true" />
+  )
+}
 
 export default function LoginClient() {
   const { data: session, status } = useSession()
@@ -22,14 +178,16 @@ export default function LoginClient() {
   if (status === 'loading') {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-emerald-500" />
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-teal-500" />
       </div>
     )
   }
 
   return (
-    <div className="app-shell flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="panel panel-glass w-full max-w-md rounded-2xl p-6 text-center sm:p-8">
+    <div className="app-shell relative flex min-h-screen items-center justify-center px-4 py-10">
+      <ParticleCanvas />
+
+      <div className="panel panel-glass relative z-10 w-full max-w-md rounded-2xl p-6 text-center sm:p-8">
         <div className="relative mx-auto mb-6 h-20 w-20 overflow-hidden rounded-2xl shadow-lg shadow-teal-500/30">
           <Image src="/logo-mark.svg" alt="DMED" fill className="object-contain" priority />
         </div>

@@ -108,7 +108,7 @@ export function StatusBadge({ status, size = 'md', mobileOptimized = false }: St
 
   return (
     <span
-      className={`inline-flex flex-shrink-0 items-center whitespace-nowrap rounded-full border font-medium leading-none ${sizeClasses[size]} ${styles.bg} ${styles.text} ${styles.border} shadow-sm`}
+      className={`inline-flex flex-shrink-0 items-center whitespace-nowrap rounded-full border font-medium leading-none ${sizeClasses[size]} ${styles.bg} ${styles.text} ${styles.border}`}
     >
       <IconComponent className={iconSizes[size]} aria-hidden="true" />
       {STATUS_LABELS[status]}

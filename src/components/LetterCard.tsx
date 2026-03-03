@@ -200,7 +200,7 @@ export const LetterCard = memo(function LetterCard({ letter, onToggleFavorite }:
 
         {/* Content preview */}
         {letter.content && (
-          <p className="mb-4 line-clamp-2 rounded-lg bg-slate-700/20 p-2.5 text-sm leading-relaxed text-slate-300/80">
+          <p className="mb-4 line-clamp-2 border-l-2 border-slate-600/50 pl-3 text-sm leading-relaxed text-slate-400">
             {letter.content}
           </p>
         )}
@@ -220,15 +220,21 @@ export const LetterCard = memo(function LetterCard({ letter, onToggleFavorite }:
           )}
 
           {letter._count && letter._count.comments > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-lg bg-slate-700/40 px-2 py-1.5 text-slate-300">
-              <MessageSquare className="h-3.5 w-3.5 text-slate-400" />
+            <span
+              className="inline-flex items-center gap-1 text-xs text-slate-500"
+              title="Комментарии"
+            >
+              <MessageSquare className="h-3 w-3" />
               {letter._count.comments}
             </span>
           )}
 
           {letter._count && letter._count.watchers > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-lg bg-slate-700/40 px-2 py-1.5 text-slate-300">
-              <Eye className="h-3.5 w-3.5 text-slate-400" />
+            <span
+              className="inline-flex items-center gap-1 text-xs text-slate-500"
+              title="Наблюдатели"
+            >
+              <Eye className="h-3 w-3" />
               {letter._count.watchers}
             </span>
           )}
@@ -253,13 +259,7 @@ export const LetterCard = memo(function LetterCard({ letter, onToggleFavorite }:
           {/* Progress bar */}
           {!isDone && (
             <div className="mb-3">
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  Прогресс
-                </span>
-                <span className="text-[10px] font-semibold text-slate-400">{progressStep}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-700/50">
+              <div className="h-2.5 overflow-hidden rounded-full bg-slate-700/50">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ease-out progress-${progressStep} ${
                     isOverdue

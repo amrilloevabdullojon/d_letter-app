@@ -46,7 +46,7 @@ export const LetterQuickSummary = memo(function LetterQuickSummary({
   return (
     <div className="space-y-4">
       {/* Progress/Timeline Card */}
-      <div className="rounded-2xl bg-gradient-to-r from-slate-800/60 to-slate-800/40 p-4">
+      <div className="rounded-2xl border border-slate-700/50 bg-slate-800/40 p-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-medium text-slate-300">Прогресс</span>
           <span
@@ -140,7 +140,7 @@ export const LetterQuickSummary = memo(function LetterQuickSummary({
         {/* Comments Card */}
         <button
           onClick={onScrollToComments}
-          className="group flex items-center gap-3 rounded-xl bg-slate-800/40 p-3.5 text-left transition-all hover:bg-slate-800/60"
+          className="group flex items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3.5 text-left transition-all hover:bg-slate-800/60"
         >
           <div className="rounded-lg bg-purple-500/15 p-2.5">
             <MessageSquare className="h-5 w-5 text-purple-400" />
@@ -202,7 +202,7 @@ interface InfoCardProps {
 
 function InfoCard({ icon: Icon, iconBg, iconColor, label, value, subtitle }: InfoCardProps) {
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-slate-800/40 p-3.5">
+    <div className="flex items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3.5">
       <div className={`rounded-lg p-2.5 ${iconBg}`}>
         <Icon className={`h-5 w-5 ${iconColor}`} />
       </div>
