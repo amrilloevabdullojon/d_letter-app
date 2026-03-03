@@ -314,6 +314,7 @@ function MetricCard({
     red: 'bg-red-500/20 text-red-400',
     green: 'bg-green-500/20 text-green-400',
     purple: 'bg-purple-500/20 text-purple-400',
+    indigo: 'bg-indigo-500/20 text-indigo-400',
   }
 
   return (
