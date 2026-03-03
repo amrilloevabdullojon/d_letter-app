@@ -86,6 +86,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import type { LetterStatus } from '@/types/prisma'
 import { STATUS_LABELS } from '@/lib/utils'
 import { LETTER_TYPES } from '@/lib/constants'
+import { FilterSelect, type FilterSelectOption } from '@/components/ui/FilterSelect'
 import {
   Search,
   Filter,
@@ -178,6 +179,9 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const [quickFilter, setQuickFilter] = useState(initialFilters.quickFilter)
   const [ownerFilter, setOwnerFilter] = useState(initialFilters.owner)
   const [typeFilter, setTypeFilter] = useState(initialFilters.type)
+  const [dynamicTypes, setDynamicTypes] = useState<FilterSelectOption[]>(
+    LETTER_TYPES.filter((t) => t.value !== 'all')
+  )
   const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') || '')
   const [dateTo, setDateTo] = useState(searchParams.get('dateTo') || '')
   const [viewMode, setViewMode] = useLocalStorage<ViewMode>('letters-view-mode', 'table')
@@ -807,6 +811,19 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
     loadUsers()
   }, [session, loadUsers, canManageUsers])
 
+  // Загружаем типы писем (встроенные + пользовательские из БД)
+  useEffect(() => {
+    if (!session) return
+    fetch('/api/letters/types')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.types) setDynamicTypes(data.types)
+      })
+      .catch(() => {
+        // Fallback: используем только встроенные типы
+      })
+  }, [session])
+
   // Инвалидация кэша при возврате на страницу (popstate/back button)
   // и при возвращении фокуса на вкладку
   useEffect(() => {
@@ -1331,7 +1348,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   )}
                   {typeFilter && (
                     <span className="rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-amber-500/20">
-                      {LETTER_TYPES.find((item) => item.value === typeFilter)?.label || typeFilter}
+                      {dynamicTypes.find((item) => item.value === typeFilter)?.label || typeFilter}
                     </span>
                   )}
                   {(dateFrom || dateTo) && (
@@ -1358,76 +1375,58 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                 className={`${filtersOpen ? 'grid' : 'hidden'} w-full grid-cols-2 gap-2 sm:flex sm:w-full sm:flex-row sm:flex-wrap sm:gap-3 lg:w-auto xl:flex-nowrap`}
               >
                 {/* Status filter */}
-                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px] sm:gap-2 sm:rounded-xl sm:p-1.5">
-                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-blue-500/20 sm:flex sm:h-8 sm:w-8">
-                    <Filter className="h-3.5 w-3.5 text-blue-400 sm:h-4 sm:w-4" />
-                  </div>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => {
-                      setStatusFilter(e.target.value as LetterStatus | 'all')
-                      // Не сбрасываем quickFilter - фильтры работают независимо
-                      goToPage(1)
-                    }}
-                    disabled={filtersDisabled}
-                    className="h-7 min-w-0 flex-1 appearance-none bg-transparent pr-6 text-xs text-white focus:outline-none disabled:opacity-50 sm:h-8 sm:pr-8 sm:text-sm"
-                    aria-label="Статус"
-                  >
-                    <option value="all">Все статусы</option>
-                    {STATUSES.filter((s) => s !== 'all').map((status) => (
-                      <option key={status} value={status}>
-                        {STATUS_LABELS[status as LetterStatus]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <FilterSelect
+                  value={statusFilter}
+                  options={STATUSES.filter((s) => s !== 'all').map((s) => ({
+                    value: s,
+                    label: STATUS_LABELS[s as LetterStatus],
+                  }))}
+                  onChange={(v) => {
+                    setStatusFilter(v as LetterStatus | 'all')
+                    goToPage(1)
+                  }}
+                  emptyValue="all"
+                  emptyLabel="Все статусы"
+                  icon={<Filter className="h-3.5 w-3.5 text-blue-400 sm:h-4 sm:w-4" />}
+                  iconBg="bg-blue-500/20"
+                  disabled={filtersDisabled}
+                  minWidth="190px"
+                  ariaLabel="Статус"
+                />
 
-                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[210px] sm:gap-2 sm:rounded-xl sm:p-1.5">
-                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 sm:flex sm:h-8 sm:w-8">
-                    <Users className="h-3.5 w-3.5 text-emerald-400 sm:h-4 sm:w-4" />
-                  </div>
-                  <select
-                    value={ownerFilter}
-                    onChange={(e) => {
-                      setOwnerFilter(e.target.value)
-                      // Не сбрасываем quickFilter - фильтры работают независимо
-                      goToPage(1)
-                    }}
-                    disabled={filtersDisabled}
-                    className="h-7 min-w-0 flex-1 appearance-none bg-transparent pr-6 text-xs text-white focus:outline-none disabled:opacity-50 sm:h-8 sm:pr-8 sm:text-sm"
-                    aria-label="Исполнитель"
-                  >
-                    <option value="">Все исполнители</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name || user.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Owner filter */}
+                <FilterSelect
+                  value={ownerFilter}
+                  options={users.map((u) => ({ value: u.id, label: u.name || u.email || u.id }))}
+                  onChange={(v) => {
+                    setOwnerFilter(v)
+                    goToPage(1)
+                  }}
+                  emptyValue=""
+                  emptyLabel="Все исполнители"
+                  icon={<Users className="h-3.5 w-3.5 text-emerald-400 sm:h-4 sm:w-4" />}
+                  iconBg="bg-emerald-500/20"
+                  disabled={filtersDisabled}
+                  minWidth="210px"
+                  ariaLabel="Исполнитель"
+                />
 
-                <div className="group flex w-full items-center gap-1.5 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:min-w-[190px] sm:gap-2 sm:rounded-xl sm:p-1.5">
-                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 sm:flex sm:h-8 sm:w-8">
-                    <FileText className="h-3.5 w-3.5 text-amber-400 sm:h-4 sm:w-4" />
-                  </div>
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => {
-                      setTypeFilter(e.target.value)
-                      goToPage(1)
-                    }}
-                    disabled={filtersDisabled}
-                    className="h-7 min-w-0 flex-1 appearance-none bg-transparent pr-6 text-xs text-white focus:outline-none disabled:opacity-50 sm:h-8 sm:pr-8 sm:text-sm"
-                    aria-label="Тип"
-                  >
-                    <option value="">Все типы</option>
-                    {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Type filter */}
+                <FilterSelect
+                  value={typeFilter}
+                  options={dynamicTypes}
+                  onChange={(v) => {
+                    setTypeFilter(v)
+                    goToPage(1)
+                  }}
+                  emptyValue=""
+                  emptyLabel="Все типы"
+                  icon={<FileText className="h-3.5 w-3.5 text-amber-400 sm:h-4 sm:w-4" />}
+                  iconBg="bg-amber-500/20"
+                  disabled={filtersDisabled}
+                  minWidth="190px"
+                  ariaLabel="Тип"
+                />
 
                 {/* Date range filter */}
                 <div className="group flex w-full items-center gap-1 rounded-lg bg-slate-700/30 p-1 ring-1 ring-slate-600/50 transition-all focus-within:ring-teal-500/50 sm:w-auto sm:gap-1.5 sm:rounded-xl sm:p-1.5">
