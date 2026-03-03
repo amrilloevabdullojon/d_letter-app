@@ -417,7 +417,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
   return (
     <div className="panel panel-glass mb-8 rounded-2xl p-6">
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Users className="h-6 w-6 text-emerald-400" />
+        <Users className="h-6 w-6 text-teal-400" />
         <h2 className="text-xl font-semibold text-white">Управление пользователями</h2>
         <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-sky-400/20 bg-sky-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-sky-300">
           {visibleTotal} пользователей
@@ -429,7 +429,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             title="\u0412\u0438\u0434 \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0438"
             className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
               viewMode === 'cards'
-                ? 'bg-emerald-500/20 text-emerald-300'
+                ? 'bg-teal-500/20 text-emerald-300'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -441,7 +441,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             title="\u0412\u0438\u0434 \u0442\u0430\u0431\u043b\u0438\u0446\u0430"
             className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
               viewMode === 'table'
-                ? 'bg-emerald-500/20 text-emerald-300'
+                ? 'bg-teal-500/20 text-emerald-300'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -454,21 +454,21 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
       {isSuperAdmin && (
         <div className="panel-soft panel-glass mb-6 rounded-2xl p-4">
           <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-slate-400">
               <ShieldAlert className="h-4 w-4 text-amber-400" />
               Запросы на подтверждение
             </div>
             <button
               onClick={loadApprovals}
               aria-label="Обновить запросы"
-              className="p-2 text-gray-400 transition hover:text-white"
+              className="p-2 text-slate-400 transition hover:text-white"
               title="Обновить"
             >
               <RefreshCw className="h-4 w-4" />
             </button>
           </div>
           {approvalsLoading ? (
-            <div className="text-xs text-gray-500">Загрузка...</div>
+            <div className="text-xs text-slate-500">Загрузка...</div>
           ) : approvals.length > 0 ? (
             <div className="space-y-3">
               {approvals.map((approval) => {
@@ -487,15 +487,15 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div className="space-y-1">
                         <div className="text-sm text-white">{approvalTitle}</div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-slate-400">
                           {targetLabel} · {ROLE_LABELS[approval.targetUser.role]}
                         </div>
                         {approval.action === 'DEMOTE_ADMIN' && approval.payload?.newRole && (
-                          <div className="text-xs text-emerald-400">
+                          <div className="text-xs text-teal-400">
                             Новая роль: {ROLE_LABELS[approval.payload.newRole]}
                           </div>
                         )}
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-slate-500">
                           {requester} · {formatDate(approval.createdAt)}
                           {needsSecondAdmin && (
                             <span className="ml-2 text-amber-400">Нужен второй админ</span>
@@ -532,15 +532,15 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
               })}
             </div>
           ) : (
-            <div className="text-xs text-gray-500">Нет запросов на подтверждение</div>
+            <div className="text-xs text-slate-500">Нет запросов на подтверждение</div>
           )}
         </div>
       )}
 
       {/* Create User Form */}
       <div className="panel-soft panel-glass mb-6 rounded-2xl p-4">
-        <div className="mb-4 flex items-center gap-2 text-sm text-gray-400">
-          <UserPlus className="h-4 w-4 text-emerald-400" />
+        <div className="mb-4 flex items-center gap-2 text-sm text-slate-400">
+          <UserPlus className="h-4 w-4 text-teal-400" />
           Добавить пользователя
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -583,7 +583,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
           />
         </div>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1 text-xs text-gray-500">
+          <div className="space-y-1 text-xs text-slate-500">
             <p>Для входа через Google требуется email.</p>
             {!isSuperAdmin && <p className="text-amber-400">Роли назначает только суперадмин.</p>}
           </div>
@@ -626,7 +626,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
               value={searchQuery}
@@ -684,7 +684,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             <option value="none">Без Telegram</option>
           </select>
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
           <span>
             Показано {filteredUsers.length} из {visibleTotal}
           </span>
@@ -692,14 +692,14 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             {hasFilters && (
               <button
                 onClick={resetFilters}
-                className="text-emerald-400 transition hover:text-emerald-300"
+                className="text-teal-400 transition hover:text-emerald-300"
               >
                 Сбросить фильтры
               </button>
             )}
             <button
               onClick={exportUsers}
-              className="inline-flex items-center gap-1 text-gray-400 transition hover:text-white"
+              className="inline-flex items-center gap-1 text-slate-400 transition hover:text-white"
               title="Экспорт в CSV"
             >
               <Download className="h-4 w-4" />
@@ -773,7 +773,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
           </button>
           <button
             onClick={clearSelection}
-            className="px-3 py-2 text-gray-400 transition hover:text-white"
+            className="px-3 py-2 text-slate-400 transition hover:text-white"
           >
             Сбросить
           </button>
@@ -787,7 +787,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
 
       {/* Select All & Pagination */}
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <label className="inline-flex items-center gap-2 text-sm text-gray-400">
+        <label className="inline-flex items-center gap-2 text-sm text-slate-400">
           <input
             type="checkbox"
             checked={allVisibleSelected}
@@ -797,14 +797,14 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
           />
           Выбрать всех
         </label>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>Выбрано: {selectedIds.size}</span>
           {totalPages > 1 && (
             <div className="flex items-center gap-1">
               <button
                 onClick={prevPage}
                 disabled={!hasPrevPage || loading}
-                className="rounded p-1 text-gray-400 hover:text-white disabled:opacity-50"
+                className="rounded p-1 text-slate-400 hover:text-white disabled:opacity-50"
                 aria-label="Предыдущая страница"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -815,7 +815,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
               <button
                 onClick={nextPage}
                 disabled={!hasNextPage || loading}
-                className="rounded p-1 text-gray-400 hover:text-white disabled:opacity-50"
+                className="rounded p-1 text-slate-400 hover:text-white disabled:opacity-50"
                 aria-label="Следующая страница"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -1044,10 +1044,10 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
               items.push(
                 <div
                   key={`${user.role}-heading`}
-                  className="flex items-center justify-between text-sm text-gray-400 md:col-span-2 xl:col-span-3"
+                  className="flex items-center justify-between text-sm text-slate-400 md:col-span-2 xl:col-span-3"
                 >
                   <span>{ROLE_LABELS[user.role]}</span>
-                  <span className="text-xs text-gray-500">{roleCount}</span>
+                  <span className="text-xs text-slate-500">{roleCount}</span>
                 </div>
               )
             }
@@ -1083,7 +1083,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
       )}
 
       {filteredUsers.length === 0 && !loading && (
-        <div className="py-8 text-center text-gray-500">
+        <div className="py-8 text-center text-slate-500">
           {users.length === 0 ? 'Нет пользователей' : 'Ничего не найдено'}
         </div>
       )}

@@ -8,7 +8,6 @@ import { Providers } from '@/components/Providers'
 import { AuthGuard } from '@/components/AuthGuard'
 import { PageTransition } from '@/components/PageTransition'
 import { ThemeProvider } from '@/components/ThemeProvider'
-import { SkipToContent } from '@/components/SkipToContent'
 import { PWAProvider } from '@/components/PWAProvider'
 import { ClientEffects } from '@/components/ClientEffects'
 
@@ -64,7 +63,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <PWAProvider>
             <ThemeProvider>
-              <SkipToContent />
               <AuthGuard>
                 <PageTransition>{children}</PageTransition>
                 <ClientEffects />

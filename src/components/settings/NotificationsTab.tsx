@@ -151,7 +151,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Каналы уведомлений</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Выберите каналы, в которые хотите получать уведомления о событиях.
             </p>
           </div>
@@ -174,7 +174,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
           />
           {settings.emailNotifications && (
             <div className="ml-11 space-y-3 border-l-2 border-white/10 pl-6">
-              <label className="block text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Частота писем
               </label>
               <select
@@ -185,7 +185,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                     event.target.value as NotificationSettings['emailDigest']
                   )
                 }
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
               >
                 {digestOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -193,7 +193,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-400">
                 Для срочных событий будет отправка сразу, независимо от дайджеста.
               </p>
             </div>
@@ -222,7 +222,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Режимы и расписание</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Настройте тихие часы и дополнительные режимы для уведомлений.
             </p>
           </div>
@@ -240,30 +240,30 @@ export const NotificationsTab = memo(function NotificationsTab() {
             <div className="ml-11 space-y-4 border-l-2 border-white/10 pl-6">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Начало
                   </label>
                   <input
                     type="time"
                     value={settings.quietHoursStart}
                     onChange={(event) => updateSetting('quietHoursStart', event.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Конец
                   </label>
                   <input
                     type="time"
                     value={settings.quietHoursEnd}
                     onChange={(event) => updateSetting('quietHoursEnd', event.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Режим в тихие часы
                 </label>
                 <select
@@ -274,7 +274,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                       event.target.value as NotificationSettings['quietMode']
                     )
                   }
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                 >
                   {quietModeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -318,12 +318,8 @@ export const NotificationsTab = memo(function NotificationsTab() {
               }
             }}
           />
-          {push.error && (
-            <div className="ml-11 text-xs text-red-400">{push.error}</div>
-          )}
-          {push.isLoading && (
-            <div className="ml-11 text-xs text-gray-400">Загрузка...</div>
-          )}
+          {push.error && <div className="ml-11 text-xs text-red-400">{push.error}</div>}
+          {push.isLoading && <div className="ml-11 text-xs text-slate-400">Загрузка...</div>}
         </div>
       </div>
 
@@ -334,7 +330,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Отображение</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Настройте, как уведомления выглядят в центре уведомлений.
             </p>
           </div>
@@ -372,7 +368,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Типы событий</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Выберите, о каких событиях отправлять уведомления.
             </p>
           </div>
@@ -425,14 +421,14 @@ export const NotificationsTab = memo(function NotificationsTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Матрица событий</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Настройте каналы доставки и приоритет для каждого типа уведомлений.
             </p>
           </div>
         </div>
 
         <div className="space-y-3">
-          <div className="grid gap-3 text-xs uppercase tracking-wide text-gray-500 md:grid-cols-[1.6fr_1fr_3fr]">
+          <div className="grid gap-3 text-xs uppercase tracking-wide text-slate-500 md:grid-cols-[1.6fr_1fr_3fr]">
             <span>Событие</span>
             <span>Приоритет</span>
             <span>Каналы</span>
@@ -450,7 +446,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                   onChange={(event) =>
                     updateMatrixPriority(row.event, event.target.value as NotificationPriority)
                   }
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                 >
                   {priorityOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -468,8 +464,8 @@ export const NotificationsTab = memo(function NotificationsTab() {
                         onClick={() => toggleMatrixChannel(row.event, channel.key)}
                         className={`rounded-full border px-3 py-1 text-xs transition ${
                           active
-                            ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100'
-                            : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
+                            ? 'border-teal-400/40 bg-teal-500/15 text-teal-100'
+                            : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
                         }`}
                       >
                         {channel.label}
@@ -485,12 +481,12 @@ export const NotificationsTab = memo(function NotificationsTab() {
 
       <div className="panel panel-glass rounded-2xl p-6">
         <div className="mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
-          <div className="rounded-full bg-emerald-500/10 p-2 text-emerald-300">
+          <div className="rounded-full bg-teal-500/10 p-2 text-teal-300">
             <Users className="h-5 w-5" />
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Подписки и роли</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Добавьте дополнительные источники событий для ваших уведомлений.
             </p>
           </div>
@@ -498,7 +494,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
 
         <div className="space-y-3">
           {settings.subscriptions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
+            <div className="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-400">
               Нет активных подписок.
             </div>
           ) : (
@@ -511,7 +507,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                 >
                   <div className="grid gap-3 md:grid-cols-4">
                     <div>
-                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
                         Событие
                       </label>
                       <select
@@ -521,7 +517,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                             event: event.target.value as NotificationSubscription['event'],
                           })
                         }
-                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                       >
                         <option value="ALL">Все события</option>
                         {eventOptions.map((item) => (
@@ -532,7 +528,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                       </select>
                     </div>
                     <div>
-                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
                         Область
                       </label>
                       <select
@@ -543,7 +539,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                             value: event.target.value === 'all' ? undefined : subscription.value,
                           })
                         }
-                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                       >
                         <option value="all">Все</option>
                         <option value="role">Роль</option>
@@ -551,7 +547,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                       </select>
                     </div>
                     <div>
-                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
                         Значение
                       </label>
                       {scope === 'role' ? (
@@ -560,7 +556,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                           onChange={(event) =>
                             updateSubscription(index, { value: event.target.value })
                           }
-                          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                         >
                           <option value="">Выберите роль</option>
                           {roleOptions.map((role) => (
@@ -578,7 +574,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                           }
                           placeholder={scope === 'user' ? 'ID или email' : '—'}
                           disabled={scope === 'all'}
-                          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20 disabled:opacity-60"
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20 disabled:opacity-60"
                         />
                       )}
                     </div>
@@ -586,7 +582,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
                       <button
                         type="button"
                         onClick={() => removeSubscription(index)}
-                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
                       >
                         Удалить
                       </button>
@@ -600,7 +596,7 @@ export const NotificationsTab = memo(function NotificationsTab() {
           <button
             type="button"
             onClick={addSubscription}
-            className="tap-highlight w-full rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-100 transition hover:border-emerald-400/50 hover:bg-emerald-500/20"
+            className="tap-highlight w-full rounded-xl border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-xs font-semibold text-teal-100 transition hover:border-teal-400/50 hover:bg-teal-500/20"
           >
             Добавить подписку
           </button>
@@ -610,11 +606,11 @@ export const NotificationsTab = memo(function NotificationsTab() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={resetSettings}
-          className="tap-highlight rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-gray-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+          className="tap-highlight rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
         >
           Сбросить настройки
         </button>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-slate-500">
           {isLoading
             ? 'Загружаем настройки...'
             : isSaving

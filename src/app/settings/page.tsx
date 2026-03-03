@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Header } from '@/components/Header'
 import {
   Loader2,
@@ -9,11 +10,11 @@ import {
   Shield,
   RefreshCw,
   History,
-  Crown,
   Bell,
   Palette,
   Settings,
   Tags,
+  ArrowLeft,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { hasPermission } from '@/lib/permissions'
@@ -32,7 +33,7 @@ const PermissionsManager = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -42,7 +43,7 @@ const UsersTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -52,7 +53,7 @@ const SyncTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -63,7 +64,7 @@ const LoginAuditTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -76,7 +77,7 @@ const NotificationsTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -89,7 +90,7 @@ const MobileNotificationsTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -102,7 +103,7 @@ const PersonalizationTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -112,7 +113,7 @@ const WorkflowTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -125,7 +126,7 @@ const StatusConfigTab = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     ),
   }
@@ -185,7 +186,7 @@ export default function SettingsPage() {
   if (authStatus === 'loading') {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -254,6 +255,17 @@ export default function SettingsPage() {
         tabIndex={-1}
         className="animate-pageIn relative mx-auto max-w-[1600px] px-4 py-6 outline-none sm:px-6 sm:py-8 lg:px-8"
       >
+        {/* Back link */}
+        <div className="mb-4">
+          <Link
+            href="/letters"
+            className="group inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            <span>Письма</span>
+          </Link>
+        </div>
+
         {/* Header with gradient */}
         <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/80 via-slate-800/60 to-slate-900/80 p-6 md:p-8">
           {/* Decorative elements */}
@@ -273,26 +285,6 @@ export default function SettingsPage() {
                   Роли, доступ, уведомления и журнал безопасности
                 </p>
               </div>
-            </div>
-
-            {/* New Year Vibe Toggle - compact */}
-            <div className="flex items-center gap-3 rounded-xl bg-slate-700/40 px-4 py-3">
-              <Crown className="h-5 w-5 text-amber-400" />
-              <span className="text-sm font-medium text-white">Новогодний вайб</span>
-              <button
-                onClick={() => handleNewYearVibeToggle(!newYearVibe)}
-                className={`relative h-6 w-11 rounded-full transition-colors ${
-                  newYearVibe ? 'bg-amber-500' : 'bg-slate-600'
-                }`}
-                role="switch"
-                aria-checked={newYearVibe}
-              >
-                <span
-                  className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                    newYearVibe ? 'translate-x-5' : ''
-                  }`}
-                />
-              </button>
             </div>
           </div>
         </div>
@@ -454,7 +446,12 @@ export default function SettingsPage() {
         {activeTab === 'notifications' &&
           (isMobile ? <MobileNotificationsTab /> : <NotificationsTab />)}
 
-        {activeTab === 'personalization' && <PersonalizationTab />}
+        {activeTab === 'personalization' && (
+          <PersonalizationTab
+            newYearVibe={newYearVibe}
+            onNewYearVibeChange={handleNewYearVibeToggle}
+          />
+        )}
 
         {activeTab === 'workflow' && <WorkflowTab />}
 

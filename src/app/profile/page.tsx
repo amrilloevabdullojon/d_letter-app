@@ -30,6 +30,7 @@ import {
   X,
   Plus,
   AlertCircle,
+  ArrowLeft,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { formatDate } from '@/lib/utils'
@@ -383,6 +384,17 @@ export default function ProfilePage() {
       <Header />
 
       <main className="animate-pageIn mx-auto max-w-[1400px] px-4 pb-24 pt-6 sm:px-6 sm:pb-10 sm:pt-8 lg:px-8">
+        {/* ─── Back link ─── */}
+        <div className="mb-4">
+          <Link
+            href="/letters"
+            className="group inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            <span>Письма</span>
+          </Link>
+        </div>
+
         {/* ─── Hero Section ─── */}
         <div className="mb-6 overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-800/60 shadow-xl">
           {/* Cover image */}

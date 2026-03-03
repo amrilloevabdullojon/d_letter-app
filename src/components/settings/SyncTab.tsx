@@ -51,7 +51,7 @@ function getStatusBadge(status: SyncLog['status']) {
       )
     default:
       return (
-        <span className="inline-flex items-center gap-1 rounded bg-gray-500/20 px-2 py-1 text-xs text-gray-400">
+        <span className="inline-flex items-center gap-1 rounded bg-slate-500/20 px-2 py-1 text-xs text-slate-400">
           <Clock className="h-3 w-3" />
           Ожидание
         </span>
@@ -120,9 +120,9 @@ export function SyncTab({ onSuccess, onError }: SyncTabProps) {
     <div className="panel panel-glass mb-8 rounded-2xl p-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <RefreshCw className="h-6 w-6 text-emerald-400" />
+          <RefreshCw className="h-6 w-6 text-teal-400" />
           <h2 className="text-xl font-semibold text-white">Логи синхронизации</h2>
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-emerald-300">
+          <span className="inline-flex items-center gap-1 rounded-full border border-teal-400/20 bg-teal-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal-300">
             Интеграции
           </span>
         </div>
@@ -157,7 +157,7 @@ export function SyncTab({ onSuccess, onError }: SyncTabProps) {
             onClick={loadSyncLogs}
             disabled={loading}
             aria-label="Обновить логи"
-            className="p-2 text-gray-400 transition hover:text-white disabled:opacity-50"
+            className="p-2 text-slate-400 transition hover:text-white disabled:opacity-50"
             title="Обновить"
           >
             <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
@@ -188,7 +188,7 @@ export function SyncTab({ onSuccess, onError }: SyncTabProps) {
               return (
                 <div key={log.id} className="panel-soft panel-glass rounded-xl p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="text-sm text-gray-300">{formatDate(log.startedAt)}</div>
+                    <div className="text-sm text-slate-300">{formatDate(log.startedAt)}</div>
                     {getStatusBadge(log.status)}
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-sm">
@@ -204,7 +204,7 @@ export function SyncTab({ onSuccess, onError }: SyncTabProps) {
                       </>
                     )}
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-400">
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-400">
                     <div>Записей: {log.rowsAffected}</div>
                     <div>Время: {duration !== null ? `${duration} сек` : '-'}</div>
                   </div>
@@ -224,12 +224,12 @@ export function SyncTab({ onSuccess, onError }: SyncTabProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-4 py-3 text-left font-medium text-gray-400">Время</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-400">Направление</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-400">Статус</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-400">Записей</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-400">Длительность</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-400">Ошибка</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-400">Время</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-400">Направление</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-400">Статус</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-400">Записей</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-400">Длительность</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-400">Ошибка</th>
                 </tr>
               </thead>
               <tbody>
@@ -243,7 +243,7 @@ export function SyncTab({ onSuccess, onError }: SyncTabProps) {
 
                   return (
                     <tr key={log.id} className="border-b border-white/5 hover:bg-white/5">
-                      <td className="px-4 py-3 text-sm text-gray-300">
+                      <td className="px-4 py-3 text-sm text-slate-300">
                         {formatDate(log.startedAt)}
                       </td>
                       <td className="px-4 py-3">
@@ -263,7 +263,7 @@ export function SyncTab({ onSuccess, onError }: SyncTabProps) {
                       </td>
                       <td className="px-4 py-3">{getStatusBadge(log.status)}</td>
                       <td className="px-4 py-3 text-white">{log.rowsAffected}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400">
+                      <td className="px-4 py-3 text-sm text-slate-400">
                         {duration !== null ? `${duration} сек` : '-'}
                       </td>
                       <td className="px-4 py-3">
@@ -285,7 +285,7 @@ export function SyncTab({ onSuccess, onError }: SyncTabProps) {
           </div>
         </>
       ) : (
-        <div className="py-8 text-center text-gray-500">Нет записей синхронизации</div>
+        <div className="py-8 text-center text-slate-500">Нет записей синхронизации</div>
       )}
     </div>
   )

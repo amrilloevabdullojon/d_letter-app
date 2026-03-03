@@ -1,7 +1,7 @@
 'use client'
 
 import { memo, useState, useEffect } from 'react'
-import { Palette, Globe, Sparkles, Monitor } from 'lucide-react'
+import { Palette, Globe, Sparkles, Monitor, Crown } from 'lucide-react'
 import { SettingsToggle } from './SettingsToggle'
 import { toast } from 'sonner'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
@@ -25,7 +25,15 @@ interface PersonalizationSettings {
   desktopNotifications: boolean
 }
 
-export const PersonalizationTab = memo(function PersonalizationTab() {
+interface PersonalizationTabProps {
+  newYearVibe?: boolean
+  onNewYearVibeChange?: (v: boolean) => void
+}
+
+export const PersonalizationTab = memo(function PersonalizationTab({
+  newYearVibe = false,
+  onNewYearVibeChange,
+}: PersonalizationTabProps) {
   const { setPreferences: setGlobalPreferences } = useUserPreferences()
   const [settings, setSettings] = useState<PersonalizationSettings>({
     theme: 'DARK',
@@ -145,7 +153,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-gray-400">Загрузка настроек...</div>
+        <div className="text-slate-400">Загрузка настроек...</div>
       </div>
     )
   }
@@ -164,7 +172,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Тема оформления</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Выберите светлую, темную или автоматическую тему.
             </p>
           </div>
@@ -189,7 +197,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
               </div>
               <div className="text-center">
                 <div className="text-sm font-semibold text-white">Светлая</div>
-                <div className="text-xs text-gray-400">Дневной режим</div>
+                <div className="text-xs text-slate-400">Дневной режим</div>
               </div>
             </button>
 
@@ -209,7 +217,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
               </div>
               <div className="text-center">
                 <div className="text-sm font-semibold text-white">Тёмная</div>
-                <div className="text-xs text-gray-400">Ночной режим</div>
+                <div className="text-xs text-slate-400">Ночной режим</div>
               </div>
             </button>
 
@@ -229,7 +237,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
               </div>
               <div className="text-center">
                 <div className="text-sm font-semibold text-white">Фиолетовая</div>
-                <div className="text-xs text-gray-400">Глубокий пурпур</div>
+                <div className="text-xs text-slate-400">Глубокий пурпур</div>
               </div>
             </button>
 
@@ -249,11 +257,11 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
               </div>
               <div className="text-center">
                 <div className="text-sm font-semibold text-white">Авто</div>
-                <div className="text-xs text-gray-400">По системе</div>
+                <div className="text-xs text-slate-400">По системе</div>
               </div>
             </button>
           </div>
-          <p className="mt-3 text-xs text-gray-400">
+          <p className="mt-3 text-xs text-slate-400">
             {settings.theme === 'AUTO' &&
               'Тема автоматически меняется в зависимости от системных настроек'}
             {settings.theme === 'LIGHT' && 'Светлая тема с комфортными дневными цветами'}
@@ -271,7 +279,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Язык интерфейса</h3>
-            <p className="text-xs text-gray-400">Выберите язык для отображения интерфейса.</p>
+            <p className="text-xs text-slate-400">Выберите язык для отображения интерфейса.</p>
           </div>
         </div>
 
@@ -282,12 +290,12 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
             onChange={(e) =>
               updateSetting('language', e.target.value as PersonalizationSettings['language'])
             }
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
           >
             <option value="ru">Русский</option>
             <option value="en">English</option>
           </select>
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="mt-2 text-xs text-slate-400">
             Интерфейс будет отображаться на выбранном языке. Перезагрузка не требуется.
           </p>
         </div>
@@ -301,7 +309,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Плотность интерфейса</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Настройте размер элементов и отступы в интерфейсе.
             </p>
           </div>
@@ -314,36 +322,36 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
               onClick={() => updateSetting('density', 'COMPACT')}
               className={`rounded-xl border p-4 text-left transition ${
                 settings.density === 'COMPACT'
-                  ? 'border-emerald-400/50 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]'
+                  ? 'border-teal-400/50 bg-teal-500/15 shadow-[0_0_18px_rgba(20,184,166,0.25)]'
                   : 'border-white/10 bg-white/5 hover:bg-white/10'
               }`}
             >
               <div className="text-sm font-semibold text-white">Компактный</div>
-              <div className="text-xs text-gray-400">Больше информации на экране</div>
+              <div className="text-xs text-slate-400">Больше информации на экране</div>
             </button>
 
             <button
               onClick={() => updateSetting('density', 'COMFORTABLE')}
               className={`rounded-xl border p-4 text-left transition ${
                 settings.density === 'COMFORTABLE'
-                  ? 'border-emerald-400/50 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]'
+                  ? 'border-teal-400/50 bg-teal-500/15 shadow-[0_0_18px_rgba(20,184,166,0.25)]'
                   : 'border-white/10 bg-white/5 hover:bg-white/10'
               }`}
             >
               <div className="text-sm font-semibold text-white">Комфортный</div>
-              <div className="text-xs text-gray-400">Баланс плотности и читаемости</div>
+              <div className="text-xs text-slate-400">Баланс плотности и читаемости</div>
             </button>
 
             <button
               onClick={() => updateSetting('density', 'SPACIOUS')}
               className={`rounded-xl border p-4 text-left transition ${
                 settings.density === 'SPACIOUS'
-                  ? 'border-emerald-400/50 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.25)]'
+                  ? 'border-teal-400/50 bg-teal-500/15 shadow-[0_0_18px_rgba(20,184,166,0.25)]'
                   : 'border-white/10 bg-white/5 hover:bg-white/10'
               }`}
             >
               <div className="text-sm font-semibold text-white">Просторный</div>
-              <div className="text-xs text-gray-400">Максимальная читаемость</div>
+              <div className="text-xs text-slate-400">Максимальная читаемость</div>
             </button>
           </div>
         </div>
@@ -357,7 +365,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Анимации и эффекты</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Управляйте анимациями и визуальными эффектами интерфейса.
             </p>
           </div>
@@ -401,14 +409,14 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
                 )
               }
               disabled={!backgroundAnimationsEnabled}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
             >
               <option value="AURORA">Аврора</option>
               <option value="NEBULA">Небула</option>
               <option value="GLOW">Сияние</option>
               <option value="COSMIC">Космос</option>
             </select>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-slate-400">
               Выберите характер фона: мягкая аврора, глубокая небула, чистое сияние или космическая
               атмосфера.
             </p>
@@ -418,7 +426,7 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
               <span>
                 {'\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c'}
               </span>
-              <span className="text-xs text-gray-400">{wallpaperIntensity}%</span>
+              <span className="text-xs text-slate-400">{wallpaperIntensity}%</span>
             </label>
             <input
               type="range"
@@ -428,15 +436,25 @@ export const PersonalizationTab = memo(function PersonalizationTab() {
               value={wallpaperIntensity}
               onChange={(e) => updateSetting('wallpaperIntensity', Number(e.target.value))}
               disabled={!backgroundAnimationsEnabled}
-              className="w-full accent-emerald-400"
+              className="w-full accent-teal-400"
             />
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-slate-400">
               Пользуйтесь слайдером, чтобы усилить или ослабить эффект.
             </p>
           </div>
 
           <div className="mt-4 space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
             <h4 className="text-sm font-semibold text-white">Дополнительные эффекты</h4>
+
+            {onNewYearVibeChange !== undefined && (
+              <SettingsToggle
+                label="Новогодний вайб"
+                description="Праздничное оформление интерфейса: снег, гирлянды и новогодняя атмосфера."
+                icon={<Crown className="h-4 w-4" />}
+                enabled={newYearVibe}
+                onToggle={onNewYearVibeChange}
+              />
+            )}
 
             <SettingsToggle
               label="Падающий снег"
