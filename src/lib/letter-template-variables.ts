@@ -14,6 +14,9 @@ export const LETTER_TEMPLATE_VARIABLES = {
   'letter.content': 'Содержание письма',
   'letter.zordoc': 'ZorDoc номер',
   'letter.jiraLink': 'Ссылка на Jira',
+  'letter.ijroDate': 'Дата исполнения',
+  'letter.closeDate': 'Дата закрытия',
+  'letter.answer': 'Ответ',
 
   // Информация о заявителе
   'applicant.name': 'Имя заявителя',
@@ -51,6 +54,9 @@ type LetterForSubstitution = {
   content?: string | null
   zordoc?: string | null
   jiraLink?: string | null
+  ijroDate?: Date | string | null
+  closeDate?: Date | string | null
+  answer?: string | null
   applicantName?: string | null
   applicantEmail?: string | null
   applicantPhone?: string | null
@@ -129,6 +135,9 @@ export function substituteLetterVariables(text: string, letter: LetterForSubstit
     'letter.content': letter.content || '',
     'letter.zordoc': letter.zordoc || '',
     'letter.jiraLink': letter.jiraLink || '',
+    'letter.ijroDate': formatDate(letter.ijroDate),
+    'letter.closeDate': formatDate(letter.closeDate),
+    'letter.answer': letter.answer || '',
 
     // Информация о заявителе
     'applicant.name': letter.applicantName || '',

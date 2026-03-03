@@ -6,7 +6,16 @@ import { LetterCard } from './LetterCard'
 import { SwipeableListItem, type SwipeAction } from './SwipeableListItem'
 import { StatusBadge } from './StatusBadge'
 import type { LetterStatus } from '@/types/prisma'
-import { ArrowDown, ArrowUp, ArrowUpDown, CheckSquare, Eye, Square, Star } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CheckSquare,
+  ClipboardCheck,
+  Eye,
+  Square,
+  Star,
+} from 'lucide-react'
 import { formatDate, getWorkingDaysUntilDeadline, isDoneStatus, pluralizeDays } from '@/lib/utils'
 import { usePrefetch } from '@/lib/react-query'
 
@@ -61,6 +70,7 @@ interface Letter {
   status: LetterStatus
   type?: string | null
   content?: string | null
+  processing?: string | null
   priority: number
   isFavorite?: boolean
   owner?: {
@@ -296,8 +306,19 @@ const TableRow = memo(function TableRow({
         <div className="text-sm text-slate-300">{formatDate(letter.deadlineDate)}</div>
         <div className={`text-xs font-medium ${deadlineInfo.className}`}>{deadlineInfo.text}</div>
       </div>
-      <div className="flex items-center">
+      <div className="flex flex-col items-start gap-0.5">
         <StatusBadge status={letter.status} size="sm" />
+        {'processing' in letter && (
+          <span
+            className={`flex items-center gap-1 text-[10px] font-medium ${
+              letter.processing ? 'text-indigo-400' : 'text-slate-600'
+            }`}
+            title={letter.processing ? 'Обработка заполнена' : 'Обработка не заполнена'}
+          >
+            <ClipboardCheck className="h-3 w-3" />
+            {letter.processing ? '✓' : '—'}
+          </span>
+        )}
       </div>
       <div className="flex min-w-0 items-center">
         {letter.type && (

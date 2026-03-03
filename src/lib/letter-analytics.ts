@@ -36,6 +36,7 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
     withAnswer,
     withoutAnswer,
     avgPriority,
+    processingFilled,
   ] = await Promise.all([
     // Всего писем
     prisma.letter.count({ where }),
@@ -93,6 +94,9 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
       where,
       _avg: { priority: true },
     }),
+
+    // Заполненность поля «Обработка»
+    prisma.letter.count({ where: { ...where, processing: { not: null } } }),
   ])
 
   return {
@@ -118,6 +122,7 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
       withoutAnswer,
     },
     avgPriority: avgPriority._avg.priority || 0,
+    processingFilled,
   }
 }
 

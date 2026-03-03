@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Calendar,
+  ClipboardCheck,
   Download,
   Filter,
   Loader2,
@@ -83,8 +84,8 @@ export default function AnalyticsPage() {
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     )
   }
@@ -94,46 +95,44 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-900 p-6 text-white">
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <BarChart3 className="w-8 h-8 text-blue-500" />
+              <h1 className="flex items-center gap-3 text-3xl font-bold">
+                <BarChart3 className="h-8 w-8 text-blue-500" />
                 Аналитика писем
               </h1>
-              <p className="text-gray-400 mt-2">
-                Статистика и метрики производительности системы
-              </p>
+              <p className="mt-2 text-gray-400">Статистика и метрики производительности системы</p>
             </div>
 
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+              className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 transition hover:bg-gray-700"
             >
-              <Download className="w-5 h-5" />
+              <Download className="h-5 w-5" />
               Экспорт
             </button>
           </div>
 
           {/* Date Range Filter */}
-          <div className="flex items-center gap-4 p-4 bg-gray-800 rounded-lg">
-            <Calendar className="w-5 h-5 text-gray-400" />
+          <div className="flex items-center gap-4 rounded-lg bg-gray-800 p-4">
+            <Calendar className="h-5 w-5 text-gray-400" />
             <div className="flex items-center gap-2">
               <input
                 type="date"
                 value={dateRange.from}
                 onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                className="px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
+                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
               />
               <span className="text-gray-400">—</span>
               <input
                 type="date"
                 value={dateRange.to}
                 onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                className="px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
+                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
@@ -141,48 +140,70 @@ export default function AnalyticsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
+            <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
           </div>
         ) : data ? (
           <div className="space-y-6">
             {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <MetricCard
                 title="Всего писем"
                 value={data.stats?.total || 0}
-                icon={<BarChart3 className="w-6 h-6" />}
+                icon={<BarChart3 className="h-6 w-6" />}
                 color="blue"
               />
               <MetricCard
                 title="Просроченные"
                 value={data.stats?.deadlines?.overdue || 0}
-                icon={<AlertTriangle className="w-6 h-6" />}
+                icon={<AlertTriangle className="h-6 w-6" />}
                 color="red"
               />
               <MetricCard
                 title="Завершено"
                 value={data.stats?.byStatus?.DONE || 0}
-                icon={<CheckCircle className="w-6 h-6" />}
+                icon={<CheckCircle className="h-6 w-6" />}
                 color="green"
               />
               <MetricCard
                 title="SLA соблюдение"
                 value={`${(data.performance?.slaCompliance || 0).toFixed(1)}%`}
-                icon={<Clock className="w-6 h-6" />}
+                icon={<Clock className="h-6 w-6" />}
                 color="purple"
+              />
+              <MetricCard
+                title="Обработка заполнена"
+                value={data.stats?.processingFilled ?? 0}
+                icon={<ClipboardCheck className="h-6 w-6" />}
+                color="indigo"
               />
             </div>
 
             {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {/* Status Distribution */}
               <ChartCard title="Распределение по статусам">
                 <PieChart
                   data={[
-                    { label: 'Не рассмотрен', value: data.stats?.byStatus?.NOT_REVIEWED || 0, color: '#6B7280' },
-                    { label: 'Принят', value: data.stats?.byStatus?.ACCEPTED || 0, color: '#3B82F6' },
-                    { label: 'В работе', value: data.stats?.byStatus?.IN_PROGRESS || 0, color: '#F59E0B' },
-                    { label: 'На уточнении', value: data.stats?.byStatus?.CLARIFICATION || 0, color: '#8B5CF6' },
+                    {
+                      label: 'Не рассмотрен',
+                      value: data.stats?.byStatus?.NOT_REVIEWED || 0,
+                      color: '#6B7280',
+                    },
+                    {
+                      label: 'Принят',
+                      value: data.stats?.byStatus?.ACCEPTED || 0,
+                      color: '#3B82F6',
+                    },
+                    {
+                      label: 'В работе',
+                      value: data.stats?.byStatus?.IN_PROGRESS || 0,
+                      color: '#F59E0B',
+                    },
+                    {
+                      label: 'На уточнении',
+                      value: data.stats?.byStatus?.CLARIFICATION || 0,
+                      color: '#8B5CF6',
+                    },
                     { label: 'Готово', value: data.stats?.byStatus?.READY || 0, color: '#10B981' },
                     { label: 'Сделано', value: data.stats?.byStatus?.DONE || 0, color: '#059669' },
                   ]}
@@ -225,7 +246,7 @@ export default function AnalyticsPage() {
 
             {/* Performance Metrics */}
             {data.performance && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <PerformanceCard
                   title="Среднее время ответа"
                   value={`${data.performance.avgResponseTime.toFixed(1)} ч`}
@@ -246,7 +267,7 @@ export default function AnalyticsPage() {
 
             {/* Activity Patterns */}
             {data.activity && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <ChartCard title="По дням недели">
                   <BarChart
                     data={(data.activity.byDayOfWeek || []).map((d: any) => ({
@@ -270,7 +291,7 @@ export default function AnalyticsPage() {
             )}
           </div>
         ) : (
-          <div className="text-center py-20 text-gray-500">Нет данных</div>
+          <div className="py-20 text-center text-gray-500">Нет данных</div>
         )}
       </div>
     </div>
@@ -296,10 +317,10 @@ function MetricCard({
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="rounded-lg bg-gray-800 p-6">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-400">{title}</h3>
-        <div className={`p-2 rounded-lg ${colorClasses[color as keyof typeof colorClasses]}`}>
+        <div className={`rounded-lg p-2 ${colorClasses[color as keyof typeof colorClasses]}`}>
           {icon}
         </div>
       </div>
@@ -310,8 +331,8 @@ function MetricCard({
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+    <div className="rounded-lg bg-gray-800 p-6">
+      <h3 className="mb-4 text-lg font-semibold">{title}</h3>
       {children}
     </div>
   )
@@ -327,9 +348,9 @@ function PerformanceCard({
   subtitle: string
 }) {
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-medium text-gray-400 mb-2">{title}</h3>
-      <p className="text-2xl font-bold mb-1">{value}</p>
+    <div className="rounded-lg bg-gray-800 p-6">
+      <h3 className="mb-2 text-sm font-medium text-gray-400">{title}</h3>
+      <p className="mb-1 text-2xl font-bold">{value}</p>
       <p className="text-xs text-gray-500">{subtitle}</p>
     </div>
   )
