@@ -241,7 +241,14 @@ export default async function HomePage() {
                   variant="requests"
                   title="Нет активных заявок"
                   description="Новые обращения появятся здесь"
-                  action={{ label: 'Подать заявку', href: '/request' }}
+                  action={
+                    <Link
+                      href="/request"
+                      className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-500"
+                    >
+                      Подать заявку
+                    </Link>
+                  }
                   className="border-0 bg-transparent shadow-none"
                 />
               )}
