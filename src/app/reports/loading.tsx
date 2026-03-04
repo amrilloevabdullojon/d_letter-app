@@ -1,9 +1,9 @@
-import { EqualizerLoader } from '@/components/ui/EqualizerLoader'
+import { EnvelopeLoader } from '@/components/ui/EnvelopeLoader'
 
 export default function ReportsLoading() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <EqualizerLoader />
+      <EnvelopeLoader />
     </div>
   )
 }

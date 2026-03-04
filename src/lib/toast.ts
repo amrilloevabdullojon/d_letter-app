@@ -7,6 +7,29 @@ import { toast as sonnerToast } from 'sonner'
 
 export const toast = {
   /**
+   * Toast с кнопкой «Отменить» — для обратимых операций (удаление, архивирование).
+   * onUndo вызывается если пользователь нажмёт «Отменить» в течение duration мс.
+   */
+  undo: (
+    message: string,
+    options: {
+      description?: string
+      onUndo: () => void | Promise<void>
+      /** Время в мс до авто-закрытия (по умолчанию 5 000) */
+      duration?: number
+    }
+  ) => {
+    return sonnerToast(message, {
+      description: options.description,
+      duration: options.duration ?? 5000,
+      action: {
+        label: 'Отменить',
+        onClick: () => options.onUndo(),
+      },
+    })
+  },
+
+  /**
    * Успешное уведомление
    */
   success: (message: string, description?: string) => {
@@ -50,7 +73,7 @@ export const toast = {
    * Promise-based уведомление
    * Автоматически показывает loading, success или error
    */
-  promise: <T,>(
+  promise: <T>(
     promise: Promise<T>,
     {
       loading,
@@ -101,8 +124,7 @@ export function handleApiError(error: any, customMessage?: string) {
   console.error('API Error:', error)
 
   const message = customMessage || 'Произошла ошибка'
-  const description =
-    error?.response?.data?.message || error?.message || 'Попробуйте еще раз'
+  const description = error?.response?.data?.message || error?.message || 'Попробуйте еще раз'
 
   toast.error(message, description)
 }

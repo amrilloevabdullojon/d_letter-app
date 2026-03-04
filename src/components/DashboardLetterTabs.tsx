@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Clock, FileText, UserMinus, ArrowRight } from 'lucide-react'
 import { StatusBadge } from '@/components/StatusBadge'
+import { EmptyStateCompact } from '@/components/ui/EmptyState'
 import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays } from '@/lib/utils'
 import type { LetterStatus } from '@/types/prisma'
 
@@ -211,7 +212,7 @@ export function DashboardLetterTabs({
             )
           })
         ) : (
-          <div className="py-10 text-center text-sm text-slate-500">{active.emptyText}</div>
+          <EmptyStateCompact variant="letters" message={active.emptyText} className="m-4" />
         )}
       </div>
     </div>

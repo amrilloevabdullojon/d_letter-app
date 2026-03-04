@@ -15,6 +15,7 @@ import {
 import { Header } from '@/components/Header'
 import { StatsWidgets } from '@/components/StatsWidgets'
 import { DashboardLetterTabs } from '@/components/DashboardLetterTabs'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { authOptions } from '@/lib/auth'
 import { getDashboardData, DashboardError } from '@/lib/dashboard'
 import { formatDate } from '@/lib/utils'
@@ -236,7 +237,13 @@ export default async function HomePage() {
                 </Link>
               ))}
               {recentRequests.length === 0 && (
-                <div className="p-8 text-center text-slate-500">Нет активных заявок</div>
+                <EmptyState
+                  variant="requests"
+                  title="Нет активных заявок"
+                  description="Новые обращения появятся здесь"
+                  action={{ label: 'Подать заявку', href: '/request' }}
+                  className="border-0 bg-transparent shadow-none"
+                />
               )}
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/Toast'
+import { toast as libToast } from '@/lib/toast'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { usePostponeDialog } from '@/components/PostponeDialog'
 import { addWorkingDays, parseDateValue } from '@/lib/utils'
@@ -179,11 +180,21 @@ export function useLetterActions({
   const handleDelete = useCallback(async () => {
     if (!letter) return
     setDeleting(true)
+    const letterId = letter.id
+    const letterNumber = letter.number
     try {
-      const res = await fetch(`/api/letters/${letter.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/letters/${letterId}`, { method: 'DELETE' })
       if (res.ok) {
-        toast.success('Письмо удалено')
+        // Сначала уходим со страницы, затем показываем undo-toast
         router.push('/letters')
+        libToast.undo(`Письмо №${letterNumber} удалено`, {
+          description: 'Нажмите «Отменить» чтобы восстановить',
+          onUndo: async () => {
+            await fetch(`/api/letters/${letterId}/restore`, { method: 'POST' })
+            router.push(`/letters/${letterId}`)
+            libToast.success('Письмо восстановлено')
+          },
+        })
       } else {
         toast.error('Не удалось удалить письмо')
       }
@@ -199,7 +210,7 @@ export function useLetterActions({
     if (!letter) return
     confirmDialog({
       title: 'Удалить письмо?',
-      message: 'Вы уверены, что хотите удалить это письмо? Это действие нельзя отменить.',
+      message: 'Письмо будет удалено. У вас будет 5 секунд, чтобы отменить действие.',
       confirmText: 'Удалить',
       variant: 'danger',
       onConfirm: handleDelete,
