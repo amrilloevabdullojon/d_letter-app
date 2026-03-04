@@ -429,7 +429,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             title="\u0412\u0438\u0434 \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0438"
             className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
               viewMode === 'cards'
-                ? 'bg-teal-500/20 text-emerald-300'
+                ? 'bg-teal-500/20 text-teal-300'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -441,7 +441,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             title="\u0412\u0438\u0434 \u0442\u0430\u0431\u043b\u0438\u0446\u0430"
             className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
               viewMode === 'table'
-                ? 'bg-teal-500/20 text-emerald-300'
+                ? 'bg-teal-500/20 text-teal-300'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -507,7 +507,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
                           onClick={() => handleApproval(approval.id, 'approve')}
                           disabled={approvalActionId === approval.id || needsSecondAdmin}
                           title={needsSecondAdmin ? 'Нужен второй админ' : undefined}
-                          className="inline-flex items-center gap-2 rounded bg-emerald-600 px-3 py-1.5 text-xs text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                          className="inline-flex items-center gap-2 rounded bg-teal-600 px-3 py-1.5 text-xs text-white transition hover:bg-teal-500 disabled:opacity-50"
                         >
                           {approvalActionId === approval.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -590,7 +590,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
           <button
             onClick={createUser}
             disabled={creating}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-500 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-white transition hover:bg-teal-500 disabled:opacity-50"
           >
             {creating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -616,7 +616,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
               onClick={filter.onClick}
               className={`rounded-full border px-3 py-1 text-xs transition ${
                 filter.active
-                  ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
+                  ? 'border-teal-400/40 bg-teal-500/15 text-teal-200'
                   : 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
             >
@@ -692,7 +692,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
             {hasFilters && (
               <button
                 onClick={resetFilters}
-                className="text-teal-400 transition hover:text-emerald-300"
+                className="text-teal-400 transition hover:text-teal-300"
               >
                 Сбросить фильтры
               </button>
@@ -762,7 +762,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
           <button
             onClick={executeBulkAction}
             disabled={!bulkAction || bulkLoading || selectedIds.size === 0 || bulkDemoteBlocked}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-500 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-white transition hover:bg-teal-500 disabled:opacity-50"
           >
             {bulkLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -940,22 +940,22 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
                       <div className="flex items-center justify-center gap-2">
                         <span aria-label="Email">
                           <Mail
-                            className={`h-4 w-4 ${user.notifyEmail ? 'text-emerald-300' : 'text-slate-600'}`}
+                            className={`h-4 w-4 ${user.notifyEmail ? 'text-teal-400' : 'text-slate-600'}`}
                           />
                         </span>
                         <span aria-label="Telegram">
                           <MessageSquare
-                            className={`h-4 w-4 ${user.notifyTelegram ? 'text-emerald-300' : 'text-slate-600'}`}
+                            className={`h-4 w-4 ${user.notifyTelegram ? 'text-teal-400' : 'text-slate-600'}`}
                           />
                         </span>
                         <span aria-label="SMS">
                           <Smartphone
-                            className={`h-4 w-4 ${user.notifySms ? 'text-emerald-300' : 'text-slate-600'}`}
+                            className={`h-4 w-4 ${user.notifySms ? 'text-teal-400' : 'text-slate-600'}`}
                           />
                         </span>
                         <span aria-label="In-app">
                           <Bell
-                            className={`h-4 w-4 ${user.notifyInApp ? 'text-emerald-300' : 'text-slate-600'}`}
+                            className={`h-4 w-4 ${user.notifyInApp ? 'text-teal-400' : 'text-slate-600'}`}
                           />
                         </span>
                       </div>
@@ -986,7 +986,7 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
                                 : '\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f'
                             }
                             disabled={!canToggleAccess}
-                            className="rounded-lg p-2 text-slate-400 transition hover:text-emerald-300 disabled:opacity-60"
+                            className="rounded-lg p-2 text-slate-400 transition hover:text-teal-300 disabled:opacity-60"
                           >
                             {user.canLogin ? (
                               <Lock className="h-4 w-4" />

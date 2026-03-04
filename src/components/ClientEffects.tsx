@@ -1,8 +1,10 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcuts'
 
 const Particles = dynamic(() => import('@/components/Particles').then((mod) => mod.Particles), {
   ssr: false,
@@ -27,6 +29,16 @@ export function ClientEffects() {
   const particlesEnabled = preferences?.particles ?? false
   const showSnowfall = (newYearVibe || snowfallEnabled) && backgroundAnimations
   const showParticles = backgroundAnimations && particlesEnabled
+
+  const router = useRouter()
+
+  // Ctrl+N → создать новое письмо (глобальный шорткат)
+  useKeyboardShortcut({
+    key: 'n',
+    ctrl: true,
+    description: 'Новое письмо',
+    handler: () => router.push('/letters/new'),
+  })
 
   return (
     <>
