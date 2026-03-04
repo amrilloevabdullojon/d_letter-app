@@ -101,7 +101,7 @@ const STATUS_STYLES: Record<RequestStatus, string> = {
   IN_REVIEW: 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/40',
   DONE: 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40',
   SPAM: 'bg-rose-500/20 text-rose-200 ring-1 ring-rose-400/40',
-  CANCELLED: 'bg-gray-500/20 text-gray-300 ring-1 ring-gray-400/40',
+  CANCELLED: 'bg-slate-500/20 text-slate-300 ring-1 ring-slate-400/40',
 }
 
 const PRIORITY_LABELS: Record<RequestPriority, string> = {
@@ -112,7 +112,7 @@ const PRIORITY_LABELS: Record<RequestPriority, string> = {
 }
 
 const PRIORITY_STYLES: Record<RequestPriority, string> = {
-  LOW: 'bg-gray-500/20 text-gray-300',
+  LOW: 'bg-slate-500/20 text-slate-300',
   NORMAL: 'bg-blue-500/20 text-blue-300',
   HIGH: 'bg-orange-500/20 text-orange-300',
   URGENT: 'bg-red-500/20 text-red-300 animate-urgent-pulse',
@@ -349,8 +349,8 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
 
   if (status === 'loading') {
     return (
-      <div className="app-shell flex min-h-screen items-center justify-center bg-gray-900">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+      <div className="app-shell flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -362,7 +362,7 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
   }
 
   return (
-    <div className="app-shell min-h-screen bg-gray-900">
+    <div className="app-shell min-h-screen">
       <Header />
 
       <PullToRefresh onRefresh={handlePullToRefresh}>
@@ -422,13 +422,13 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
                     setPage(1)
                   }}
                   placeholder="Поиск по организации, контактам, описанию"
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pl-9 pr-4 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white transition hover:bg-gray-700"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10"
                 title="Изменить порядок сортировки"
               >
                 <ArrowUpDown className="h-4 w-4" />
@@ -444,7 +444,7 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
                   setStatusFilter(event.target.value as RequestStatus | '')
                   setPage(1)
                 }}
-                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none"
               >
                 <option value="">Все статусы</option>
                 {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -459,7 +459,7 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
                   setPriorityFilter(event.target.value as RequestPriority | '')
                   setPage(1)
                 }}
-                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none"
               >
                 <option value="">Все приоритеты</option>
                 {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
@@ -474,7 +474,7 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
                   setCategoryFilter(event.target.value as RequestCategory | '')
                   setPage(1)
                 }}
-                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none"
               >
                 <option value="">Все категории</option>
                 {Object.entries(CATEGORY_LABELS).map(([value, label]) => (

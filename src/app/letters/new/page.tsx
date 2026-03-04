@@ -292,7 +292,7 @@ export default function NewLetterPage() {
 
   if (status === 'loading') {
     return (
-      <div className="app-shell flex min-h-screen items-center justify-center bg-gray-900">
+      <div className="app-shell flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
@@ -303,7 +303,7 @@ export default function NewLetterPage() {
   }
 
   return (
-    <div className="app-shell min-h-screen bg-gray-900">
+    <div className="app-shell min-h-screen">
       <Header />
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -320,8 +320,8 @@ export default function NewLetterPage() {
             onClick={() => setMode('quick')}
             className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition sm:w-auto ${
               mode === 'quick'
-                ? 'bg-emerald-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                ? 'bg-teal-600 text-white'
+                : 'bg-white/5 text-slate-400 hover:bg-white/10'
             }`}
           >
             <Sparkles className="h-4 w-4" />
@@ -331,8 +331,8 @@ export default function NewLetterPage() {
             onClick={() => setMode('manual')}
             className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition sm:w-auto ${
               mode === 'manual'
-                ? 'bg-emerald-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                ? 'bg-teal-600 text-white'
+                : 'bg-white/5 text-slate-400 hover:bg-white/10'
             }`}
           >
             <FileText className="h-4 w-4" />
@@ -343,7 +343,7 @@ export default function NewLetterPage() {
         {mode === 'quick' ? (
           <QuickLetterUpload />
         ) : (
-          <div className="rounded-lg border border-gray-700 bg-gray-800 p-4 sm:p-6">
+          <div className="panel panel-glass rounded-2xl p-4 sm:p-6">
             <div className="mb-6 flex items-center justify-between">
               <h1 className="text-2xl font-bold text-white">Новое письмо</h1>
               <div className="flex items-center gap-3">
@@ -386,7 +386,7 @@ export default function NewLetterPage() {
                   <input
                     type="text"
                     {...register('number')}
-                    className={`w-full rounded-lg border ${errors.number ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none`}
+                    className={`w-full rounded-lg border ${errors.number ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none`}
                     placeholder="Например: 01-15/1234"
                   />
                   {errors.number ? (
@@ -417,7 +417,7 @@ export default function NewLetterPage() {
                         )
                       }
                     }}
-                    className={`w-full rounded-lg border ${errors.date ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none`}
+                    className={`w-full rounded-lg border ${errors.date ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-2 text-white focus:border-teal-400/50 focus:outline-none`}
                   />
                   {errors.date ? (
                     <p className="mt-1 text-xs text-red-400">{errors.date.message}</p>
@@ -433,7 +433,7 @@ export default function NewLetterPage() {
                   <input
                     type="date"
                     {...register('deadlineDate')}
-                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-teal-400/50 focus:outline-none"
                   />
                   {watch('deadlineDate') ? (
                     (() => {
@@ -458,7 +458,7 @@ export default function NewLetterPage() {
                   <input
                     type="url"
                     {...register('jiraLink')}
-                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                     placeholder="https://jira.example.com/browse/..."
                   />
                 </div>
@@ -488,8 +488,8 @@ export default function NewLetterPage() {
                   onDrop={handleDrop}
                   className={`relative rounded-lg border-2 border-dashed p-6 text-center transition ${
                     isDragging
-                      ? 'border-emerald-500 bg-emerald-500/10'
-                      : 'border-gray-600 hover:border-gray-500'
+                      ? 'border-teal-500 bg-teal-500/10'
+                      : 'border-white/20 hover:border-white/40'
                   }`}
                 >
                   <input
@@ -538,7 +538,7 @@ export default function NewLetterPage() {
                 <label className="mb-2 block text-sm font-medium text-gray-300">Тип запроса</label>
                 <select
                   {...register('type')}
-                  className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-teal-400/50 focus:outline-none"
                 >
                   <option value="">Выберите тип</option>
                   {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
@@ -555,7 +555,7 @@ export default function NewLetterPage() {
                   rows={4}
                   {...register('content')}
                   onBlur={handleContentBlur}
-                  className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                   placeholder="Краткое описание содержания письма"
                 />
               </div>
@@ -565,12 +565,12 @@ export default function NewLetterPage() {
                 <input
                   type="text"
                   {...register('contacts')}
-                  className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                   placeholder="Телефон, email контактного лица"
                 />
               </div>
 
-              <div className="rounded-lg border border-gray-700 bg-gray-800/40 p-4">
+              <div className="panel panel-soft rounded-xl p-4">
                 <h4 className="mb-4 text-sm font-semibold text-white">Данные заявителя</h4>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div>
@@ -578,7 +578,7 @@ export default function NewLetterPage() {
                     <input
                       type="text"
                       {...register('applicantName')}
-                      className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                       placeholder="Имя заявителя"
                     />
                   </div>
@@ -588,7 +588,7 @@ export default function NewLetterPage() {
                     <input
                       type="email"
                       {...register('applicantEmail')}
-                      className={`w-full rounded-lg border ${errors.applicantEmail ? 'border-red-500' : 'border-gray-600'} bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none`}
+                      className={`w-full rounded-lg border ${errors.applicantEmail ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none`}
                       placeholder="email@example.com"
                     />
                     {errors.applicantEmail ? (
@@ -605,7 +605,7 @@ export default function NewLetterPage() {
                     <input
                       type="tel"
                       {...register('applicantPhone')}
-                      className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                       placeholder="+998901234567"
                     />
                   </div>
@@ -625,7 +625,7 @@ export default function NewLetterPage() {
                     <input
                       type="text"
                       {...register('applicantTelegramChatId')}
-                      className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                       placeholder="123456789"
                     />
                   </div>
@@ -637,7 +637,7 @@ export default function NewLetterPage() {
                 <textarea
                   rows={2}
                   {...register('comment')}
-                  className="w-full resize-none rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                   placeholder="Внутренний комментарий"
                 />
               </div>
@@ -648,7 +648,7 @@ export default function NewLetterPage() {
                   <select
                     value={priority}
                     onChange={(e) => setPriority(Number(e.target.value))}
-                    className="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-teal-400/50 focus:outline-none"
                   >
                     <option value={25}>Низкий (25)</option>
                     <option value={50}>Средний (50)</option>
@@ -686,7 +686,7 @@ export default function NewLetterPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-6 py-2 text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-6 py-2 text-white transition hover:bg-teal-600 disabled:opacity-50"
                 >
                   {loading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
