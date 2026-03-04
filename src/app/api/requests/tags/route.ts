@@ -5,15 +5,22 @@ import { prisma } from '@/lib/prisma'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
 import { z } from 'zod'
+import { invalidateRequestsCache } from '@/lib/list-cache'
 
 const createTagSchema = z.object({
   name: z.string().min(1).max(50),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#6B7280'),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .default('#6B7280'),
 })
 
 const updateTagSchema = z.object({
   name: z.string().min(1).max(50).optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 })
 
 // GET /api/requests/tags - список тегов
@@ -57,10 +64,7 @@ export async function POST(request: NextRequest) {
     const result = createTagSchema.safeParse(body)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error.errors[0].message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
     }
 
     const { name, color } = result.data
@@ -71,10 +75,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (existing) {
-      return NextResponse.json(
-        { error: 'Тег с таким названием уже существует' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Тег с таким названием уже существует' }, { status: 400 })
     }
 
     const tag = await prisma.requestTag.create({
@@ -85,6 +86,8 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    await invalidateRequestsCache()
 
     return NextResponse.json({ tag }, { status: 201 })
   } catch (error) {
@@ -125,10 +128,7 @@ export async function PATCH(request: NextRequest) {
     const result = updateTagSchema.safeParse(body)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error.errors[0].message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
     }
 
     // Проверка уникальности имени
@@ -138,10 +138,7 @@ export async function PATCH(request: NextRequest) {
       })
 
       if (duplicate) {
-        return NextResponse.json(
-          { error: 'Тег с таким названием уже существует' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Тег с таким названием уже существует' }, { status: 400 })
       }
     }
 
@@ -154,6 +151,8 @@ export async function PATCH(request: NextRequest) {
         },
       },
     })
+
+    await invalidateRequestsCache()
 
     return NextResponse.json({ tag })
   } catch (error) {
@@ -193,6 +192,8 @@ export async function DELETE(request: NextRequest) {
     await prisma.requestTag.delete({
       where: { id },
     })
+
+    await invalidateRequestsCache()
 
     return NextResponse.json({ success: true })
   } catch (error) {

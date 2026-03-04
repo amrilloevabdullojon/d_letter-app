@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { LetterStatus } from '@/types/prisma'
 
 /**
@@ -30,7 +30,8 @@ export interface DashboardLetter {
 }
 
 /**
- * Query keys для дашборда
+ * Query keys для дашборда.
+ * Корневой ключ ['dashboard'] — при инвалидации сбрасывает все подзапросы.
  */
 export const dashboardKeys = {
   all: ['dashboard'] as const,
@@ -40,6 +41,10 @@ export const dashboardKeys = {
   overdue: () => [...dashboardKeys.all, 'overdue'] as const,
   unassigned: () => [...dashboardKeys.all, 'unassigned'] as const,
 }
+
+// Единый staleTime для всех запросов дашборда.
+// Согласованность данных важнее экономии запросов.
+const DASHBOARD_STALE_MS = 30 * 1000 // 30 секунд
 
 /**
  * Hook для получения статистики дашборда
@@ -54,9 +59,9 @@ export function useDashboardStats() {
       }
       return res.json()
     },
-    staleTime: 60000, // 1 минута
-    gcTime: 5 * 60 * 1000, // 5 минут
-    refetchOnWindowFocus: true, // Обновлять при фокусе окна
+    staleTime: DASHBOARD_STALE_MS,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -73,7 +78,9 @@ export function useRecentLetters(limit = 5) {
       }
       return res.json()
     },
-    staleTime: 30000, // 30 секунд
+    staleTime: DASHBOARD_STALE_MS,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -90,7 +97,9 @@ export function useUrgentLetters(limit = 5) {
       }
       return res.json()
     },
-    staleTime: 30000,
+    staleTime: DASHBOARD_STALE_MS,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -107,7 +116,9 @@ export function useOverdueLetters(limit = 5) {
       }
       return res.json()
     },
-    staleTime: 30000,
+    staleTime: DASHBOARD_STALE_MS,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -124,7 +135,9 @@ export function useUnassignedLetters(limit = 5) {
       }
       return res.json()
     },
-    staleTime: 30000,
+    staleTime: DASHBOARD_STALE_MS,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -156,4 +169,11 @@ export function useDashboard() {
   }
 }
 
-
+/**
+ * Хелпер для ручной инвалидации всего дашборда.
+ * Используй после мутаций, которые меняют письма/заявки.
+ */
+export function useInvalidateDashboard() {
+  const queryClient = useQueryClient()
+  return () => queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
+}

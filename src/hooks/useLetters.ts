@@ -47,6 +47,19 @@ interface LettersParams {
   sortOrder?: 'asc' | 'desc'
 }
 
+/**
+ * Единая иерархия ключей кэша для писем.
+ * Используется во всех хуках и мутациях — гарантирует,
+ * что invalidateQueries с parent-ключом сбрасывает все дочерние.
+ */
+export const letterKeys = {
+  all: ['letters'] as const,
+  lists: () => [...letterKeys.all, 'list'] as const,
+  list: (params: LettersParams) => [...letterKeys.lists(), params] as const,
+  details: () => [...letterKeys.all, 'detail'] as const,
+  detail: (id: string) => [...letterKeys.details(), id] as const,
+}
+
 // Получение списка писем
 export function useLetters(params: LettersParams = {}) {
   const searchParams = new URLSearchParams()
@@ -60,14 +73,14 @@ export function useLetters(params: LettersParams = {}) {
   if (params.sortOrder) searchParams.set('sortOrder', params.sortOrder)
 
   return useQuery<LettersResponse>({
-    queryKey: ['letters', params],
+    queryKey: letterKeys.list(params),
     queryFn: async () => {
       const res = await fetch(`/api/letters?${searchParams}`)
       if (!res.ok) throw new Error('Failed to fetch letters')
       return res.json()
     },
     staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+    gcTime: 5 * 60 * 1000,
   })
 }
 
@@ -82,7 +95,7 @@ export function useLetterSearch() {
 // Получение одного письма
 export function useLetter(id: string | null) {
   return useQuery({
-    queryKey: ['letter', id],
+    queryKey: letterKeys.detail(id ?? ''),
     queryFn: async () => {
       if (!id) return null
       const res = await fetch(`/api/letters/${id}`)
@@ -99,7 +112,15 @@ export function useUpdateLetter() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, field, value }: { id: string; field: string; value: string | null }) => {
+    mutationFn: async ({
+      id,
+      field,
+      value,
+    }: {
+      id: string
+      field: string
+      value: string | null
+    }) => {
       const res = await fetch(`/api/letters/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -111,32 +132,29 @@ export function useUpdateLetter() {
       }
       return res.json()
     },
-    // Оптимистичное обновление
     onMutate: async ({ id, field, value }) => {
-      // Отменить текущие запросы
-      await queryClient.cancelQueries({ queryKey: ['letter', id] })
-
-      // Сохранить предыдущее значение
-      const previousLetter = queryClient.getQueryData(['letter', id])
-
-      // Оптимистично обновить кеш
-      queryClient.setQueryData(['letter', id], (old: Record<string, unknown> | undefined) => {
-        if (!old) return old
-        return { ...old, [field]: value }
-      })
-
+      await queryClient.cancelQueries({ queryKey: letterKeys.detail(id) })
+      const previousLetter = queryClient.getQueryData(letterKeys.detail(id))
+      queryClient.setQueryData(
+        letterKeys.detail(id),
+        (old: Record<string, unknown> | undefined) => {
+          if (!old) return old
+          return { ...old, [field]: value }
+        }
+      )
       return { previousLetter }
     },
     onError: (_err, variables, context) => {
-      // Откатить при ошибке
       if (context?.previousLetter) {
-        queryClient.setQueryData(['letter', variables.id], context.previousLetter)
+        queryClient.setQueryData(letterKeys.detail(variables.id), context.previousLetter)
       }
     },
     onSettled: (_, __, variables) => {
-      // Инвалидировать кеш после завершения
-      queryClient.invalidateQueries({ queryKey: ['letter', variables.id] })
-      queryClient.invalidateQueries({ queryKey: ['letters'] })
+      queryClient.invalidateQueries({ queryKey: letterKeys.detail(variables.id) })
+      queryClient.invalidateQueries({ queryKey: letterKeys.lists() })
+      // Дашборд тоже содержит данные о письмах — сбрасываем
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
     },
   })
 }
@@ -152,7 +170,9 @@ export function useDeleteLetter() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['letters'] })
+      queryClient.invalidateQueries({ queryKey: letterKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
     },
   })
 }
@@ -168,7 +188,9 @@ export function useDuplicateLetter() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['letters'] })
+      queryClient.invalidateQueries({ queryKey: letterKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
     },
   })
 }
@@ -178,7 +200,15 @@ export function useBulkAction() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ ids, action, value }: { ids: string[]; action: string; value?: string }) => {
+    mutationFn: async ({
+      ids,
+      action,
+      value,
+    }: {
+      ids: string[]
+      action: string
+      value?: string
+    }) => {
       const res = await fetch('/api/letters/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -187,8 +217,16 @@ export function useBulkAction() {
       if (!res.ok) throw new Error('Failed to perform bulk action')
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['letters'] })
+    onSuccess: (_, { ids }) => {
+      // Инвалидировать все списки писем (включая фильтрованные)
+      queryClient.invalidateQueries({ queryKey: letterKeys.lists() })
+      // Детали каждого изменённого письма
+      ids.forEach((id) => {
+        queryClient.invalidateQueries({ queryKey: letterKeys.detail(id) })
+      })
+      // Дашборд и статистика — bulk-операции меняют счётчики
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
     },
   })
 }
@@ -207,27 +245,26 @@ export function useToggleFavorite() {
       if (!res.ok) throw new Error('Failed to toggle favorite')
       return res.json()
     },
-    // Оптимистичное обновление
     onMutate: async (letterId) => {
-      await queryClient.cancelQueries({ queryKey: ['letter', letterId] })
-
-      const previousLetter = queryClient.getQueryData(['letter', letterId])
-
-      queryClient.setQueryData(['letter', letterId], (old: Record<string, unknown> | undefined) => {
-        if (!old) return old
-        return { ...old, isFavorite: !old.isFavorite }
-      })
-
+      await queryClient.cancelQueries({ queryKey: letterKeys.detail(letterId) })
+      const previousLetter = queryClient.getQueryData(letterKeys.detail(letterId))
+      queryClient.setQueryData(
+        letterKeys.detail(letterId),
+        (old: Record<string, unknown> | undefined) => {
+          if (!old) return old
+          return { ...old, isFavorite: !old.isFavorite }
+        }
+      )
       return { previousLetter }
     },
     onError: (_err, letterId, context) => {
       if (context?.previousLetter) {
-        queryClient.setQueryData(['letter', letterId], context.previousLetter)
+        queryClient.setQueryData(letterKeys.detail(letterId), context.previousLetter)
       }
     },
     onSettled: (_, __, letterId) => {
-      queryClient.invalidateQueries({ queryKey: ['letter', letterId] })
-      queryClient.invalidateQueries({ queryKey: ['letters'] })
+      queryClient.invalidateQueries({ queryKey: letterKeys.detail(letterId) })
+      queryClient.invalidateQueries({ queryKey: letterKeys.lists() })
     },
   })
 }
@@ -247,7 +284,7 @@ export function useAddComment() {
       return res.json()
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['letter', variables.letterId] })
+      queryClient.invalidateQueries({ queryKey: letterKeys.detail(variables.letterId) })
     },
   })
 }
@@ -270,9 +307,9 @@ export function useCreateLetter() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['letters'] })
+      queryClient.invalidateQueries({ queryKey: letterKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
     },
   })
 }
-
-

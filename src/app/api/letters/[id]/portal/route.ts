@@ -7,6 +7,7 @@ import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
 import { generatePortalToken } from '@/lib/token'
+import { invalidateLettersCache } from '@/lib/list-cache'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -67,6 +68,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { subject, text, telegram }
       )
     }
+
+    // Токен изменился — сбросить серверный кэш письма
+    await invalidateLettersCache()
 
     return NextResponse.json({
       success: true,
