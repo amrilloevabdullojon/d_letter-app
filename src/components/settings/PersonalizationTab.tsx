@@ -1,7 +1,20 @@
 'use client'
 
 import { memo, useState, useEffect } from 'react'
-import { Palette, Globe, Sparkles, Monitor, Crown } from 'lucide-react'
+import {
+  Palette,
+  Globe,
+  Sparkles,
+  Monitor,
+  Crown,
+  Loader2,
+  Snowflake,
+  Navigation,
+  MousePointerClick,
+  List,
+  PanelTop,
+  ScrollText,
+} from 'lucide-react'
 import { SettingsToggle } from './SettingsToggle'
 import { toast } from 'sonner'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
@@ -153,7 +166,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-slate-400">Загрузка настроек...</div>
+        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -164,6 +177,13 @@ export const PersonalizationTab = memo(function PersonalizationTab({
 
   return (
     <div className="space-y-6">
+      {isSaving && (
+        <div className="flex items-center gap-2 rounded-xl border border-teal-500/20 bg-teal-500/10 px-4 py-2 text-xs text-teal-300">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Сохранение...
+        </div>
+      )}
+
       {/* Theme Section */}
       <div className="panel panel-glass rounded-2xl p-6">
         <div className="mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
@@ -380,12 +400,8 @@ export const PersonalizationTab = memo(function PersonalizationTab({
         />
         <div className="mt-4">
           <SettingsToggle
-            label={
-              '\u0410\u043d\u0438\u043c\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0439 \u0444\u043e\u043d'
-            }
-            description={
-              '\u0421\u043d\u0435\u0433, \u043c\u0435\u0440\u0446\u0430\u043d\u0438\u0435 \u0438 \u043f\u0440\u0430\u0437\u0434\u043d\u0438\u0447\u043d\u044b\u0435 \u044d\u0444\u0444\u0435\u043a\u0442\u044b \u0432 \u0444\u043e\u043d\u0435. \u041e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u0435, \u0435\u0441\u043b\u0438 \u043c\u0435\u0448\u0430\u0435\u0442 \u0438\u043b\u0438 \u0442\u043e\u0440\u043c\u043e\u0437\u0438\u0442.'
-            }
+            label="Анимированный фон"
+            description="Снег, мерцание и праздничные эффекты в фоне. Отключите, если мешает или тормозит."
             icon={<Sparkles className="h-4 w-4" />}
             enabled={backgroundAnimationsEnabled}
             onToggle={(enabled) => updateSetting('backgroundAnimations', enabled)}
@@ -397,9 +413,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
           }`}
         >
           <div>
-            <label className="mb-2 block text-sm font-medium text-white">
-              {'\u0421\u0442\u0438\u043b\u044c \u043e\u0431\u043e\u0435\u0432'}
-            </label>
+            <label className="mb-2 block text-sm font-medium text-white">Стиль обоев</label>
             <select
               value={wallpaperStyle}
               onChange={(e) =>
@@ -423,9 +437,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
           </div>
           <div>
             <label className="mb-2 flex items-center justify-between text-sm font-medium text-white">
-              <span>
-                {'\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c'}
-              </span>
+              <span>Интенсивность</span>
               <span className="text-xs text-slate-400">{wallpaperIntensity}%</span>
             </label>
             <input
@@ -459,7 +471,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
             <SettingsToggle
               label="Падающий снег"
               description="Анимация падающих снежинок с реалистичным движением и вращением."
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<Snowflake className="h-4 w-4" />}
               enabled={settings.snowfall ?? false}
               onToggle={(enabled) => updateSetting('snowfall', enabled)}
             />
@@ -479,7 +491,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
             <SettingsToggle
               label="Переходы между страницами"
               description="Плавные анимации при навигации между страницами приложения."
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<Navigation className="h-4 w-4" />}
               enabled={settings.pageTransitions ?? true}
               onToggle={(enabled) => updateSetting('pageTransitions', enabled)}
             />
@@ -487,7 +499,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
             <SettingsToggle
               label="Микро-взаимодействия"
               description="Анимации при наведении и взаимодействии с кнопками и формами."
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<MousePointerClick className="h-4 w-4" />}
               enabled={settings.microInteractions ?? true}
               onToggle={(enabled) => updateSetting('microInteractions', enabled)}
             />
@@ -495,7 +507,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
             <SettingsToggle
               label="Анимации списков"
               description="Плавное появление и сортировка элементов в списках."
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<List className="h-4 w-4" />}
               enabled={settings.listAnimations ?? true}
               onToggle={(enabled) => updateSetting('listAnimations', enabled)}
             />
@@ -503,7 +515,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
             <SettingsToggle
               label="Анимации модальных окон"
               description="Плавное открытие и закрытие диалогов и модальных окон."
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<PanelTop className="h-4 w-4" />}
               enabled={settings.modalAnimations ?? true}
               onToggle={(enabled) => updateSetting('modalAnimations', enabled)}
             />
@@ -511,7 +523,7 @@ export const PersonalizationTab = memo(function PersonalizationTab({
             <SettingsToggle
               label="Анимации при прокрутке"
               description="Эффекты появления элементов при прокрутке страницы."
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<ScrollText className="h-4 w-4" />}
               enabled={settings.scrollAnimations ?? true}
               onToggle={(enabled) => updateSetting('scrollAnimations', enabled)}
             />
