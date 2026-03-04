@@ -109,7 +109,7 @@ const STATUS_STYLES: Record<RequestStatus, string> = {
   IN_REVIEW: 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/40',
   DONE: 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40',
   SPAM: 'bg-rose-500/20 text-rose-200 ring-1 ring-rose-400/40',
-  CANCELLED: 'bg-gray-500/20 text-gray-300 ring-1 ring-gray-400/40',
+  CANCELLED: 'bg-slate-500/20 text-slate-300 ring-1 ring-slate-400/40',
 }
 
 const PRIORITY_LABELS: Record<RequestPriority, string> = {
@@ -120,7 +120,7 @@ const PRIORITY_LABELS: Record<RequestPriority, string> = {
 }
 
 const PRIORITY_STYLES: Record<RequestPriority, string> = {
-  LOW: 'bg-gray-500/20 text-gray-300',
+  LOW: 'bg-slate-500/20 text-slate-300',
   NORMAL: 'bg-blue-500/20 text-blue-300',
   HIGH: 'bg-orange-500/20 text-orange-300',
   URGENT: 'bg-red-500/20 text-red-300',
@@ -286,8 +286,8 @@ export default function RequestDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="app-shell flex min-h-screen items-center justify-center bg-gray-900">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+      <div className="app-shell flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -296,7 +296,7 @@ export default function RequestDetailPage() {
 
   if (!request) {
     return (
-      <div className="app-shell min-h-screen bg-gray-900">
+      <div className="app-shell min-h-screen">
         <Header />
         <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="panel panel-glass rounded-2xl p-6 text-slate-300">
@@ -339,7 +339,7 @@ export default function RequestDetailPage() {
   ]
 
   return (
-    <div className="app-shell min-h-screen bg-gray-900">
+    <div className="app-shell min-h-screen">
       <Header />
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -380,14 +380,14 @@ export default function RequestDetailPage() {
         </div>
 
         {/* Mobile Sticky Status Bar */}
-        <div className="sticky top-14 z-10 mb-4 rounded-lg border border-gray-700/60 bg-gray-800/95 p-3 backdrop-blur-md md:hidden">
+        <div className="sticky top-14 z-10 mb-4 rounded-lg border border-white/10 bg-slate-800/95 p-3 backdrop-blur-md md:hidden">
           <div className="flex items-center justify-between gap-3">
             <span
               className={`inline-flex items-center rounded px-2 py-1 text-xs font-medium ${STATUS_STYLES[request.status]}`}
             >
               {STATUS_LABELS[request.status]}
             </span>
-            <div className="flex items-center gap-2 text-xs text-gray-400">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
               <Clock className="h-3.5 w-3.5" />
               {formatDateTime(request.createdAt)}
             </div>
@@ -410,7 +410,7 @@ export default function RequestDetailPage() {
                   {request.files.map((file) => (
                     <div
                       key={file.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm text-white">{file.name}</p>
@@ -420,7 +420,7 @@ export default function RequestDetailPage() {
                         href={file.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-emerald-300 transition hover:text-emerald-200"
+                        className="inline-flex items-center gap-1 text-sm text-teal-300 transition hover:text-teal-200"
                       >
                         <ExternalLink className="h-4 w-4" />
                         {'Открыть'}
@@ -450,7 +450,7 @@ export default function RequestDetailPage() {
                   {request.comments.map((comment) => (
                     <div
                       key={comment.id}
-                      className="rounded-lg border border-gray-700 bg-gray-800/60 p-4"
+                      className="rounded-lg border border-white/10 bg-white/5 p-4"
                     >
                       <div className="flex items-start gap-3">
                         {comment.author.image ? (
@@ -463,7 +463,7 @@ export default function RequestDetailPage() {
                             unoptimized
                           />
                         ) : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-medium text-emerald-300">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500/20 text-sm font-medium text-teal-300">
                             {(comment.author.name || comment.author.email || '?')[0].toUpperCase()}
                           </div>
                         )}
@@ -493,12 +493,12 @@ export default function RequestDetailPage() {
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Написать комментарий..."
                   disabled={submittingComment}
-                  className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
+                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-slate-400 focus:border-teal-400/50 focus:outline-none"
                 />
                 <button
                   type="submit"
                   disabled={submittingComment || !commentText.trim()}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-white transition hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {submittingComment ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -531,7 +531,7 @@ export default function RequestDetailPage() {
                   <div className="mt-4">
                     {historyLoading ? (
                       <div className="flex justify-center py-4">
-                        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+                        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
                       </div>
                     ) : history.length === 0 ? (
                       <p className="text-sm text-slate-400">{'История пуста.'}</p>
@@ -540,7 +540,7 @@ export default function RequestDetailPage() {
                         {history.map((entry) => (
                           <div
                             key={entry.id}
-                            className="flex items-start gap-3 border-l-2 border-gray-700 pl-3 text-sm"
+                            className="flex items-start gap-3 border-l-2 border-white/10 pl-3 text-sm"
                           >
                             <div className="flex-1">
                               <p className="text-slate-300">
@@ -548,7 +548,7 @@ export default function RequestDetailPage() {
                                   {entry.user.name || entry.user.email}
                                 </span>
                                 {' изменил(а) '}
-                                <span className="text-emerald-300">
+                                <span className="text-teal-300">
                                   {FIELD_LABELS[entry.field] || entry.field}
                                 </span>
                                 {entry.oldValue && (
@@ -580,14 +580,14 @@ export default function RequestDetailPage() {
             <div className="panel panel-glass hover-lift space-y-4 rounded-2xl p-4 md:p-6">
               <h2 className="text-lg font-semibold text-white md:text-xl">{'Управление'}</h2>
               <div>
-                <label className="mb-2 block text-sm text-gray-300/90">{'Статус'}</label>
+                <label className="mb-2 block text-sm text-slate-300">{'Статус'}</label>
                 <select
                   value={request.status}
                   onChange={(event) =>
                     updateRequest({ status: event.target.value as RequestStatus })
                   }
                   disabled={updating}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-teal-400/50 focus:outline-none"
                 >
                   {Object.entries(STATUS_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -597,14 +597,14 @@ export default function RequestDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm text-gray-300/90">{'Приоритет'}</label>
+                <label className="mb-2 block text-sm text-slate-300">{'Приоритет'}</label>
                 <select
                   value={request.priority}
                   onChange={(event) =>
                     updateRequest({ priority: event.target.value as RequestPriority })
                   }
                   disabled={updating}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-teal-400/50 focus:outline-none"
                 >
                   {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -614,14 +614,14 @@ export default function RequestDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm text-gray-300/90">{'Категория'}</label>
+                <label className="mb-2 block text-sm text-slate-300">{'Категория'}</label>
                 <select
                   value={request.category}
                   onChange={(event) =>
                     updateRequest({ category: event.target.value as RequestCategory })
                   }
                   disabled={updating}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-teal-400/50 focus:outline-none"
                 >
                   {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -631,7 +631,7 @@ export default function RequestDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm text-gray-300/90">{'Ответственный'}</label>
+                <label className="mb-2 block text-sm text-slate-300">{'Ответственный'}</label>
                 <p className="mb-3 text-sm text-white">{assignedLabel}</p>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -668,7 +668,7 @@ export default function RequestDetailPage() {
               </div>
             </div>
 
-            <div className="panel panel-glass hover-lift space-y-2 rounded-2xl p-4 text-sm text-gray-400/80 md:p-6">
+            <div className="panel panel-glass hover-lift space-y-2 rounded-2xl p-4 text-sm text-slate-400 md:p-6">
               <div className="flex items-center gap-2">
                 <Paperclip className="h-4 w-4" />
                 {`Файлов: ${request.files.length}`}
