@@ -115,13 +115,11 @@ export default function RequestTemplatesPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Шаблоны ответов</h1>
-          <p className="text-muted-foreground mt-2">
-            Управление шаблонами ответов для заявок
-          </p>
+          <p className="mt-2 text-muted-foreground">Управление шаблонами ответов для заявок</p>
         </div>
         <Dialog
           open={dialogOpen}
@@ -138,9 +136,7 @@ export default function RequestTemplatesPage() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>
-                {editingId ? 'Редактировать шаблон' : 'Создать шаблон'}
-              </DialogTitle>
+              <DialogTitle>{editingId ? 'Редактировать шаблон' : 'Создать шаблон'}</DialogTitle>
               <DialogDescription>
                 {editingId
                   ? 'Обновите информацию о шаблоне'
@@ -154,9 +150,7 @@ export default function RequestTemplatesPage() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Например: Стандартный ответ на консультацию"
                   required
                   maxLength={100}
@@ -168,9 +162,7 @@ export default function RequestTemplatesPage() {
                 <textarea
                   id="content"
                   value={formData.content}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   placeholder="Текст шаблона. Поддерживаются переменные: {{contactName}}, {{organization}}"
                   required
                   rows={8}
@@ -208,9 +200,7 @@ export default function RequestTemplatesPage() {
                   type="checkbox"
                   id="isPublic"
                   checked={formData.isPublic}
-                  onChange={(e) =>
-                    setFormData({ ...formData, isPublic: e.target.checked })
-                  }
+                  onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="isPublic" className="font-normal">
@@ -243,9 +233,7 @@ export default function RequestTemplatesPage() {
         </div>
       ) : templates.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground mb-4">
-            У вас еще нет шаблонов ответов
-          </p>
+          <p className="mb-4 text-muted-foreground">У вас еще нет шаблонов ответов</p>
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Создать первый шаблон
@@ -256,48 +244,36 @@ export default function RequestTemplatesPage() {
           {templates.map((template) => (
             <div
               key={template.id}
-              className="rounded-lg border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
+              className="rounded-lg border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
             >
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <h3 className="font-semibold text-lg">{template.name}</h3>
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <h3 className="text-lg font-semibold">{template.name}</h3>
                 <div className="flex items-center gap-1">
                   {template.isPublic ? (
                     <Globe className="h-4 w-4 text-blue-600" />
                   ) : (
-                    <Lock className="h-4 w-4 text-gray-400" />
+                    <Lock className="h-4 w-4 text-slate-400" />
                   )}
                 </div>
               </div>
 
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                {template.content}
-              </p>
+              <p className="mb-4 line-clamp-3 text-sm text-muted-foreground">{template.content}</p>
 
               {template.category && (
                 <div className="mb-4">
-                  <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded">
+                  <span className="rounded bg-secondary px-2 py-1 text-xs text-secondary-foreground">
                     {categoryLabels[template.category]}
                   </span>
                 </div>
               )}
 
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  {template.isPublic ? 'Публичный' : 'Личный'}
-                </span>
+                <span>{template.isPublic ? 'Публичный' : 'Личный'}</span>
                 <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEdit(template)}
-                  >
+                  <Button size="sm" variant="ghost" onClick={() => handleEdit(template)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDelete(template.id)}
-                  >
+                  <Button size="sm" variant="ghost" onClick={() => handleDelete(template.id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -309,5 +285,3 @@ export default function RequestTemplatesPage() {
     </div>
   )
 }
-
-

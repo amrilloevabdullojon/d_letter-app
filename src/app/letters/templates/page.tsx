@@ -3,18 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import {
-  FileText,
-  Plus,
-  Trash2,
-  Edit,
-  Eye,
-  Globe,
-  Lock,
-  TrendingUp,
-  Search,
-  X,
-} from 'lucide-react'
+import { FileText, Plus, Trash2, Edit, Eye, Globe, Lock, TrendingUp, Search, X } from 'lucide-react'
 import { useLetterTemplates } from '@/hooks/useLetterTemplates'
 
 type LetterTemplate = {
@@ -48,10 +37,10 @@ export default function LetterTemplatesPage() {
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <p className="text-slate-600">Загрузка...</p>
         </div>
       </div>
     )
@@ -87,7 +76,8 @@ export default function LetterTemplatesPage() {
       const res = await fetch(`/api/letters/templates?id=${id}`, {
         method: 'DELETE',
         headers: {
-          'x-csrf-token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+          'x-csrf-token':
+            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
         },
       })
 
@@ -104,16 +94,16 @@ export default function LetterTemplatesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="container mx-auto max-w-7xl px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <FileText className="w-8 h-8 text-blue-600" />
+            <h1 className="flex items-center gap-3 text-3xl font-bold text-gray-900">
+              <FileText className="h-8 w-8 text-blue-600" />
               Шаблоны писем
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="mt-2 text-slate-600">
               Создавайте шаблоны ответов с автоматической подстановкой данных
             </p>
           </div>
@@ -122,29 +112,29 @@ export default function LetterTemplatesPage() {
               setSelectedTemplate(null)
               handleCreateOrEdit()
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="h-5 w-5" />
             Создать шаблон
           </button>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Поиск по названию, содержанию, категории..."
-            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-10 focus:border-transparent focus:ring-2 focus:ring-blue-500"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           )}
         </div>
@@ -152,14 +142,14 @@ export default function LetterTemplatesPage() {
 
       {/* Loading/Error States */}
       {loading && (
-        <div className="text-center py-12">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка шаблонов...</p>
+        <div className="py-12 text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <p className="text-slate-600">Загрузка шаблонов...</p>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
           Ошибка загрузки шаблонов: {error}
         </div>
       )}
@@ -168,12 +158,12 @@ export default function LetterTemplatesPage() {
       {!loading && !error && (
         <>
           {filteredTemplates.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg mb-2">
+            <div className="rounded-lg bg-gray-50 py-12 text-center">
+              <FileText className="mx-auto mb-4 h-16 w-16 text-slate-400" />
+              <p className="mb-2 text-lg text-slate-600">
                 {searchQuery ? 'Шаблоны не найдены' : 'Нет шаблонов'}
               </p>
-              <p className="text-gray-500 mb-4">
+              <p className="mb-4 text-slate-500">
                 {searchQuery
                   ? 'Попробуйте изменить запрос'
                   : 'Создайте первый шаблон для быстрых ответов'}
@@ -184,15 +174,15 @@ export default function LetterTemplatesPage() {
                     setSelectedTemplate(null)
                     handleCreateOrEdit()
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="h-5 w-5" />
                   Создать шаблон
                 </button>
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredTemplates.map((template) => (
                 <TemplateCard
                   key={template.id}
@@ -257,25 +247,25 @@ function TemplateCard({
   const isOwner = template.createdById === currentUserId
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-shadow">
+    <div className="rounded-lg border border-gray-200 bg-white p-5 transition-shadow hover:shadow-lg">
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 text-lg mb-1">{template.name}</h3>
+          <h3 className="mb-1 text-lg font-semibold text-gray-900">{template.name}</h3>
           {template.category && (
-            <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+            <span className="inline-block rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
               {template.category}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 ml-2">
+        <div className="ml-2 flex items-center gap-2">
           {template.isPublic ? (
             <span title="Публичный">
-              <Globe className="w-4 h-4 text-green-600" />
+              <Globe className="h-4 w-4 text-green-600" />
             </span>
           ) : (
             <span title="Личный">
-              <Lock className="w-4 h-4 text-gray-400" />
+              <Lock className="h-4 w-4 text-slate-400" />
             </span>
           )}
         </div>
@@ -283,58 +273,58 @@ function TemplateCard({
 
       {/* Subject */}
       {template.subject && (
-        <p className="text-sm text-gray-600 mb-2">
+        <p className="mb-2 text-sm text-slate-600">
           <span className="font-medium">Тема:</span> {template.subject}
         </p>
       )}
 
       {/* Body Preview */}
-      <p className="text-sm text-gray-600 mb-3 line-clamp-3">{template.body}</p>
+      <p className="mb-3 line-clamp-3 text-sm text-slate-600">{template.body}</p>
 
       {/* Stats */}
-      <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+      <div className="mb-3 flex items-center gap-4 text-xs text-slate-500">
         <div className="flex items-center gap-1">
-          <TrendingUp className="w-4 h-4" />
+          <TrendingUp className="h-4 w-4" />
           <span>{template.usageCount} исп.</span>
         </div>
         {template.variables.length > 0 && (
           <div className="flex items-center gap-1">
-            <FileText className="w-4 h-4" />
+            <FileText className="h-4 w-4" />
             <span>{template.variables.length} пер.</span>
           </div>
         )}
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+      <div className="flex items-center gap-2 border-t border-white/10 pt-3">
         <button
           onClick={onPreview}
-          className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+          className="flex flex-1 items-center justify-center gap-1 rounded px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
         >
-          <Eye className="w-4 h-4" />
+          <Eye className="h-4 w-4" />
           Просмотр
         </button>
         {isOwner && (
           <>
             <button
               onClick={onEdit}
-              className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 rounded transition-colors"
+              className="flex flex-1 items-center justify-center gap-1 rounded px-3 py-2 text-sm text-blue-700 transition-colors hover:bg-blue-50"
             >
-              <Edit className="w-4 h-4" />
+              <Edit className="h-4 w-4" />
               Изменить
             </button>
             <button
               onClick={onDelete}
-              className="flex items-center justify-center gap-1 px-3 py-2 text-sm text-red-700 hover:bg-red-50 rounded transition-colors"
+              className="flex items-center justify-center gap-1 rounded px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-50"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="h-4 w-4" />
             </button>
           </>
         )}
       </div>
 
       {/* Creator */}
-      <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+      <div className="mt-3 border-t border-white/10 pt-3 text-xs text-slate-500">
         Автор: {template.createdBy.name || template.createdBy.email}
       </div>
     </div>
@@ -365,16 +355,15 @@ function TemplateEditorModal({
     setSubmitting(true)
 
     try {
-      const url = template
-        ? `/api/letters/templates?id=${template.id}`
-        : '/api/letters/templates'
+      const url = template ? `/api/letters/templates?id=${template.id}` : '/api/letters/templates'
       const method = template ? 'PATCH' : 'POST'
 
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'x-csrf-token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+          'x-csrf-token':
+            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
         },
         body: JSON.stringify({
           ...formData,
@@ -399,80 +388,71 @@ function TemplateEditorModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white">
         <form onSubmit={handleSubmit} className="p-6">
-          <h2 className="text-2xl font-bold mb-6">
+          <h2 className="mb-6 text-2xl font-bold">
             {template ? 'Редактировать шаблон' : 'Создать шаблон'}
           </h2>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Название *
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Название *</label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 placeholder="Ответ на запрос о регистрации"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Категория
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Категория</label>
               <input
                 type="text"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 placeholder="Регистрация"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тема письма
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Тема письма</label>
               <input
                 type="text"
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 placeholder="Ответ на письмо {{'{{'}}letter.number{{'}}'}}"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тело письма *
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Тело письма *</label>
               <textarea
                 required
                 value={formData.body}
                 onChange={(e) => setFormData({ ...formData, body: e.target.value })}
                 rows={10}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500"
                 placeholder="Уважаемый(-ая) {{'{{'}}applicant.name{{'}}'}},&#10;&#10;По вашему письму {{'{{'}}letter.number{{'}}'}} от {{'{{'}}letter.date{{'}}'}}..."
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Используйте переменные: {'{{letter.number}}'}, {'{{applicant.name}}'}, {'{{owner.name}}'} и др.
+              <p className="mt-1 text-xs text-slate-500">
+                Используйте переменные: {'{{letter.number}}'}, {'{{applicant.name}}'},{' '}
+                {'{{owner.name}}'} и др.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Подпись
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Подпись</label>
               <textarea
                 value={formData.signature}
                 onChange={(e) => setFormData({ ...formData, signature: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 placeholder="С уважением,&#10;{{'{{'}}owner.name{{'}}'}}"
               />
             </div>
@@ -483,7 +463,7 @@ function TemplateEditorModal({
                 id="isPublic"
                 checked={formData.isPublic}
                 onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                className="h-4 w-4 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
               />
               <label htmlFor="isPublic" className="text-sm text-gray-700">
                 Публичный шаблон (доступен всем пользователям)
@@ -491,18 +471,18 @@ function TemplateEditorModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 mt-6 pt-4 border-t border-gray-200">
+          <div className="mt-6 flex items-center gap-3 border-t border-gray-200 pt-4">
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+              className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
             >
               {submitting ? 'Сохранение...' : template ? 'Сохранить' : 'Создать'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50"
             >
               Отмена
             </button>
@@ -542,47 +522,49 @@ function TemplatePreviewModal({
   })
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white">
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold">Предпросмотр: {template.name}</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-slate-400 transition-colors hover:text-slate-600"
             >
-              <X className="w-6 h-6" />
+              <X className="h-6 w-6" />
             </button>
           </div>
 
           {loading ? (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Генерация предпросмотра...</p>
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+              <p className="text-slate-600">Генерация предпросмотра...</p>
             </div>
           ) : (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 whitespace-pre-wrap font-mono text-sm">
+            <div className="whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-6 font-mono text-sm">
               {preview}
             </div>
           )}
 
           {template.variables.length > 0 && (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm font-medium text-blue-900 mb-2">Используемые переменные:</p>
+            <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <p className="mb-2 text-sm font-medium text-blue-900">Используемые переменные:</p>
               <div className="flex flex-wrap gap-2">
                 {template.variables.map((v) => (
-                  <code key={v} className="px-2 py-1 bg-white text-blue-700 rounded text-xs">
-                    {'{{'}{v}{'}}'}
+                  <code key={v} className="rounded bg-white px-2 py-1 text-xs text-blue-700">
+                    {'{{'}
+                    {v}
+                    {'}}'}
                   </code>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="mt-6 border-t border-gray-200 pt-4">
             <button
               onClick={onClose}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50"
             >
               Закрыть
             </button>

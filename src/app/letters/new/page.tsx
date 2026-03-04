@@ -293,7 +293,7 @@ export default function NewLetterPage() {
   if (status === 'loading') {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -309,7 +309,7 @@ export default function NewLetterPage() {
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <Link
           href="/letters"
-          className="mb-6 inline-flex items-center gap-2 text-gray-400 transition hover:text-white"
+          className="mb-6 inline-flex items-center gap-2 text-slate-400 transition hover:text-white"
         >
           <ArrowLeft className="h-5 w-5" />
           Назад к списку
@@ -354,7 +354,7 @@ export default function NewLetterPage() {
                   </span>
                 )}
                 {draftSaved && !draftRestored && (
-                  <span className="animate-fadeIn inline-flex items-center gap-1.5 text-xs text-gray-500">
+                  <span className="animate-fadeIn inline-flex items-center gap-1.5 text-xs text-slate-500">
                     <Clock className="h-3 w-3" />
                     Сохранено
                   </span>
@@ -362,7 +362,7 @@ export default function NewLetterPage() {
                 <button
                   type="button"
                   onClick={handleClearDraft}
-                  className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition hover:text-gray-300"
+                  className="inline-flex items-center gap-1.5 text-sm text-slate-400 transition hover:text-slate-300"
                   title="Очистить черновик"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -380,7 +380,7 @@ export default function NewLetterPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-300">
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
                     Номер письма *
                   </label>
                   <input
@@ -392,14 +392,14 @@ export default function NewLetterPage() {
                   {errors.number ? (
                     <p className="mt-1 text-xs text-red-400">{errors.number.message}</p>
                   ) : (
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-slate-500">
                       Формат: XX-YY/ZZZZ (например, 01-15/1234)
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-300">
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
                     Дата письма *
                   </label>
                   <input
@@ -422,14 +422,14 @@ export default function NewLetterPage() {
                   {errors.date ? (
                     <p className="mt-1 text-xs text-red-400">{errors.date.message}</p>
                   ) : (
-                    <p className="mt-1 text-xs text-gray-500">Дата письма от отправителя</p>
+                    <p className="mt-1 text-xs text-slate-500">Дата письма от отправителя</p>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-300">Дедлайн</label>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">Дедлайн</label>
                   <input
                     type="date"
                     {...register('deadlineDate')}
@@ -445,14 +445,14 @@ export default function NewLetterPage() {
                       )
                     })()
                   ) : (
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-slate-500">
                       Если не указано, будет рассчитано автоматически (+7 рабочих дней)
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-300">
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
                     Ссылка на Jira
                   </label>
                   <input
@@ -465,7 +465,7 @@ export default function NewLetterPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
+                <label className="mb-2 block text-sm font-medium text-slate-300">
                   Организация *
                 </label>
                 <OrganizationAutocomplete
@@ -478,7 +478,7 @@ export default function NewLetterPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
+                <label className="mb-2 block text-sm font-medium text-slate-300">
                   Файл (опционально)
                 </label>
                 <div
@@ -501,17 +501,17 @@ export default function NewLetterPage() {
                   />
                   {attachment ? (
                     <div className="flex items-center justify-center gap-3">
-                      <FileText className="h-8 w-8 text-emerald-400" />
+                      <FileText className="h-8 w-8 text-teal-400" />
                       <div className="text-left">
                         <p className="font-medium text-white">{attachment.name}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-slate-400">
                           {(attachment.size / 1024 / 1024).toFixed(2)} MB
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={removeAttachment}
-                        className="ml-2 rounded-lg p-1.5 text-gray-400 transition hover:bg-red-500/10 hover:text-red-400"
+                        className="ml-2 rounded-lg p-1.5 text-slate-400 transition hover:bg-red-500/10 hover:text-red-400"
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -519,14 +519,14 @@ export default function NewLetterPage() {
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <Upload
-                        className={`h-8 w-8 ${isDragging ? 'text-emerald-400' : 'text-gray-500'}`}
+                        className={`h-8 w-8 ${isDragging ? 'text-teal-400' : 'text-slate-500'}`}
                       />
-                      <p className="text-gray-400">
+                      <p className="text-slate-400">
                         {isDragging
                           ? 'Отпустите файл'
                           : 'Перетащите файл сюда или нажмите для выбора'}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-slate-500">
                         PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (макс. {MAX_FILE_SIZE_LABEL})
                       </p>
                     </div>
@@ -535,7 +535,7 @@ export default function NewLetterPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">Тип запроса</label>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Тип запроса</label>
                 <select
                   {...register('type')}
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-teal-400/50 focus:outline-none"
@@ -550,7 +550,7 @@ export default function NewLetterPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">Содержание</label>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Содержание</label>
                 <textarea
                   rows={4}
                   {...register('content')}
@@ -561,7 +561,7 @@ export default function NewLetterPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">Контакты</label>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Контакты</label>
                 <input
                   type="text"
                   {...register('contacts')}
@@ -574,7 +574,7 @@ export default function NewLetterPage() {
                 <h4 className="mb-4 text-sm font-semibold text-white">Данные заявителя</h4>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">Имя</label>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Имя</label>
                     <input
                       type="text"
                       {...register('applicantName')}
@@ -584,7 +584,7 @@ export default function NewLetterPage() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">Email</label>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Email</label>
                     <input
                       type="email"
                       {...register('applicantEmail')}
@@ -594,14 +594,14 @@ export default function NewLetterPage() {
                     {errors.applicantEmail ? (
                       <p className="mt-1 text-xs text-red-400">{errors.applicantEmail.message}</p>
                     ) : (
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-slate-500">
                         Email для обратной связи с заявителем
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">Телефон</label>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Телефон</label>
                     <input
                       type="tel"
                       {...register('applicantPhone')}
@@ -611,7 +611,7 @@ export default function NewLetterPage() {
                   </div>
 
                   <div>
-                    <label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-300">
+                    <label className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-300">
                       Telegram chat id
                       <a
                         href="https://t.me/userinfobot"
@@ -633,7 +633,7 @@ export default function NewLetterPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">Комментарий</label>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Комментарий</label>
                 <textarea
                   rows={2}
                   {...register('comment')}
@@ -644,7 +644,7 @@ export default function NewLetterPage() {
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-300">Приоритет</label>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">Приоритет</label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(Number(e.target.value))}
@@ -658,7 +658,7 @@ export default function NewLetterPage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-300">
+                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-300">
                     <User className="h-4 w-4" />
                     Исполнитель
                   </label>
@@ -679,7 +679,7 @@ export default function NewLetterPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <Link
                   href="/letters"
-                  className="px-4 py-2 text-gray-400 transition hover:text-white"
+                  className="px-4 py-2 text-slate-400 transition hover:text-white"
                 >
                   Отмена
                 </Link>

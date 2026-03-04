@@ -421,17 +421,17 @@ export default function RequestPage() {
             disabled={s > step}
             className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-all ${
               s === step
-                ? 'scale-110 bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                ? 'scale-110 bg-teal-500 text-white shadow-lg shadow-teal-500/30'
                 : s < step
-                  ? 'cursor-pointer bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-                  : 'bg-gray-700 text-gray-500'
+                  ? 'cursor-pointer bg-teal-500/20 text-teal-400 hover:bg-teal-500/30'
+                  : 'bg-white/10 text-slate-500'
             }`}
           >
             {s < step ? <Check className="h-5 w-5" /> : s}
           </button>
           {s < 4 && (
             <div
-              className={`mx-1 h-0.5 w-8 sm:w-12 ${s < step ? 'bg-emerald-500/50' : 'bg-gray-700'}`}
+              className={`mx-1 h-0.5 w-8 sm:w-12 ${s < step ? 'bg-teal-500/50' : 'bg-white/10'}`}
             />
           )}
         </div>
@@ -452,7 +452,7 @@ export default function RequestPage() {
   }
 
   return (
-    <div className="app-shell min-h-screen bg-gray-900">
+    <div className="app-shell min-h-screen">
       {turnstileSiteKey && (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
@@ -534,7 +534,7 @@ export default function RequestPage() {
               {step === 1 && (
                 <div className="animate-fadeIn space-y-6">
                   <div>
-                    <label className="mb-3 block text-sm font-medium text-gray-300">
+                    <label className="mb-3 block text-sm font-medium text-slate-300">
                       Тип обращения *
                     </label>
                     <div className="grid grid-cols-2 gap-3">
@@ -551,15 +551,15 @@ export default function RequestPage() {
                             }}
                             className={`rounded-xl border-2 p-4 text-left transition-all ${
                               isSelected
-                                ? 'border-emerald-500 bg-emerald-500/10'
-                                : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
+                                ? 'border-teal-500 bg-teal-500/10'
+                                : 'border-white/10 bg-white/5 hover:border-white/20'
                             }`}
                           >
                             <Icon
-                              className={`mb-2 h-6 w-6 ${isSelected ? 'text-emerald-400' : type.color}`}
+                              className={`mb-2 h-6 w-6 ${isSelected ? 'text-teal-400' : type.color}`}
                             />
                             <p
-                              className={`font-medium ${isSelected ? 'text-emerald-300' : 'text-white'}`}
+                              className={`font-medium ${isSelected ? 'text-teal-300' : 'text-white'}`}
                             >
                               {type.label}
                             </p>
@@ -573,21 +573,21 @@ export default function RequestPage() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
                       Организация *
                     </label>
                     <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                         <Building2 className="h-4 w-4" />
                       </div>
                       <input
                         {...register('organization')}
                         type="text"
                         placeholder="Наименование организации"
-                        className={`w-full rounded-lg border bg-gray-700 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
+                        className={`w-full rounded-lg border bg-white/10 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
                           errors.organization
                             ? 'border-red-500 focus:border-red-500'
-                            : 'border-gray-600 focus:border-emerald-500'
+                            : 'border-white/10 focus:border-teal-400'
                         }`}
                       />
                       {errors.organization && (
@@ -607,21 +607,21 @@ export default function RequestPage() {
               {step === 2 && (
                 <div className="animate-fadeIn space-y-5">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
                       Контактное лицо *
                     </label>
                     <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                         <User className="h-4 w-4" />
                       </div>
                       <input
                         {...register('contactName')}
                         type="text"
                         placeholder="Ваше имя"
-                        className={`w-full rounded-lg border bg-gray-700 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
+                        className={`w-full rounded-lg border bg-white/10 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
                           errors.contactName
                             ? 'border-red-500 focus:border-red-500'
-                            : 'border-gray-600 focus:border-emerald-500'
+                            : 'border-white/10 focus:border-teal-400'
                         }`}
                       />
                       {errors.contactName && (
@@ -637,11 +637,11 @@ export default function RequestPage() {
 
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-300">
+                      <label className="mb-2 block text-sm font-medium text-slate-300">
                         Телефон *
                       </label>
                       <div className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                           <Phone className="h-4 w-4" />
                         </div>
                         <input
@@ -652,10 +652,10 @@ export default function RequestPage() {
                             const formatted = formatPhone(e.target.value)
                             setValue('contactPhone', formatted)
                           }}
-                          className={`w-full rounded-lg border bg-gray-700 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
+                          className={`w-full rounded-lg border bg-white/10 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
                             errors.contactPhone
                               ? 'border-red-500 focus:border-red-500'
-                              : 'border-gray-600 focus:border-emerald-500'
+                              : 'border-white/10 focus:border-teal-400'
                           }`}
                         />
                         {errors.contactPhone && (
@@ -670,21 +670,21 @@ export default function RequestPage() {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-300">
+                      <label className="mb-2 block text-sm font-medium text-slate-300">
                         Email *
                       </label>
                       <div className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                           <Mail className="h-4 w-4" />
                         </div>
                         <input
                           {...register('contactEmail')}
                           type="email"
                           placeholder="name@example.com"
-                          className={`w-full rounded-lg border bg-gray-700 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
+                          className={`w-full rounded-lg border bg-white/10 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
                             errors.contactEmail
                               ? 'border-red-500 focus:border-red-500'
-                              : 'border-gray-600 focus:border-emerald-500'
+                              : 'border-white/10 focus:border-teal-400'
                           }`}
                         />
                         {errors.contactEmail && (
@@ -700,11 +700,11 @@ export default function RequestPage() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
                       Telegram *
                     </label>
                     <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                         <MessageCircle className="h-4 w-4" />
                       </div>
                       <input
@@ -719,10 +719,10 @@ export default function RequestPage() {
                               : `@${value}`
                           setValue('contactTelegram', formatted)
                         }}
-                        className={`w-full rounded-lg border bg-gray-700 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
+                        className={`w-full rounded-lg border bg-white/10 py-2.5 pl-10 pr-4 text-white placeholder-gray-400 transition focus:outline-none ${
                           errors.contactTelegram
                             ? 'border-red-500 focus:border-red-500'
-                            : 'border-gray-600 focus:border-emerald-500'
+                            : 'border-white/10 focus:border-teal-400'
                         }`}
                       />
                       {errors.contactTelegram && (
@@ -744,21 +744,21 @@ export default function RequestPage() {
               {step === 3 && (
                 <div className="animate-fadeIn space-y-5">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
                       Содержание проблемы *
                     </label>
                     <div className="relative">
                       <textarea
                         {...register('description')}
                         rows={6}
-                        className={`w-full resize-none rounded-lg border bg-gray-700 px-4 py-3 text-white placeholder-gray-400 transition focus:outline-none ${
+                        className={`w-full resize-none rounded-lg border bg-white/10 px-4 py-3 text-white placeholder-gray-400 transition focus:outline-none ${
                           errors.description
                             ? 'border-red-500 focus:border-red-500'
-                            : 'border-gray-600 focus:border-emerald-500'
+                            : 'border-white/10 focus:border-teal-400'
                         }`}
                         placeholder="Опишите подробно, что нужно сделать и какой результат ожидается..."
                       />
-                      <div className="absolute bottom-3 right-3 text-xs text-gray-500">
+                      <div className="absolute bottom-3 right-3 text-xs text-slate-500">
                         {formValues.description.length} / 20 мин.
                       </div>
                     </div>
@@ -780,7 +780,7 @@ export default function RequestPage() {
               {step === 4 && (
                 <div className="animate-fadeIn space-y-6">
                   <div>
-                    <label className="mb-3 block text-sm font-medium text-gray-300">
+                    <label className="mb-3 block text-sm font-medium text-slate-300">
                       Вложения (необязательно)
                     </label>
 
@@ -792,8 +792,8 @@ export default function RequestPage() {
                       onDrop={handleDrop}
                       className={`relative rounded-xl border-2 border-dashed p-8 text-center transition-all ${
                         isDragging
-                          ? 'border-emerald-500 bg-emerald-500/10'
-                          : 'border-gray-600 hover:border-gray-500'
+                          ? 'border-teal-500 bg-teal-500/10'
+                          : 'border-white/10 hover:border-white/20'
                       }`}
                     >
                       <input
@@ -804,15 +804,15 @@ export default function RequestPage() {
                         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                       />
                       <Upload
-                        className={`mx-auto mb-3 h-10 w-10 ${isDragging ? 'text-emerald-400' : 'text-gray-500'}`}
+                        className={`mx-auto mb-3 h-10 w-10 ${isDragging ? 'text-teal-400' : 'text-slate-500'}`}
                       />
                       <p className="mb-1 font-medium text-white">
                         {isDragging ? 'Отпустите файлы' : 'Перетащите файлы сюда'}
                       </p>
-                      <p className="text-sm text-gray-400">
-                        или <span className="text-emerald-400">выберите</span> на компьютере
+                      <p className="text-sm text-slate-400">
+                        или <span className="text-teal-400">выберите</span> на компьютере
                       </p>
-                      <p className="mt-2 text-xs text-gray-500">
+                      <p className="mt-2 text-xs text-slate-500">
                         До {REQUEST_MAX_FILES} файлов, до {MAX_FILE_SIZE_LABEL} каждый
                       </p>
                     </div>
@@ -825,7 +825,7 @@ export default function RequestPage() {
                             className="group flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2"
                           >
                             {filePreviews[index] ? (
-                              <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-gray-700">
+                              <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-white/10">
                                 <Image
                                   src={filePreviews[index]}
                                   alt={file.name}
@@ -835,8 +835,8 @@ export default function RequestPage() {
                                 />
                               </div>
                             ) : (
-                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-700">
-                                <Paperclip className="h-5 w-5 text-gray-400" />
+                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white/10">
+                                <Paperclip className="h-5 w-5 text-slate-400" />
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
@@ -886,7 +886,7 @@ export default function RequestPage() {
                   <button
                     type="button"
                     onClick={prevStep}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 text-gray-300 transition hover:text-white"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-slate-300 transition hover:text-white"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Назад

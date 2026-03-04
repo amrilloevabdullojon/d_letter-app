@@ -35,7 +35,7 @@ const ROLE_BADGE_CLASSES: Record<string, string> = {
   ADMIN: 'bg-amber-500/20 text-amber-400',
   MANAGER: 'bg-blue-500/20 text-blue-400',
   AUDITOR: 'bg-purple-500/20 text-purple-400',
-  EMPLOYEE: 'bg-emerald-500/20 text-emerald-400',
+  EMPLOYEE: 'bg-emerald-500/20 text-teal-400',
   VIEWER: 'bg-slate-500/20 text-slate-400',
 }
 
@@ -125,7 +125,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
                     {user.name || '\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438'}
                   </div>
                   {showEmail && (
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
                       <Mail className="h-3.5 w-3.5" />
                       <span className="truncate">{user.email}</span>
                     </div>
@@ -146,26 +146,26 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="panel-soft panel-glass rounded-xl p-2 text-center">
-                  <FileText className="mx-auto mb-1 h-4 w-4 text-emerald-300" />
+                  <FileText className="mx-auto mb-1 h-4 w-4 text-teal-300" />
                   <div className="text-white">{user._count.letters}</div>
-                  <div className="text-gray-500">{'\u041f\u0438\u0441\u044c\u043c\u0430'}</div>
+                  <div className="text-slate-500">{'\u041f\u0438\u0441\u044c\u043c\u0430'}</div>
                 </div>
                 <div className="panel-soft panel-glass rounded-xl p-2 text-center">
                   <MessageSquare className="mx-auto mb-1 h-4 w-4 text-blue-300" />
                   <div className="text-white">{user._count.comments}</div>
-                  <div className="text-gray-500">
+                  <div className="text-slate-500">
                     {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u044b'}
                   </div>
                 </div>
                 <div className="panel-soft panel-glass rounded-xl p-2 text-center">
                   <Clock className="mx-auto mb-1 h-4 w-4 text-amber-300" />
                   <div className="text-white">{user._count.sessions}</div>
-                  <div className="text-gray-500">{'\u0421\u0435\u0441\u0441\u0438\u0438'}</div>
+                  <div className="text-slate-500">{'\u0421\u0435\u0441\u0441\u0438\u0438'}</div>
                 </div>
               </div>
 
               {showLastLogin && (
-                <div className="flex items-center gap-2 text-xs text-gray-400">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
                   <Clock className="h-4 w-4" />
                   {
                     '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0432\u0445\u043e\u0434:'
@@ -178,7 +178,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
             <div className="space-y-6 lg:col-span-2">
               {showBio && (
                 <div>
-                  <div className="mb-2 text-sm text-gray-300">
+                  <div className="mb-2 text-sm text-slate-300">
                     {'\u041e \u0441\u0435\u0431\u0435'}
                   </div>
                   <div className="panel-soft panel-glass whitespace-pre-wrap rounded-xl p-4 text-sm text-slate-200">
@@ -190,9 +190,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
               <div className="grid gap-4 md:grid-cols-2">
                 {showPosition && (
                   <div className="flex items-start gap-3">
-                    <Briefcase className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Briefcase className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u0414\u043e\u043b\u0436\u043d\u043e\u0441\u0442\u044c'}
                       </div>
                       <div className="text-sm text-white">{profile.position}</div>
@@ -201,9 +201,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 )}
                 {showDepartment && (
                   <div className="flex items-start gap-3">
-                    <Building2 className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Building2 className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u041e\u0442\u0434\u0435\u043b'}
                       </div>
                       <div className="text-sm text-white">{profile.department}</div>
@@ -212,9 +212,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 )}
                 {showLocation && (
                   <div className="flex items-start gap-3">
-                    <MapPin className="mt-1 h-4 w-4 text-emerald-400" />
+                    <MapPin className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u041b\u043e\u043a\u0430\u0446\u0438\u044f'}
                       </div>
                       <div className="text-sm text-white">{profile.location}</div>
@@ -223,9 +223,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 )}
                 {showTimezone && (
                   <div className="flex items-start gap-3">
-                    <Globe2 className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Globe2 className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u0427\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441'}
                       </div>
                       <div className="text-sm text-white">{profile.timezone}</div>
@@ -234,9 +234,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 )}
                 {showPhone && (
                   <div className="flex items-start gap-3">
-                    <Phone className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Phone className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u0422\u0435\u043b\u0435\u0444\u043e\u043d'}
                       </div>
                       <div className="text-sm text-white">{profile.phone}</div>
@@ -245,9 +245,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 )}
                 {showEmail && (
                   <div className="flex items-start gap-3">
-                    <Mail className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Mail className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">Email</div>
+                      <div className="text-xs text-slate-400">Email</div>
                       <div className="text-sm text-white">{user.email}</div>
                     </div>
                   </div>
@@ -256,7 +256,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
               {showSkills && (
                 <div>
-                  <div className="mb-2 text-sm text-gray-300">
+                  <div className="mb-2 text-sm text-slate-300">
                     {'\u041d\u0430\u0432\u044b\u043a\u0438'}
                   </div>
                   <div className="flex flex-wrap gap-2">

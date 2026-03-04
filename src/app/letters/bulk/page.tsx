@@ -13,8 +13,8 @@ export default function BulkLettersPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-transparent">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      <div className="flex min-h-screen items-center justify-center bg-transparent">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -24,15 +24,15 @@ export default function BulkLettersPage() {
   }
 
   return (
-    <div className="min-h-screen app-shell">
+    <div className="app-shell min-h-screen">
       <Header />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <Link
           href="/letters"
-          className="inline-flex items-center gap-2 text-slate-300 hover:text-white mb-6 transition"
+          className="mb-6 inline-flex items-center gap-2 text-slate-300 transition hover:text-white"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="h-5 w-5" />
           Назад к письмам
         </Link>
 

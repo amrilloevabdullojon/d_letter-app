@@ -558,7 +558,7 @@ export default function RequestsPage({ initialData }: RequestsPageClientProps) {
                         {request.priority === 'URGENT' && (
                           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
                         )}
-                        <span className="text-lg font-semibold text-white transition group-hover:text-emerald-300">
+                        <span className="text-lg font-semibold text-white transition group-hover:text-teal-300">
                           {request.organization}
                         </span>
                       </div>
