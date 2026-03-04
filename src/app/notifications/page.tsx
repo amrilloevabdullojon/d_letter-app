@@ -121,7 +121,7 @@ export default function NotificationsHistoryPage() {
   if (status === 'loading') {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center">
-        <Clock className="h-8 w-8 animate-spin text-emerald-500" />
+        <Clock className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -129,7 +129,7 @@ export default function NotificationsHistoryPage() {
   if (!session) {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center">
-        <p className="text-gray-400">Пожалуйста, войдите в систему</p>
+        <p className="text-slate-400">Пожалуйста, войдите в систему</p>
       </div>
     )
   }
@@ -142,7 +142,7 @@ export default function NotificationsHistoryPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">История уведомлений</h1>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-slate-400">
               Хронология уведомлений с деталями доставки по каналам.
             </p>
           </div>
@@ -159,7 +159,7 @@ export default function NotificationsHistoryPage() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
-                <Search className="h-4 w-4 text-gray-400" />
+                <Search className="h-4 w-4 text-slate-400" />
                 <input
                   value={search}
                   onChange={(event) => {
@@ -167,18 +167,18 @@ export default function NotificationsHistoryPage() {
                     setPage(1)
                   }}
                   placeholder="Поиск по заголовку, письму или организации"
-                  className="w-full bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
+                  className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 focus:outline-none"
                 />
               </div>
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-400" />
+                <Filter className="h-4 w-4 text-slate-400" />
                 <select
                   value={typeFilter}
                   onChange={(event) => {
                     setTypeFilter(event.target.value)
                     setPage(1)
                   }}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                 >
                   <option value="all">Все типы</option>
                   {Object.entries(typeLabels).map(([value, label]) => (
@@ -193,7 +193,7 @@ export default function NotificationsHistoryPage() {
                     setChannelFilter(event.target.value)
                     setPage(1)
                   }}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                 >
                   <option value="all">Все каналы</option>
                   <option value="IN_APP">Внутри</option>
@@ -208,7 +208,7 @@ export default function NotificationsHistoryPage() {
                     setReadFilter(event.target.value)
                     setPage(1)
                   }}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                 >
                   <option value="all">Все</option>
                   <option value="unread">Непрочитанные</option>
@@ -219,7 +219,7 @@ export default function NotificationsHistoryPage() {
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">
+                <label className="mb-1 block text-xs uppercase tracking-wide text-slate-500">
                   От
                 </label>
                 <input
@@ -229,11 +229,11 @@ export default function NotificationsHistoryPage() {
                     setFromDate(event.target.value)
                     setPage(1)
                   }}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">
+                <label className="mb-1 block text-xs uppercase tracking-wide text-slate-500">
                   До
                 </label>
                 <input
@@ -243,16 +243,16 @@ export default function NotificationsHistoryPage() {
                     setToDate(event.target.value)
                     setPage(1)
                   }}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20"
                 />
               </div>
-              <div className="flex items-end text-xs text-gray-400">Найдено: {total}</div>
+              <div className="flex items-end text-xs text-slate-400">Найдено: {total}</div>
             </div>
           </div>
         </div>
 
         {historyQuery.isLoading ? (
-          <div className="panel panel-glass rounded-2xl p-6 text-sm text-gray-400">
+          <div className="panel panel-glass rounded-2xl p-6 text-sm text-slate-400">
             Загружаем историю уведомлений...
           </div>
         ) : historyQuery.data?.notifications.length ? (
@@ -264,20 +264,20 @@ export default function NotificationsHistoryPage() {
                 <div key={notification.id} className="panel panel-glass rounded-2xl p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <div className="text-xs uppercase tracking-wide text-gray-500">
+                      <div className="text-xs uppercase tracking-wide text-slate-500">
                         {typeLabel}
                       </div>
                       <h3 className="text-lg font-semibold text-white">{notification.title}</h3>
                       {notification.body && (
-                        <p className="mt-1 text-sm text-gray-400">{notification.body}</p>
+                        <p className="mt-1 text-sm text-slate-400">{notification.body}</p>
                       )}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-slate-400">
                       {formatDate(notification.createdAt)}
                     </div>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                     <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">
                       Приоритет: {priorityLabel}
                     </span>
@@ -297,9 +297,9 @@ export default function NotificationsHistoryPage() {
                   </div>
 
                   <div className="mt-4 border-t border-white/10 pt-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Доставка</div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Доставка</div>
                     {notification.deliveries.length === 0 ? (
-                      <div className="mt-2 text-xs text-gray-400">Нет данных о доставке.</div>
+                      <div className="mt-2 text-xs text-slate-400">Нет данных о доставке.</div>
                     ) : (
                       <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         {notification.deliveries.map((delivery) => {
@@ -321,12 +321,12 @@ export default function NotificationsHistoryPage() {
                                   {delivery.status}
                                 </span>
                               </div>
-                              <div className="mt-2 text-xs text-gray-400">
+                              <div className="mt-2 text-xs text-slate-400">
                                 {delivery.recipient
                                   ? `Куда: ${delivery.recipient}`
                                   : 'Получатель не указан'}
                               </div>
-                              <div className="mt-1 text-xs text-gray-500">
+                              <div className="mt-1 text-xs text-slate-500">
                                 {delivery.sentAt
                                   ? `Отправлено: ${formatDate(delivery.sentAt)}`
                                   : 'Нет отправки'}
@@ -342,7 +342,7 @@ export default function NotificationsHistoryPage() {
             })}
           </div>
         ) : (
-          <div className="panel panel-glass rounded-2xl p-6 text-sm text-gray-400">
+          <div className="panel panel-glass rounded-2xl p-6 text-sm text-slate-400">
             История уведомлений пуста.
           </div>
         )}
@@ -351,18 +351,18 @@ export default function NotificationsHistoryPage() {
           <button
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             disabled={page <= 1}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-50"
           >
             <ChevronLeft className="h-4 w-4" />
             Назад
           </button>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-slate-400">
             Страница {page} из {totalPages}
           </div>
           <button
             onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
             disabled={page >= totalPages}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-50"
           >
             Вперед
             <ChevronRight className="h-4 w-4" />

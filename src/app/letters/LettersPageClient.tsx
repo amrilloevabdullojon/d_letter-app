@@ -17,7 +17,7 @@ const LetterPreview = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
       </div>
     ),
   }
@@ -28,7 +28,7 @@ const BulkCreateLetters = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
       </div>
     ),
   }
@@ -38,7 +38,7 @@ const LetterKanban = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
       </div>
     ),
   }
@@ -48,7 +48,7 @@ const LettersCalendar = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center p-8">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
       </div>
     ),
   }
@@ -1017,7 +1017,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
           <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/80 via-slate-800/60 to-slate-900/80 p-6 md:p-8">
             {/* Decorative elements */}
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-teal-500/10 blur-2xl" />
 
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               {/* Title and stats */}
@@ -1094,7 +1094,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     ...(typeFilter ? { type: typeFilter } : {}),
                     ...(selectedIds.size > 0 ? { ids: Array.from(selectedIds).join(',') } : {}),
                   }).toString()}`}
-                  className="group inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-700/20 px-4 py-2.5 text-sm font-medium text-emerald-200 transition-all hover:border-emerald-500 hover:bg-emerald-700/30 hover:text-white"
+                  className="group inline-flex items-center justify-center gap-2 rounded-xl border border-teal-600/40 bg-teal-700/20 px-4 py-2.5 text-sm font-medium text-teal-200 transition-all hover:border-teal-500 hover:bg-teal-700/30 hover:text-white"
                   title="Скачать Excel"
                 >
                   <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
@@ -1340,7 +1340,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                     </span>
                   )}
                   {ownerFilter && (
-                    <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/20">
+                    <span className="rounded-lg bg-teal-500/10 px-2.5 py-1 text-xs font-medium text-teal-300 ring-1 ring-teal-500/20">
                       {users.find((user) => user.id === ownerFilter)?.name ||
                         users.find((user) => user.id === ownerFilter)?.email ||
                         ownerFilter}
@@ -1404,8 +1404,8 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   }}
                   emptyValue=""
                   emptyLabel="Все исполнители"
-                  icon={<Users className="h-3.5 w-3.5 text-emerald-400 sm:h-4 sm:w-4" />}
-                  iconBg="bg-emerald-500/20"
+                  icon={<Users className="h-3.5 w-3.5 text-teal-400 sm:h-4 sm:w-4" />}
+                  iconBg="bg-teal-500/20"
                   disabled={filtersDisabled}
                   minWidth="210px"
                   ariaLabel="Исполнитель"

@@ -104,14 +104,14 @@ function EditableDate({
     return (
       <div className="flex items-center gap-3">
         <Icon
-          className={`h-5 w-5 ${saved ? 'text-emerald-400' : 'text-slate-500'} transition-colors`}
+          className={`h-5 w-5 ${saved ? 'text-teal-400' : 'text-slate-500'} transition-colors`}
         />
         <div className="flex-1">
           <div className="text-xs text-slate-500">{label}</div>
           <div className="mt-1 flex items-center gap-2">
             {saved ? (
               /* Индикатор успешного сохранения */
-              <div className="flex items-center gap-2 text-sm text-emerald-400">
+              <div className="flex items-center gap-2 text-sm text-teal-400">
                 <CheckCircle2 className="h-4 w-4 animate-[pulse_0.4s_ease-out]" />
                 <span>Сохранено</span>
               </div>
@@ -121,13 +121,13 @@ function EditableDate({
                   type="date"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="rounded-lg border border-slate-600 bg-slate-700/50 px-2 py-1 text-sm text-white focus:border-emerald-500 focus:outline-none"
+                  className="rounded-lg border border-slate-600 bg-slate-700/50 px-2 py-1 text-sm text-white focus:border-teal-400/50 focus:outline-none"
                   autoFocus
                 />
                 <button
                   onClick={saveDate}
                   disabled={saving}
-                  className="rounded-lg bg-emerald-500/20 p-1.5 text-emerald-400 transition hover:bg-emerald-500/30 disabled:opacity-50"
+                  className="rounded-lg bg-teal-500/20 p-1.5 text-teal-400 transition hover:bg-teal-500/30 disabled:opacity-50"
                   title="Сохранить"
                 >
                   {saving ? (
