@@ -86,7 +86,7 @@ export default function ApplicantPortalEntry() {
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <Link
                   href="/portal/letters/new"
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-400"
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-400"
                 >
                   <Send className="h-4 w-4" />
                   {copy.letterSubmit}
@@ -102,7 +102,7 @@ export default function ApplicantPortalEntry() {
                       value={letterInput}
                       onChange={(event) => setLetterInput(event.target.value)}
                       placeholder={copy.letterPlaceholder}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
                     />
                   </div>
                   <button

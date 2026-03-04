@@ -75,7 +75,7 @@ const STATUS_STYLES: Record<RequestStatus, string> = {
   IN_REVIEW: 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/40',
   DONE: 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40',
   SPAM: 'bg-rose-500/20 text-rose-200 ring-1 ring-rose-400/40',
-  CANCELLED: 'bg-gray-500/20 text-gray-300 ring-1 ring-gray-400/40',
+  CANCELLED: 'bg-slate-500/20 text-slate-300 ring-1 ring-slate-400/40',
 }
 
 const PRIORITY_LABELS: Record<RequestPriority, string> = {
@@ -86,7 +86,7 @@ const PRIORITY_LABELS: Record<RequestPriority, string> = {
 }
 
 const PRIORITY_STYLES: Record<RequestPriority, string> = {
-  LOW: 'bg-gray-500/20 text-gray-300',
+  LOW: 'bg-slate-500/20 text-slate-300',
   NORMAL: 'bg-blue-500/20 text-blue-300',
   HIGH: 'bg-orange-500/20 text-orange-300',
   URGENT: 'bg-red-500/20 text-red-300',
@@ -254,7 +254,7 @@ export default function RequestTrackingPage() {
                 value={requestId}
                 onChange={(event) => setRequestId(event.target.value)}
                 placeholder={copy.idPlaceholder}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
               />
             </div>
             <div>
@@ -263,14 +263,14 @@ export default function RequestTrackingPage() {
                 value={contact}
                 onChange={(event) => setContact(event.target.value)}
                 placeholder={copy.contactPlaceholder}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
               />
             </div>
             <div className="flex items-end">
               <button
                 type="submit"
                 disabled={loading || !requestId.trim() || !contact.trim()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -293,16 +293,16 @@ export default function RequestTrackingPage() {
               {/* Header Card */}
               <div className="panel panel-glass rounded-2xl p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-400">ID: {result.id}</p>
                     <h2 className="text-lg font-semibold text-white">{result.organization}</h2>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="mt-1 text-xs text-slate-400">
                       Создано: {formatDateTime(result.createdAt)} · Обновлено:{' '}
                       {formatDateTime(result.updatedAt)}
                     </p>
 
                     {/* Tags */}
-                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span
                         className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${
                           PRIORITY_STYLES[result.priority]
@@ -370,16 +370,14 @@ export default function RequestTrackingPage() {
                         className="rounded-lg border border-white/5 bg-white/5 p-3"
                       >
                         <div className="mb-2 flex items-center justify-between">
-                          <span className="text-xs font-medium text-emerald-300">
+                          <span className="text-xs font-medium text-teal-300">
                             {comment.author.name || comment.author.email || 'Оператор'}
                           </span>
                           <span className="text-xs text-slate-400">
                             {formatDateTime(comment.createdAt)}
                           </span>
                         </div>
-                        <p className="whitespace-pre-wrap text-sm text-slate-300">
-                          {comment.text}
-                        </p>
+                        <p className="whitespace-pre-wrap text-sm text-slate-300">{comment.text}</p>
                       </div>
                     ))}
                   </div>

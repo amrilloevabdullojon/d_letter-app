@@ -286,7 +286,7 @@ export default function PublicLetterSubmission() {
                   className={`w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                     errors.number
                       ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                      : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                      : 'border-white/10 bg-white/5 focus:border-teal-400'
                   }`}
                 />
                 {errors.number && (
@@ -301,7 +301,7 @@ export default function PublicLetterSubmission() {
                   className={`w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                     errors.date
                       ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                      : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                      : 'border-white/10 bg-white/5 focus:border-teal-400'
                   }`}
                 />
                 {errors.date && <p className="mt-1 text-xs text-rose-300">{errors.date.message}</p>}
@@ -315,7 +315,7 @@ export default function PublicLetterSubmission() {
                 className={`w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                   errors.org
                     ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                    : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                    : 'border-white/10 bg-white/5 focus:border-teal-400'
                 }`}
               />
               {errors.org && <p className="mt-1 text-xs text-rose-300">{errors.org.message}</p>}
@@ -329,7 +329,7 @@ export default function PublicLetterSubmission() {
                 className={`w-full resize-none rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                   errors.content
                     ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                    : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                    : 'border-white/10 bg-white/5 focus:border-teal-400'
                 }`}
               />
               {errors.content && (
@@ -344,7 +344,7 @@ export default function PublicLetterSubmission() {
                 className={`w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                   errors.contacts
                     ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                    : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                    : 'border-white/10 bg-white/5 focus:border-teal-400'
                 }`}
               />
               {errors.contacts && (
@@ -364,7 +364,7 @@ export default function PublicLetterSubmission() {
                     className={`w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                       errors.applicantName
                         ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                        : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                        : 'border-white/10 bg-white/5 focus:border-teal-400'
                     }`}
                   />
                   {errors.applicantName && (
@@ -381,7 +381,7 @@ export default function PublicLetterSubmission() {
                     className={`w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                       errors.applicantEmail
                         ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                        : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                        : 'border-white/10 bg-white/5 focus:border-teal-400'
                     }`}
                   />
                 </div>
@@ -394,7 +394,7 @@ export default function PublicLetterSubmission() {
                     className={`w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                       errors.applicantPhone
                         ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                        : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                        : 'border-white/10 bg-white/5 focus:border-teal-400'
                     }`}
                   />
                   {errors.applicantPhone && (
@@ -410,7 +410,7 @@ export default function PublicLetterSubmission() {
                     className={`w-full rounded-lg border px-3 py-2 text-sm text-white focus:outline-none ${
                       errors.applicantTelegramChatId
                         ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500'
-                        : 'border-white/10 bg-white/5 focus:border-emerald-400'
+                        : 'border-white/10 bg-white/5 focus:border-teal-400'
                     }`}
                   />
                   {errors.applicantTelegramChatId && (
@@ -444,7 +444,7 @@ export default function PublicLetterSubmission() {
                       className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-sm text-slate-200"
                     >
                       <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-emerald-300" />
+                        <FileText className="h-4 w-4 text-teal-300" />
                         <span className="truncate">{file.name}</span>
                         <span className="text-xs text-slate-400">{formatFileSize(file.size)}</span>
                       </div>
@@ -479,7 +479,7 @@ export default function PublicLetterSubmission() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

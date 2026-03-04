@@ -241,7 +241,7 @@ export default async function ApplicantPortalPage({ params, searchParams }: Page
 
   if (!letter) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900 px-4 text-white">
+      <div className="flex min-h-screen items-center justify-center px-4 text-white">
         <div className="panel panel-glass space-y-3 rounded-2xl p-8 text-center">
           <h1 className="text-2xl font-semibold">{copy.notFoundTitle}</h1>
           <p className="text-sm text-muted">{copy.notFoundBody}</p>
@@ -252,7 +252,7 @@ export default async function ApplicantPortalPage({ params, searchParams }: Page
 
   if (letter.applicantAccessTokenExpiresAt && letter.applicantAccessTokenExpiresAt < new Date()) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900 px-4 text-white">
+      <div className="flex min-h-screen items-center justify-center px-4 text-white">
         <div className="panel panel-glass space-y-3 rounded-2xl p-8 text-center">
           <h1 className="text-2xl font-semibold">{copy.expiredTitle}</h1>
           <p className="text-sm text-muted">{copy.expiredBody}</p>
@@ -310,7 +310,7 @@ export default async function ApplicantPortalPage({ params, searchParams }: Page
   })
 
   return (
-    <div className="min-h-screen bg-gray-900 px-4 py-10 text-white">
+    <div className="min-h-screen px-4 py-10 text-white">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="panel panel-glass rounded-2xl p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -398,7 +398,7 @@ export default async function ApplicantPortalPage({ params, searchParams }: Page
               {timelineItems.map((item, index) => (
                 <div key={item.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                    <span className="mt-1 h-2.5 w-2.5 rounded-full bg-teal-400/80" />
                     {index < timelineItems.length - 1 && (
                       <span className="mt-1 h-10 w-px bg-white/10" />
                     )}
