@@ -120,7 +120,7 @@ const ROLE_BADGE_CLASSES: Record<UserSummary['role'], string> = {
   ADMIN: 'bg-amber-500/20 text-amber-400',
   MANAGER: 'bg-blue-500/20 text-blue-400',
   AUDITOR: 'bg-purple-500/20 text-purple-400',
-  EMPLOYEE: 'bg-emerald-500/20 text-emerald-400',
+  EMPLOYEE: 'bg-emerald-500/20 text-teal-400',
   VIEWER: 'bg-slate-500/20 text-slate-400',
 }
 
@@ -293,7 +293,7 @@ export default function UserProfilePage() {
   if (authStatus === 'loading' || (authStatus === 'authenticated' && loading)) {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
       </div>
     )
   }
@@ -370,7 +370,7 @@ export default function UserProfilePage() {
                     </div>
                     <button
                       onClick={() => setActionOpen(null)}
-                      className="p-2 text-gray-400 transition hover:text-white"
+                      className="p-2 text-slate-400 transition hover:text-white"
                       aria-label="Close"
                     >
                       <X className="h-4 w-4" />
@@ -379,7 +379,7 @@ export default function UserProfilePage() {
 
                   <div className="space-y-3">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                       <input
                         value={actionSearch}
                         onChange={(e) => setActionSearch(e.target.value)}
@@ -408,7 +408,7 @@ export default function UserProfilePage() {
                       ))}
                     </select>
                     {actionLoading && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-slate-500">
                         {
                           '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043f\u0438\u0441\u0435\u043c...'
                         }
@@ -460,7 +460,7 @@ export default function UserProfilePage() {
         )}
 
         {error ? (
-          <div className="panel panel-glass flex items-center gap-3 rounded-2xl p-6 text-gray-300">
+          <div className="panel panel-glass flex items-center gap-3 rounded-2xl p-6 text-slate-300">
             <Info className="h-5 w-5 text-amber-400" />
             <span>{error}</span>
           </div>
@@ -487,7 +487,7 @@ export default function UserProfilePage() {
                     {user?.name || '\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438'}
                   </div>
                   {user?.email && (
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
                       <Mail className="h-3.5 w-3.5" />
                       <span className="truncate">{user.email}</span>
                     </div>
@@ -511,27 +511,27 @@ export default function UserProfilePage() {
               {user && (
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="panel-soft panel-glass rounded-xl p-2 text-center">
-                    <FileText className="mx-auto mb-1 h-4 w-4 text-emerald-300" />
+                    <FileText className="mx-auto mb-1 h-4 w-4 text-teal-300" />
                     <div className="text-white">{user._count.letters}</div>
-                    <div className="text-gray-500">{'\u041f\u0438\u0441\u044c\u043c\u0430'}</div>
+                    <div className="text-slate-500">{'\u041f\u0438\u0441\u044c\u043c\u0430'}</div>
                   </div>
                   <div className="panel-soft panel-glass rounded-xl p-2 text-center">
                     <MessageSquare className="mx-auto mb-1 h-4 w-4 text-blue-300" />
                     <div className="text-white">{user._count.comments}</div>
-                    <div className="text-gray-500">
+                    <div className="text-slate-500">
                       {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u044b'}
                     </div>
                   </div>
                   <div className="panel-soft panel-glass rounded-xl p-2 text-center">
                     <Clock className="mx-auto mb-1 h-4 w-4 text-amber-300" />
                     <div className="text-white">{user._count.sessions}</div>
-                    <div className="text-gray-500">{'\u0421\u0435\u0441\u0441\u0438\u0438'}</div>
+                    <div className="text-slate-500">{'\u0421\u0435\u0441\u0441\u0438\u0438'}</div>
                   </div>
                 </div>
               )}
 
               {user?.lastLoginAt && (
-                <div className="flex items-center gap-2 text-xs text-gray-400">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
                   <Clock className="h-4 w-4" />
                   {
                     '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0432\u0445\u043e\u0434:'
@@ -541,7 +541,7 @@ export default function UserProfilePage() {
               )}
 
               <div className="space-y-2">
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-slate-400">
                   {'\u041e\u0431\u043b\u043e\u0436\u043a\u0430'}
                 </div>
                 <div className="h-20 overflow-hidden rounded-xl border border-white/10 bg-white/10">
@@ -555,7 +555,7 @@ export default function UserProfilePage() {
                       unoptimized
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
+                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">
                       {'\u041d\u0435\u0442 \u043e\u0431\u043b\u043e\u0436\u043a\u0438'}
                     </div>
                   )}
@@ -566,7 +566,7 @@ export default function UserProfilePage() {
             <div className="panel panel-glass space-y-6 rounded-2xl p-6 lg:col-span-2">
               {profile?.bio && (
                 <div>
-                  <div className="mb-2 text-sm text-gray-300">
+                  <div className="mb-2 text-sm text-slate-300">
                     {'\u041e \u0441\u0435\u0431\u0435'}
                   </div>
                   <div className="panel-soft panel-glass whitespace-pre-wrap rounded-xl p-4 text-sm text-slate-200">
@@ -578,9 +578,9 @@ export default function UserProfilePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {profile?.position && (
                   <div className="flex items-start gap-3">
-                    <Briefcase className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Briefcase className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u0414\u043e\u043b\u0436\u043d\u043e\u0441\u0442\u044c'}
                       </div>
                       <div className="text-sm text-white">{profile.position}</div>
@@ -589,9 +589,9 @@ export default function UserProfilePage() {
                 )}
                 {profile?.department && (
                   <div className="flex items-start gap-3">
-                    <Building2 className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Building2 className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u041e\u0442\u0434\u0435\u043b'}
                       </div>
                       <div className="text-sm text-white">{profile.department}</div>
@@ -600,9 +600,9 @@ export default function UserProfilePage() {
                 )}
                 {profile?.location && (
                   <div className="flex items-start gap-3">
-                    <MapPin className="mt-1 h-4 w-4 text-emerald-400" />
+                    <MapPin className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u041b\u043e\u043a\u0430\u0446\u0438\u044f'}
                       </div>
                       <div className="text-sm text-white">{profile.location}</div>
@@ -611,9 +611,9 @@ export default function UserProfilePage() {
                 )}
                 {profile?.timezone && (
                   <div className="flex items-start gap-3">
-                    <Globe2 className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Globe2 className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u0427\u0430\u0441\u043e\u0432\u043e\u0439 \u043f\u043e\u044f\u0441'}
                       </div>
                       <div className="text-sm text-white">{profile.timezone}</div>
@@ -622,9 +622,9 @@ export default function UserProfilePage() {
                 )}
                 {profile?.phone && (
                   <div className="flex items-start gap-3">
-                    <Phone className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Phone className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-slate-400">
                         {'\u0422\u0435\u043b\u0435\u0444\u043e\u043d'}
                       </div>
                       <div className="text-sm text-white">{profile.phone}</div>
@@ -633,9 +633,9 @@ export default function UserProfilePage() {
                 )}
                 {user?.email && (
                   <div className="flex items-start gap-3">
-                    <Mail className="mt-1 h-4 w-4 text-emerald-400" />
+                    <Mail className="mt-1 h-4 w-4 text-teal-400" />
                     <div>
-                      <div className="text-xs text-gray-400">Email</div>
+                      <div className="text-xs text-slate-400">Email</div>
                       <div className="text-sm text-white">{user.email}</div>
                     </div>
                   </div>
@@ -644,7 +644,7 @@ export default function UserProfilePage() {
 
               {skills.length > 0 && (
                 <div>
-                  <div className="mb-2 text-sm text-gray-300">
+                  <div className="mb-2 text-sm text-slate-300">
                     {'\u041d\u0430\u0432\u044b\u043a\u0438'}
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -661,14 +661,14 @@ export default function UserProfilePage() {
               )}
 
               <div className="panel-soft panel-glass rounded-2xl p-4">
-                <div className="mb-4 flex items-center gap-2 text-sm text-gray-300">
-                  <Clock className="h-4 w-4 text-emerald-400" />
+                <div className="mb-4 flex items-center gap-2 text-sm text-slate-300">
+                  <Clock className="h-4 w-4 text-teal-400" />
                   {'\u0410\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c'}
                 </div>
                 {activity ? (
                   <div className="grid gap-4 text-xs md:grid-cols-3">
                     <div className="space-y-2">
-                      <div className="text-gray-400">{'\u041f\u0438\u0441\u044c\u043c\u0430'}</div>
+                      <div className="text-slate-400">{'\u041f\u0438\u0441\u044c\u043c\u0430'}</div>
                       {activity.letters.length > 0 ? (
                         activity.letters.map((item) => (
                           <Link
@@ -677,17 +677,17 @@ export default function UserProfilePage() {
                             className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:bg-white/10"
                           >
                             <div className="font-medium">#{item.number}</div>
-                            <div className="truncate text-gray-500">{item.org}</div>
+                            <div className="truncate text-slate-500">{item.org}</div>
                           </Link>
                         ))
                       ) : (
-                        <div className="text-gray-500">
+                        <div className="text-slate-500">
                           {'\u041d\u0435\u0442 \u043f\u0438\u0441\u0435\u043c'}
                         </div>
                       )}
                     </div>
                     <div className="space-y-2">
-                      <div className="text-gray-400">
+                      <div className="text-slate-400">
                         {'\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0438'}
                       </div>
                       {activity.comments.length > 0 ? (
@@ -698,11 +698,11 @@ export default function UserProfilePage() {
                             className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:bg-white/10"
                           >
                             <div className="font-medium">#{item.letter.number}</div>
-                            <div className="truncate text-gray-500">{item.text}</div>
+                            <div className="truncate text-slate-500">{item.text}</div>
                           </Link>
                         ))
                       ) : (
-                        <div className="text-gray-500">
+                        <div className="text-slate-500">
                           {
                             '\u041d\u0435\u0442 \u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432'
                           }
@@ -710,7 +710,7 @@ export default function UserProfilePage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <div className="text-gray-400">
+                      <div className="text-slate-400">
                         {'\u041d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f'}
                       </div>
                       {activity.assignments.length > 0 ? (
@@ -721,11 +721,11 @@ export default function UserProfilePage() {
                             className="block rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:bg-white/10"
                           >
                             <div className="font-medium">#{item.letter.number}</div>
-                            <div className="truncate text-gray-500">{item.letter.org}</div>
+                            <div className="truncate text-slate-500">{item.letter.org}</div>
                           </Link>
                         ))
                       ) : (
-                        <div className="text-gray-500">
+                        <div className="text-slate-500">
                           {
                             '\u041d\u0435\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0439'
                           }
@@ -734,7 +734,7 @@ export default function UserProfilePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-slate-500">
                     {'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...'}
                   </div>
                 )}

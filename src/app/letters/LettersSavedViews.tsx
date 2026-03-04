@@ -111,7 +111,7 @@ export const LettersSavedViews = memo(function LettersSavedViews({
             <button
               onClick={handleSave}
               disabled={!newViewName.trim()}
-              className="mt-2 w-full rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-200 transition hover:bg-emerald-500/30 disabled:opacity-50"
+              className="mt-2 w-full rounded-lg bg-teal-500/20 px-3 py-1.5 text-xs font-medium text-teal-200 transition hover:bg-teal-500/30 disabled:opacity-50"
             >
               Сохранить текущий вид
             </button>

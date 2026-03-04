@@ -197,7 +197,7 @@ export default async function HomePage() {
           <div className="panel panel-glass rounded-2xl">
             <div className="flex items-center justify-between border-b border-white/10 p-4">
               <div className="flex items-center gap-2">
-                <Inbox className="h-5 w-5 text-emerald-400" />
+                <Inbox className="h-5 w-5 text-teal-400" />
                 <h3 className="font-semibold text-white">Активные заявки</h3>
               </div>
               <Link
@@ -272,8 +272,8 @@ export default async function HomePage() {
                 href="/request"
                 className="panel-soft panel-glass group flex items-center gap-3 rounded-xl p-4 transition hover:bg-white/10"
               >
-                <div className="rounded-lg bg-emerald-500/20 p-2 transition-transform duration-200 group-hover:scale-110">
-                  <Inbox className="h-5 w-5 text-emerald-400" />
+                <div className="rounded-lg bg-teal-500/20 p-2 transition-transform duration-200 group-hover:scale-110">
+                  <Inbox className="h-5 w-5 text-teal-400" />
                 </div>
                 <div>
                   <p className="font-medium text-white">Подать заявку</p>
