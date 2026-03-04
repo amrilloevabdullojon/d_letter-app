@@ -7,19 +7,17 @@ import {
   AlertTriangle,
   Plus,
   ArrowRight,
-  UserMinus,
   Star,
-  TrendingUp,
-  BarChart3,
-  Inbox,
   Activity,
+  Inbox,
+  CheckCircle2,
 } from 'lucide-react'
 import { Header } from '@/components/Header'
-import { StatusBadge } from '@/components/StatusBadge'
 import { StatsWidgets } from '@/components/StatsWidgets'
+import { DashboardLetterTabs } from '@/components/DashboardLetterTabs'
 import { authOptions } from '@/lib/auth'
 import { getDashboardData, DashboardError } from '@/lib/dashboard'
-import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import type { LetterStatus } from '@/types/prisma'
 
 type Letter = {
@@ -68,7 +66,6 @@ export default async function HomePage() {
     overdue: statsSummary.overdue,
     completed: statsSummary.done,
     urgent: statsSummary.urgent,
-    byStatus: dashboardData.byStatus,
   }
 
   const recentLetters = dashboardData.recentLetters as Letter[]
@@ -77,7 +74,6 @@ export default async function HomePage() {
   const unassignedLetters = dashboardData.unassignedLetters as Letter[]
   const recentRequests = dashboardData.recentRequests as Request[]
 
-  const completionRate = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0
   const roleLabel =
     session.user.role === 'SUPERADMIN'
       ? 'Суперадмин'
@@ -94,8 +90,8 @@ export default async function HomePage() {
         id="main-content"
         className="animate-pageIn mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
       >
-        {/* Welcome */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* ── Welcome ────────────────────────────────────────────── */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="font-display text-2xl font-semibold text-white sm:text-3xl">
               Добро пожаловать, {session.user.name || session.user.email?.split('@')[0]}!
@@ -113,7 +109,7 @@ export default async function HomePage() {
               })}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <Link
               href="/letters/new"
               className="btn-primary inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 transition"
@@ -131,267 +127,72 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Stats Widgets */}
+        {/* ── Status bar ─────────────────────────────────────────── */}
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Link
+            href="/letters?filter=overdue"
+            className="group flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 transition hover:border-red-500/40 hover:bg-red-500/15"
+          >
+            <AlertTriangle className="h-5 w-5 shrink-0 text-red-400 transition-transform group-hover:scale-110" />
+            <div>
+              <div className="text-xl font-bold leading-none text-white">{stats.overdue}</div>
+              <div className="mt-1 text-xs text-slate-400">Просрочено</div>
+            </div>
+          </Link>
+
+          <Link
+            href="/letters?filter=urgent"
+            className="group flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3.5 transition hover:border-amber-500/40 hover:bg-amber-500/15"
+          >
+            <Clock className="h-5 w-5 shrink-0 text-amber-400 transition-transform group-hover:scale-110" />
+            <div>
+              <div className="text-xl font-bold leading-none text-white">{stats.urgent}</div>
+              <div className="mt-1 text-xs text-slate-400">Срочные</div>
+            </div>
+          </Link>
+
+          <Link
+            href="/letters?status=IN_PROGRESS"
+            className="group flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 transition hover:border-blue-500/40 hover:bg-blue-500/15"
+          >
+            <FileText className="h-5 w-5 shrink-0 text-blue-400 transition-transform group-hover:scale-110" />
+            <div>
+              <div className="text-xl font-bold leading-none text-white">{stats.active}</div>
+              <div className="mt-1 text-xs text-slate-400">В работе</div>
+            </div>
+          </Link>
+
+          <Link
+            href="/letters?status=DONE"
+            className="group flex items-center gap-3 rounded-xl border border-teal-500/20 bg-teal-500/10 p-3.5 transition hover:border-teal-500/40 hover:bg-teal-500/15"
+          >
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-teal-400 transition-transform group-hover:scale-110" />
+            <div>
+              <div className="text-xl font-bold leading-none text-white">{stats.completed}</div>
+              <div className="mt-1 text-xs text-slate-400">Выполнено</div>
+            </div>
+          </Link>
+        </div>
+
+        {/* ── Stats Widgets ──────────────────────────────────────── */}
         <div className="mb-8">
           <StatsWidgets summary={statsSummary} loading={false} />
         </div>
 
-        {/* Progress + Status breakdown */}
-        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Progress Card */}
-          <div className="panel panel-glass rounded-2xl p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-semibold text-white">Прогресс</h3>
-              <TrendingUp className="h-5 w-5 text-teal-400" />
-            </div>
-            <div className="relative pt-1">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm text-slate-400">Выполнено</span>
-                <span className="text-sm font-semibold text-teal-400">{completionRate}%</span>
-              </div>
-              <div className="h-3 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-500"
-                  style={{ width: `${completionRate}%` }}
-                />
-              </div>
-              <div className="mt-3 flex justify-between text-xs text-slate-500">
-                <span>{stats.completed} выполнено</span>
-                <span>{stats.active} в работе</span>
-              </div>
-              <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Всего писем</span>
-                  <span className="font-medium text-white">{stats.total}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Просрочено</span>
-                  <span className="font-medium text-red-400">{stats.overdue}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Срочные</span>
-                  <span className="font-medium text-amber-400">{stats.urgent}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Status Breakdown */}
-          <div className="panel panel-glass rounded-2xl p-6 lg:col-span-2">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-semibold text-white">По статусам</h3>
-              <BarChart3 className="h-5 w-5 text-slate-400" />
-            </div>
-            {stats.byStatus && Object.keys(stats.byStatus).length > 0 ? (
-              <div className="space-y-3">
-                {[
-                  { key: 'NOT_REVIEWED', label: 'Не рассмотрено', color: 'bg-slate-400' },
-                  { key: 'ACCEPTED', label: 'Принято', color: 'bg-sky-400' },
-                  { key: 'IN_PROGRESS', label: 'В работе', color: 'bg-amber-400' },
-                  { key: 'CLARIFICATION', label: 'На уточнении', color: 'bg-cyan-400' },
-                  { key: 'READY', label: 'Готово', color: 'bg-emerald-400' },
-                  { key: 'DONE', label: 'Выполнено', color: 'bg-teal-400' },
-                ].map(({ key, label, color }) => {
-                  const count = stats.byStatus[key as LetterStatus] || 0
-                  const percent = stats.total ? Math.round((count / stats.total) * 100) : 0
-                  return (
-                    <Link key={key} href={`/letters?status=${key}`} className="group block">
-                      <div className="mb-1 flex items-center justify-between text-sm">
-                        <span className="text-slate-300 transition group-hover:text-white">
-                          {label}
-                        </span>
-                        <span className="text-slate-400">
-                          <span className="font-semibold text-white">{count}</span>
-                          <span className="ml-1 text-xs">({percent}%)</span>
-                        </span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className={`h-full rounded-full ${color} transition-all duration-500 group-hover:opacity-80`}
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="flex h-32 items-center justify-center text-slate-500">
-                Нет данных по статусам
-              </div>
-            )}
-          </div>
+        {/* ── Letter tab switcher ────────────────────────────────── */}
+        <div className="mb-6">
+          <DashboardLetterTabs
+            overdueLetters={overdueLetters}
+            urgentLetters={urgentLetters}
+            recentLetters={recentLetters}
+            unassignedLetters={unassignedLetters}
+            isAdmin={isAdmin}
+          />
         </div>
 
-        {/* Lists */}
+        {/* ── Requests + Quick actions ───────────────────────────── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {overdueLetters.length > 0 && (
-            <div className="panel panel-glass rounded-2xl border-l-4 border-l-red-500">
-              <div className="flex items-center justify-between border-b border-white/10 p-4">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-400" />
-                  <h3 className="font-semibold text-white">Просроченные</h3>
-                </div>
-                <Link
-                  href="/letters?filter=overdue"
-                  className="flex items-center gap-1 text-sm text-red-400 hover:text-red-300"
-                >
-                  Все <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="divide-y divide-white/5">
-                {overdueLetters.map((letter) => {
-                  const daysOverdue = Math.abs(getWorkingDaysUntilDeadline(letter.deadlineDate))
-                  return (
-                    <Link
-                      key={letter.id}
-                      href={`/letters/${letter.id}`}
-                      className="block p-4 transition hover:bg-white/5"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm text-teal-400">
-                              №{letter.number}
-                            </span>
-                            <StatusBadge status={letter.status} size="sm" />
-                          </div>
-                          <p className="mt-1 line-clamp-1 text-white">{letter.org}</p>
-                        </div>
-                        <span className="whitespace-nowrap text-xs text-red-400">
-                          Просрочено на {daysOverdue} раб. {pluralizeDays(daysOverdue)}
-                        </span>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {isAdmin && unassignedLetters.length > 0 && (
-            <div className="panel panel-glass rounded-2xl border-l-4 border-l-sky-500">
-              <div className="flex items-center justify-between border-b border-white/10 p-4">
-                <div className="flex items-center gap-2">
-                  <UserMinus className="h-5 w-5 text-sky-400" />
-                  <h3 className="font-semibold text-white">Без исполнителя</h3>
-                </div>
-                <Link
-                  href="/letters?filter=unassigned"
-                  className="flex items-center gap-1 text-sm text-sky-400 hover:text-sky-300"
-                >
-                  Все <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="divide-y divide-white/5">
-                {unassignedLetters.map((letter) => (
-                  <Link
-                    key={letter.id}
-                    href={`/letters/${letter.id}`}
-                    className="block p-4 transition hover:bg-white/5"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm text-teal-400">№{letter.number}</span>
-                          <StatusBadge status={letter.status} size="sm" />
-                        </div>
-                        <p className="mt-1 line-clamp-1 text-white">{letter.org}</p>
-                      </div>
-                      <span className="whitespace-nowrap text-xs text-slate-500">
-                        {formatDate(letter.date)}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {urgentLetters.length > 0 && (
-            <div className="panel panel-glass rounded-2xl border-l-4 border-l-amber-500">
-              <div className="flex items-center justify-between border-b border-white/10 p-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-amber-400" />
-                  <h3 className="font-semibold text-white">Срочные (3 дня)</h3>
-                </div>
-                <Link
-                  href="/letters?filter=urgent"
-                  className="flex items-center gap-1 text-sm text-amber-400 hover:text-amber-300"
-                >
-                  Все <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="divide-y divide-white/5">
-                {urgentLetters.map((letter) => {
-                  const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
-                  return (
-                    <Link
-                      key={letter.id}
-                      href={`/letters/${letter.id}`}
-                      className="block p-4 transition hover:bg-white/5"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm text-teal-400">
-                              №{letter.number}
-                            </span>
-                            <StatusBadge status={letter.status} size="sm" />
-                          </div>
-                          <p className="mt-1 line-clamp-1 text-white">{letter.org}</p>
-                        </div>
-                        <span className="whitespace-nowrap text-xs text-amber-400">
-                          {daysLeft} раб. {pluralizeDays(daysLeft)}
-                        </span>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="panel panel-glass rounded-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 p-4">
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-blue-400" />
-                <h3 className="font-semibold text-white">Последние письма</h3>
-              </div>
-              <Link
-                href="/letters"
-                className="flex items-center gap-1 text-sm text-teal-400 hover:text-teal-300"
-              >
-                Все <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-            <div className="divide-y divide-white/5">
-              {recentLetters.map((letter) => (
-                <Link
-                  key={letter.id}
-                  href={`/letters/${letter.id}`}
-                  className="block p-4 transition hover:bg-white/5"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm text-teal-400">№{letter.number}</span>
-                        <StatusBadge status={letter.status} size="sm" />
-                      </div>
-                      <p className="mt-1 line-clamp-1 text-white">{letter.org}</p>
-                    </div>
-                    <span className="whitespace-nowrap text-xs text-slate-500">
-                      {formatDate(letter.date)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-              {recentLetters.length === 0 && (
-                <div className="p-8 text-center text-slate-500">Нет писем</div>
-              )}
-            </div>
-          </div>
-
+          {/* Active requests */}
           <div className="panel panel-glass rounded-2xl">
             <div className="flex items-center justify-between border-b border-white/10 p-4">
               <div className="flex items-center gap-2">
@@ -440,12 +241,13 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="panel panel-glass rounded-2xl p-6 lg:col-span-2">
+          {/* Quick actions */}
+          <div className="panel panel-glass rounded-2xl p-6">
             <h3 className="mb-4 flex items-center gap-2 font-semibold text-white">
               <Activity className="h-5 w-5 text-teal-400" />
               Быстрые действия
             </h3>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3">
               <Link
                 href="/letters/new"
                 className="panel-soft panel-glass group flex items-center gap-3 rounded-xl p-4 transition hover:bg-white/10"
