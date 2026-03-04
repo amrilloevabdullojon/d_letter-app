@@ -1,4 +1,13 @@
-import { Home, FileText, Inbox, BarChart3, Settings, User, TrendingUp } from 'lucide-react'
+import {
+  Home,
+  FileText,
+  Inbox,
+  BarChart3,
+  Settings,
+  User,
+  TrendingUp,
+  BookOpen,
+} from 'lucide-react'
 import type { NavItem, QuickCreateItem, PageMeta, PrimaryAction } from './header-types'
 
 export const NAV_ITEMS: NavItem[] = [
@@ -26,6 +35,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: BarChart3,
     matchPath: '/reports',
   },
+  {
+    href: '/help',
+    label: 'Справка',
+    icon: BookOpen,
+    matchPath: '/help',
+  },
 ]
 
 export const QUICK_CREATE_ITEMS: QuickCreateItem[] = [
@@ -51,6 +66,7 @@ export function getPageMeta(pathname: string | null): PageMeta {
   if (pathname?.startsWith('/my-progress')) return { label: 'Мой прогресс', icon: TrendingUp }
   if (pathname?.startsWith('/settings')) return { label: 'Настройки', icon: Settings }
   if (pathname?.startsWith('/profile')) return { label: 'Профиль', icon: User }
+  if (pathname?.startsWith('/help')) return { label: 'Справка', icon: BookOpen }
   if (pathname === '/') return { label: 'Главная', icon: Home }
   return { label: 'DMED', icon: Home }
 }
