@@ -1,17 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import {
-  FileText,
-  Clock,
-  AlertTriangle,
-  Plus,
-  ArrowRight,
-  Star,
-  Activity,
-  Inbox,
-  CheckCircle2,
-} from 'lucide-react'
+import { Plus, ArrowRight, Star, Activity, Inbox, Clock } from 'lucide-react'
 import { Header } from '@/components/Header'
 import { StatsWidgets } from '@/components/StatsWidgets'
 import { DashboardLetterTabs } from '@/components/DashboardLetterTabs'
@@ -61,13 +51,6 @@ export default async function HomePage() {
   }
 
   const statsSummary = dashboardData.summary
-  const stats = {
-    total: statsSummary.total,
-    active: statsSummary.inProgress,
-    overdue: statsSummary.overdue,
-    completed: statsSummary.done,
-    urgent: statsSummary.urgent,
-  }
 
   const recentLetters = dashboardData.recentLetters as Letter[]
   const urgentLetters = dashboardData.urgentLetters as Letter[]
@@ -126,53 +109,6 @@ export default async function HomePage() {
               Подать заявку
             </Link>
           </div>
-        </div>
-
-        {/* ── Status bar ─────────────────────────────────────────── */}
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Link
-            href="/letters?filter=overdue"
-            className="group flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 transition hover:border-red-500/40 hover:bg-red-500/15"
-          >
-            <AlertTriangle className="h-5 w-5 shrink-0 text-red-400 transition-transform group-hover:scale-110" />
-            <div>
-              <div className="text-xl font-bold leading-none text-white">{stats.overdue}</div>
-              <div className="mt-1 text-xs text-slate-400">Просрочено</div>
-            </div>
-          </Link>
-
-          <Link
-            href="/letters?filter=urgent"
-            className="group flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3.5 transition hover:border-amber-500/40 hover:bg-amber-500/15"
-          >
-            <Clock className="h-5 w-5 shrink-0 text-amber-400 transition-transform group-hover:scale-110" />
-            <div>
-              <div className="text-xl font-bold leading-none text-white">{stats.urgent}</div>
-              <div className="mt-1 text-xs text-slate-400">Срочные</div>
-            </div>
-          </Link>
-
-          <Link
-            href="/letters?status=IN_PROGRESS"
-            className="group flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 transition hover:border-blue-500/40 hover:bg-blue-500/15"
-          >
-            <FileText className="h-5 w-5 shrink-0 text-blue-400 transition-transform group-hover:scale-110" />
-            <div>
-              <div className="text-xl font-bold leading-none text-white">{stats.active}</div>
-              <div className="mt-1 text-xs text-slate-400">В работе</div>
-            </div>
-          </Link>
-
-          <Link
-            href="/letters?status=DONE"
-            className="group flex items-center gap-3 rounded-xl border border-teal-500/20 bg-teal-500/10 p-3.5 transition hover:border-teal-500/40 hover:bg-teal-500/15"
-          >
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-teal-400 transition-transform group-hover:scale-110" />
-            <div>
-              <div className="text-xl font-bold leading-none text-white">{stats.completed}</div>
-              <div className="mt-1 text-xs text-slate-400">Выполнено</div>
-            </div>
-          </Link>
         </div>
 
         {/* ── Stats Widgets ──────────────────────────────────────── */}
