@@ -488,13 +488,13 @@ export default function ReportsPage() {
     if (showLoading) setLoading(true)
     try {
       const res = await fetch('/api/stats?includeReport=1')
-      if (res.ok) {
-        const data = await res.json()
-        setStats(data)
-        setLastUpdated(new Date())
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setStats(data)
+      setLastUpdated(new Date())
     } catch (error) {
       console.error('Failed to load stats:', error)
+      toast.error('Ошибка загрузки', 'Не удалось получить данные отчётов')
     } finally {
       if (showLoading) setLoading(false)
     }

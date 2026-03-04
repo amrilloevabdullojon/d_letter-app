@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
   Clock,
@@ -12,6 +12,7 @@ import {
   Calendar,
   Loader2,
   ClipboardX,
+  RefreshCw,
 } from 'lucide-react'
 
 interface StatsResponse {
@@ -36,6 +37,23 @@ type StatsWidgetsProps = {
 export function StatsWidgets({ summary, loading }: StatsWidgetsProps) {
   const [stats, setStats] = useState<StatsResponse['summary'] | null>(summary ?? null)
   const [isLoading, setIsLoading] = useState(loading ?? summary === undefined)
+  const [hasError, setHasError] = useState(false)
+
+  const fetchStats = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setHasError(false)
+      const res = await fetch('/api/stats')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: StatsResponse = await res.json()
+      setStats(data.summary)
+    } catch (error) {
+      console.error('Failed to fetch stats:', error)
+      setHasError(true)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (summary !== undefined || loading !== undefined) {
@@ -44,26 +62,11 @@ export function StatsWidgets({ summary, loading }: StatsWidgetsProps) {
       return
     }
 
-    const fetchStats = async () => {
-      try {
-        setIsLoading(true)
-        const res = await fetch('/api/stats')
-        if (res.ok) {
-          const data: StatsResponse = await res.json()
-          setStats(data.summary)
-        }
-      } catch (error) {
-        console.error('Failed to fetch stats:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchStats()
     // Refresh every 5 minutes
     const interval = setInterval(fetchStats, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [summary, loading])
+  }, [summary, loading, fetchStats])
 
   if (isLoading) {
     return (
@@ -71,11 +74,29 @@ export function StatsWidgets({ summary, loading }: StatsWidgetsProps) {
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="flex h-24 items-center justify-center rounded-xl border border-gray-700 bg-gray-800/50"
+            className="flex h-24 items-center justify-center rounded-xl border border-white/10 bg-white/5"
           >
-            <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+            <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
           </div>
         ))}
+      </div>
+    )
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-between rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-red-400" />
+          <p className="text-sm text-slate-300">Не удалось загрузить статистику</p>
+        </div>
+        <button
+          onClick={fetchStats}
+          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/10 hover:text-white"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Повторить
+        </button>
       </div>
     )
   }
@@ -144,34 +165,34 @@ export function StatsWidgets({ summary, loading }: StatsWidgetsProps) {
               <widget.icon className={`h-5 w-5 ${widget.color}`} />
               <span className={`text-2xl font-bold ${widget.color}`}>{widget.value}</span>
             </div>
-            <p className="mt-2 text-sm text-gray-400 group-hover:text-gray-300">{widget.label}</p>
+            <p className="mt-2 text-sm text-slate-400 group-hover:text-slate-300">{widget.label}</p>
           </Link>
         ))}
       </div>
 
       {/* Secondary stats */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/50 p-3">
-          <FileText className="h-5 w-5 text-gray-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+          <FileText className="h-5 w-5 text-slate-400" />
           <div>
             <p className="text-lg font-semibold text-white">{stats.total}</p>
-            <p className="text-xs text-gray-500">Всего писем</p>
+            <p className="text-xs text-slate-500">Всего писем</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/50 p-3">
+        <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
           <Calendar className="h-5 w-5 text-orange-400" />
           <div>
             <p className="text-lg font-semibold text-white">{stats.todayDeadlines}</p>
-            <p className="text-xs text-gray-500">Дедлайн сегодня</p>
+            <p className="text-xs text-slate-500">Дедлайн сегодня</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/50 p-3">
+        <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
           <Users className="h-5 w-5 text-purple-400" />
           <div>
             <p className="text-lg font-semibold text-white">{stats.notReviewed}</p>
-            <p className="text-xs text-gray-500">Не рассмотрено</p>
+            <p className="text-xs text-slate-500">Не рассмотрено</p>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
+import { useToast } from '@/components/Toast'
 import {
   BarChart3,
   TrendingUp,
@@ -23,6 +24,7 @@ import { PieChart } from '@/components/charts/PieChart'
 
 export default function AnalyticsPage() {
   const { data: session, status } = useSession()
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
   const [dateRange, setDateRange] = useState({
@@ -46,12 +48,14 @@ export default function AnalyticsPage() {
       })
 
       const res = await fetch(`/api/analytics/letters?${params}`)
-      if (res.ok) {
-        const result = await res.json()
-        setData(result)
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`)
       }
+      const result = await res.json()
+      setData(result)
     } catch (error) {
       console.error('Failed to load analytics:', error)
+      toast.error('Ошибка загрузки', 'Не удалось получить данные аналитики')
     } finally {
       setLoading(false)
     }
@@ -66,19 +70,20 @@ export default function AnalyticsPage() {
       })
 
       const res = await fetch(`/api/analytics/letters?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        const blob = new Blob([JSON.stringify(data, null, 2)], {
-          type: 'application/json',
-        })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `analytics_${new Date().toISOString().split('T')[0]}.json`
-        a.click()
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const exportData = await res.json()
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `analytics_${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Export failed:', error)
+      toast.error('Ошибка экспорта', 'Не удалось выгрузить данные аналитики')
     }
   }
 
