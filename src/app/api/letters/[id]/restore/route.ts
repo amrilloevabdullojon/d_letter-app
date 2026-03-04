@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     await invalidateLettersCache()
 
-    logger.info(`Letter ${id} restored by ${session.user.email}`)
+    logger.info('POST /api/letters/[id]/restore', `Letter ${id} restored by ${session.user.email}`)
 
     return NextResponse.json({ success: true, id })
   } catch (error) {
