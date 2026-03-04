@@ -83,27 +83,30 @@
 
 .violet body {
   background:
-    radial-gradient(1200px 600px at 8% -20%, rgba(139, 92, 246, 0.25), transparent 60%),
-    radial-gradient(900px 520px at 92% 0%, rgba(236, 72, 153, 0.18), transparent 55%),
-    linear-gradient(180deg, rgb(var(--app-bg)) 0%, rgb(var(--app-bg-2)) 100%);
+    radial-gradient(ellipse 85% 70% at 50% 50%, transparent 30%, rgba(8, 4, 18, 0.7) 100%),
+    radial-gradient(ellipse 1300px 700px at 8% -20%, rgba(139, 92, 246, 0.3), transparent 58%),
+    radial-gradient(ellipse 1000px 600px at 92% 0%, rgba(236, 72, 153, 0.22), transparent 55%),
+    linear-gradient(160deg, rgb(var(--app-bg)) 0%, rgb(var(--app-bg-2)) 100%);
 }
 
 .violet body::before {
-  background-image: radial-gradient(rgba(167, 139, 250, 0.08) 1px, transparent 1px);
-  opacity: 0.22;
+  background-image: radial-gradient(rgba(167, 139, 250, 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: 1;
 }
 
 .violet body::after {
   background:
-    radial-gradient(1200px 640px at 12% -10%, rgba(139, 92, 246, 0.28), transparent 62%),
-    radial-gradient(900px 520px at 92% 0%, rgba(236, 72, 153, 0.22), transparent 62%),
-    radial-gradient(900px 600px at 50% 110%, rgba(168, 85, 247, 0.18), transparent 68%),
-    conic-gradient(
-      from 180deg at 50% 50%,
-      rgba(139, 92, 246, 0.12),
-      transparent 50%,
-      rgba(236, 72, 153, 0.12)
-    );
+    /* Фиолет — верхний левый */
+    radial-gradient(ellipse 950px 650px at 10% 0%, rgba(139, 92, 246, 0.36) 0%, transparent 60%),
+    /* Розовый — верхний правый */
+    radial-gradient(ellipse 800px 560px at 90% 5%, rgba(236, 72, 153, 0.28) 0%, transparent 58%),
+    /* Пурпур — нижний */
+    radial-gradient(ellipse 950px 580px at 50% 112%, rgba(168, 85, 247, 0.24) 0%, transparent 62%),
+    /* Синий — левый */
+    radial-gradient(ellipse 600px 450px at 2% 65%, rgba(99, 102, 241, 0.18) 0%, transparent 54%),
+    /* Розовый — нижний правый */
+    radial-gradient(ellipse 650px 480px at 95% 80%, rgba(244, 114, 182, 0.16) 0%, transparent 55%);
 }
 
 /* Violet theme component overrides */
@@ -218,9 +221,13 @@
 body {
   color: rgb(var(--text-primary));
   background:
-    radial-gradient(1200px 600px at 8% -20%, rgba(var(--accent) / 0.18), transparent 60%),
-    radial-gradient(900px 520px at 92% 0%, rgba(var(--accent-2) / 0.14), transparent 55%),
-    linear-gradient(180deg, rgb(var(--app-bg)) 0%, rgb(var(--app-bg-2)) 100%);
+    /* Vignette — затемнение краёв для фокуса на контенте */
+    radial-gradient(ellipse 85% 70% at 50% 50%, transparent 30%, rgba(2, 6, 15, 0.65) 100%),
+    /* Top-left teal accent */
+    radial-gradient(ellipse 1300px 700px at 8% -20%, rgba(var(--accent) / 0.22), transparent 60%),
+    /* Top-right sky */
+    radial-gradient(ellipse 1000px 600px at 92% 0%, rgba(var(--accent-2) / 0.16), transparent 55%),
+    /* Base gradient */ linear-gradient(160deg, rgb(var(--app-bg)) 0%, rgb(var(--app-bg-2)) 100%);
   position: relative;
   overflow-x: hidden;
 }
@@ -233,9 +240,9 @@ body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 24px 24px;
-  opacity: 0.18;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: 1;
   pointer-events: none;
   z-index: 0;
 }
@@ -244,92 +251,112 @@ body::before {
 body::after {
   content: '';
   position: fixed;
-  inset: -12%;
+  inset: -15%;
   background:
-    radial-gradient(1200px 640px at 12% -10%, rgba(var(--accent) / 0.22), transparent 62%),
-    radial-gradient(900px 520px at 92% 0%, rgba(56, 189, 248, 0.18), transparent 62%),
-    radial-gradient(900px 600px at 50% 110%, rgba(var(--accent-2) / 0.16), transparent 68%),
-    conic-gradient(
-      from 180deg at 50% 50%,
-      rgba(16, 185, 129, 0.08),
-      transparent 50%,
-      rgba(14, 165, 233, 0.08)
-    );
+    /* Основной teal — верхний левый */
+    radial-gradient(ellipse 900px 600px at 12% 0%, rgba(20, 184, 166, 0.3) 0%, transparent 58%),
+    /* Sky blue — верхний правый */
+    radial-gradient(ellipse 750px 500px at 90% 5%, rgba(56, 189, 248, 0.24) 0%, transparent 56%),
+    /* Amber — нижний центр */
+    radial-gradient(ellipse 1000px 600px at 50% 112%, rgba(245, 158, 11, 0.2) 0%, transparent 62%),
+    /* Green — левый центр */
+    radial-gradient(ellipse 650px 450px at 3% 62%, rgba(16, 185, 129, 0.16) 0%, transparent 54%),
+    /* Indigo — правый низ */
+    radial-gradient(ellipse 700px 500px at 96% 78%, rgba(99, 102, 241, 0.13) 0%, transparent 55%),
+    /* Мягкое центральное свечение */
+    radial-gradient(ellipse 120% 80% at 50% 50%, rgba(20, 184, 166, 0.04) 0%, transparent 70%);
   opacity: var(--wallpaper-opacity, 0.6);
   pointer-events: none;
   z-index: 0;
-  background-size: 140% 140%;
-  background-position:
-    5% -5%,
-    95% 5%,
-    50% 110%,
-    50% 50%;
-  animation: wallpaper-drift 28s ease-in-out infinite;
+  animation: wallpaper-drift 30s ease-in-out infinite;
   will-change: transform;
-  /* GPU acceleration without expensive blur filter */
   backface-visibility: hidden;
   perspective: 1000px;
 }
 
 html[data-wallpaper-style='nebula'] body::after {
   background:
-    radial-gradient(1200px 680px at 18% -5%, rgba(30, 64, 175, 0.2), transparent 62%),
-    radial-gradient(980px 620px at 85% 10%, rgba(14, 116, 144, 0.22), transparent 66%),
-    radial-gradient(900px 640px at 50% 105%, rgba(251, 191, 36, 0.16), transparent 68%),
-    radial-gradient(1000px 720px at 55% 40%, rgba(16, 185, 129, 0.12), transparent 70%);
-  animation-duration: 34s;
+    /* Глубокий синий — верхний левый */
+    radial-gradient(ellipse 1100px 700px at 15% 0%, rgba(30, 64, 175, 0.34) 0%, transparent 58%),
+    /* Бирюза — верхний правый */
+    radial-gradient(ellipse 900px 620px at 88% 10%, rgba(14, 116, 144, 0.28) 0%, transparent 60%),
+    /* Amber — нижний */
+    radial-gradient(ellipse 950px 560px at 50% 108%, rgba(251, 191, 36, 0.2) 0%, transparent 62%),
+    /* Изумруд — центр */
+    radial-gradient(ellipse 1000px 700px at 55% 45%, rgba(16, 185, 129, 0.14) 0%, transparent 65%),
+    /* Фиолет — нижний левый */
+    radial-gradient(ellipse 600px 450px at 8% 78%, rgba(99, 102, 241, 0.16) 0%, transparent 55%);
+  animation-duration: 36s;
 }
 
 html[data-wallpaper-style='glow'] body::after {
   background:
-    radial-gradient(1100px 520px at 50% -10%, rgba(var(--accent) / 0.18), transparent 70%),
-    radial-gradient(900px 520px at 12% 75%, rgba(59, 130, 246, 0.18), transparent 70%),
-    radial-gradient(900px 560px at 88% 80%, rgba(var(--accent-2) / 0.18), transparent 72%),
-    radial-gradient(800px 420px at 50% 50%, rgba(34, 211, 238, 0.1), transparent 70%);
+    /* Teal — яркий верхний */
+    radial-gradient(ellipse 1000px 550px at 50% -5%, rgba(20, 184, 166, 0.36) 0%, transparent 62%),
+    /* Синий — нижний левый */
+    radial-gradient(ellipse 800px 600px at 8% 85%, rgba(59, 130, 246, 0.28) 0%, transparent 65%),
+    /* Amber — нижний правый */
+    radial-gradient(ellipse 800px 600px at 92% 85%, rgba(245, 158, 11, 0.26) 0%, transparent 65%),
+    /* Cyan — центральное свечение */
+    radial-gradient(ellipse 700px 500px at 50% 50%, rgba(34, 211, 238, 0.16) 0%, transparent 62%),
+    /* Pink — небольшое правое пятно */
+    radial-gradient(ellipse 500px 350px at 85% 30%, rgba(236, 72, 153, 0.14) 0%, transparent 55%);
   animation-duration: 22s;
 }
 
 html[data-wallpaper-style='aurora'] body::after {
   background:
-    linear-gradient(125deg, rgba(16, 185, 129, 0.15) 0%, transparent 40%),
-    linear-gradient(240deg, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
-    linear-gradient(320deg, rgba(236, 72, 153, 0.1) 0%, transparent 45%),
-    radial-gradient(1400px 800px at 50% 30%, rgba(59, 130, 246, 0.08), transparent 75%),
-    radial-gradient(1200px 600px at 80% 70%, rgba(251, 191, 36, 0.08), transparent 70%);
-  animation-duration: 32s;
+    /* Зелёная полоса — верхний левый */
+    linear-gradient(135deg, rgba(16, 185, 129, 0.26) 0%, transparent 42%),
+    /* Фиолетовая полоса — верхний правый */
+    linear-gradient(225deg, rgba(139, 92, 246, 0.22) 0%, transparent 50%),
+    /* Розовая полоса — нижний */
+    linear-gradient(315deg, rgba(236, 72, 153, 0.16) 0%, transparent 44%),
+    /* Синий — центр */
+    radial-gradient(ellipse 1400px 650px at 30% 25%, rgba(59, 130, 246, 0.14) 0%, transparent 68%),
+    /* Зелёный — нижний правый */
+    radial-gradient(ellipse 1100px 700px at 72% 82%, rgba(16, 185, 129, 0.18) 0%, transparent 62%),
+    /* Amber — правый верх */
+    radial-gradient(ellipse 700px 400px at 88% 18%, rgba(251, 191, 36, 0.1) 0%, transparent 55%);
+  animation-duration: 35s;
   background-size: 180% 180%;
 }
 
 html[data-wallpaper-style='cosmic'] body::after {
   background:
-    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.2) 0%, transparent 25%),
-    radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.15) 0%, transparent 30%),
-    radial-gradient(circle at 40% 80%, rgba(59, 130, 246, 0.18) 0%, transparent 28%),
-    radial-gradient(circle at 90% 70%, rgba(16, 185, 129, 0.12) 0%, transparent 35%),
-    radial-gradient(ellipse at 50% 50%, rgba(251, 191, 36, 0.08) 0%, transparent 50%);
-  animation-duration: 40s;
+    /* Фиолет — верхний левый */
+    radial-gradient(circle 380px at 18% 20%, rgba(139, 92, 246, 0.38) 0%, transparent 68%),
+    /* Розовый — верхний правый */
+    radial-gradient(circle 300px at 82% 16%, rgba(236, 72, 153, 0.3) 0%, transparent 62%),
+    /* Синий — нижний левый */
+    radial-gradient(circle 340px at 32% 80%, rgba(59, 130, 246, 0.32) 0%, transparent 65%),
+    /* Teal — нижний правый */
+    radial-gradient(circle 280px at 88% 74%, rgba(20, 184, 166, 0.26) 0%, transparent 58%),
+    /* Amber — центр */
+    radial-gradient(circle 220px at 58% 44%, rgba(251, 191, 36, 0.2) 0%, transparent 58%),
+    /* Глубокое фоновое свечение */
+    radial-gradient(ellipse 130% 90% at 50% 50%, rgba(79, 70, 229, 0.07) 0%, transparent 72%);
+  animation-duration: 44s;
   background-size: 200% 200%;
 }
 
 @keyframes wallpaper-drift {
   0%,
   100% {
-    background-position:
-      5% -5%,
-      95% 5%,
-      50% 110%,
-      50% 50%;
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0) scale(1);
     opacity: var(--wallpaper-opacity, 0.6);
   }
+  25% {
+    transform: translate3d(2%, -1.5%, 0) scale(1.02);
+    opacity: calc(var(--wallpaper-opacity, 0.6) * 1.12);
+  }
   50% {
-    background-position:
-      12% 8%,
-      88% -2%,
-      55% 95%,
-      48% 45%;
-    transform: translate3d(1%, -1%, 0);
-    opacity: calc(var(--wallpaper-opacity, 0.6) * 1.15);
+    transform: translate3d(1%, 2%, 0) scale(1.015);
+    opacity: calc(var(--wallpaper-opacity, 0.6) * 1.22);
+  }
+  75% {
+    transform: translate3d(-1.5%, 0.5%, 0) scale(1.025);
+    opacity: calc(var(--wallpaper-opacity, 0.6) * 1.1);
   }
 }
 
