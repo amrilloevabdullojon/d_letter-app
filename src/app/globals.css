@@ -51,15 +51,18 @@
 
 .light body::after {
   background:
-    radial-gradient(1200px 640px at 12% -10%, rgba(var(--accent) / 0.12), transparent 62%),
-    radial-gradient(900px 520px at 92% 0%, rgba(56, 189, 248, 0.1), transparent 62%),
-    radial-gradient(900px 600px at 50% 110%, rgba(var(--accent-2) / 0.08), transparent 68%),
-    conic-gradient(
-      from 180deg at 50% 50%,
-      rgba(16, 185, 129, 0.04),
-      transparent 50%,
-      rgba(14, 165, 233, 0.04)
-    );
+    /* Teal — верхний левый */
+    radial-gradient(ellipse 1200px 650px at 10% -5%, rgba(20, 184, 166, 0.26) 0%, transparent 58%),
+    /* Sky blue — верхний правый */
+    radial-gradient(ellipse 950px 560px at 92% 2%, rgba(56, 189, 248, 0.22) 0%, transparent 60%),
+    /* Amber — нижний центр */
+    radial-gradient(ellipse 1100px 580px at 50% 112%, rgba(245, 158, 11, 0.18) 0%, transparent 65%),
+    /* Emerald — левый центр */
+    radial-gradient(ellipse 750px 520px at 2% 62%, rgba(16, 185, 129, 0.16) 0%, transparent 56%),
+    /* Indigo — правый низ */
+    radial-gradient(ellipse 680px 480px at 96% 75%, rgba(99, 102, 241, 0.14) 0%, transparent 55%),
+    /* Центральное мягкое свечение */
+    radial-gradient(ellipse 120% 80% at 50% 50%, rgba(20, 184, 166, 0.05) 0%, transparent 70%);
 }
 
 /* Violet theme colors - Deep purple aesthetic */
@@ -229,11 +232,11 @@ body {
     radial-gradient(ellipse 1000px 600px at 92% 0%, rgba(var(--accent-2) / 0.16), transparent 55%),
     /* Base gradient */ linear-gradient(160deg, rgb(var(--app-bg)) 0%, rgb(var(--app-bg-2)) 100%);
   position: relative;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body::before {
@@ -436,15 +439,23 @@ h4 {
 /* Light theme overrides */
 .light body {
   background:
-    radial-gradient(900px 420px at 10% -10%, rgba(16, 185, 129, 0.08), transparent 60%),
-    radial-gradient(900px 420px at 95% -5%, rgba(59, 130, 246, 0.08), transparent 60%),
-    linear-gradient(180deg, #f8fafc 0%, #ffffff 55%, #eef2f7 100%);
+    /* Лёгкая виньетка — едва заметная, для глубины */
+    radial-gradient(ellipse 85% 70% at 50% 50%, transparent 35%, rgba(15, 23, 42, 0.04) 100%),
+    /* Teal — верхний левый */
+    radial-gradient(ellipse 1100px 580px at 8% -12%, rgba(20, 184, 166, 0.13), transparent 60%),
+    /* Sky — верхний правый */
+    radial-gradient(ellipse 900px 500px at 95% -5%, rgba(56, 189, 248, 0.11), transparent 60%),
+    /* Amber — нижний центр */
+    radial-gradient(ellipse 1200px 480px at 50% 118%, rgba(245, 158, 11, 0.08), transparent 65%),
+    /* Базовый градиент с лёгким голубоватым тоном */
+    linear-gradient(160deg, #f0f7ff 0%, #ffffff 38%, #f8fcfa 68%, #eff4ff 100%);
   color: #0f172a;
 }
 
 .light body::before {
-  background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
-  opacity: 0.12;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: 1;
 }
 
 .light .bg-gray-900 {
