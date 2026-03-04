@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Loader2, Clock, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react'
 import { Header } from '@/components/Header'
+import { EnvelopeLoader } from '@/components/ui/EnvelopeLoader'
 import { StatusBadge } from '@/components/StatusBadge'
 import { QuickActionsMenu } from '@/components/QuickActionsMenu'
 import { formatDate } from '@/lib/utils'
@@ -229,7 +230,7 @@ export const LetterPageLayout = memo(function LetterPageLayout({
   ]
 
   return (
-    <div className="app-shell min-h-screen overflow-auto bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950">
+    <div className="app-shell min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950">
       <Header />
 
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-6 pb-20 sm:px-6 sm:py-8 lg:px-8">
@@ -535,13 +536,8 @@ function LetterWorkflowActions({
 // Loading state component
 export const LetterPageLoading = memo(function LetterPageLoading() {
   return (
-    <div className="app-shell flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950">
-      <div className="relative">
-        {/* Decorative glow */}
-        <div className="absolute -inset-4 rounded-full bg-teal-500/20 blur-xl" />
-        <Loader2 className="relative h-10 w-10 animate-spin text-teal-400" />
-      </div>
-      <p className="mt-4 text-sm text-slate-400">Загрузка письма...</p>
+    <div className="app-shell flex min-h-screen items-center justify-center">
+      <EnvelopeLoader />
     </div>
   )
 })
