@@ -95,7 +95,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-6 text-white">
+    <div className="p-6 text-white">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
@@ -105,12 +105,12 @@ export default function AnalyticsPage() {
                 <BarChart3 className="h-8 w-8 text-blue-500" />
                 Аналитика писем
               </h1>
-              <p className="mt-2 text-gray-400">Статистика и метрики производительности системы</p>
+              <p className="mt-2 text-slate-400">Статистика и метрики производительности системы</p>
             </div>
 
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 transition hover:bg-gray-700"
+              className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 transition hover:bg-white/10"
             >
               <Download className="h-5 w-5" />
               Экспорт
@@ -118,21 +118,21 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Date Range Filter */}
-          <div className="flex items-center gap-4 rounded-lg bg-gray-800 p-4">
-            <Calendar className="h-5 w-5 text-gray-400" />
+          <div className="panel panel-glass flex items-center gap-4 rounded-xl p-4">
+            <Calendar className="h-5 w-5 text-slate-400" />
             <div className="flex items-center gap-2">
               <input
                 type="date"
                 value={dateRange.from}
                 onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+                className="rounded border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-teal-400/50 focus:outline-none"
               />
-              <span className="text-gray-400">—</span>
+              <span className="text-slate-400">—</span>
               <input
                 type="date"
                 value={dateRange.to}
                 onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+                className="rounded border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-teal-400/50 focus:outline-none"
               />
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function AnalyticsPage() {
             )}
           </div>
         ) : (
-          <div className="py-20 text-center text-gray-500">Нет данных</div>
+          <div className="py-20 text-center text-slate-500">Нет данных</div>
         )}
       </div>
     </div>
@@ -318,9 +318,9 @@ function MetricCard({
   }
 
   return (
-    <div className="rounded-lg bg-gray-800 p-6">
+    <div className="panel panel-glass rounded-xl p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-400">{title}</h3>
+        <h3 className="text-sm font-medium text-slate-400">{title}</h3>
         <div className={`rounded-lg p-2 ${colorClasses[color as keyof typeof colorClasses]}`}>
           {icon}
         </div>
@@ -332,7 +332,7 @@ function MetricCard({
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-gray-800 p-6">
+    <div className="panel panel-glass rounded-xl p-6">
       <h3 className="mb-4 text-lg font-semibold">{title}</h3>
       {children}
     </div>
@@ -349,10 +349,10 @@ function PerformanceCard({
   subtitle: string
 }) {
   return (
-    <div className="rounded-lg bg-gray-800 p-6">
-      <h3 className="mb-2 text-sm font-medium text-gray-400">{title}</h3>
+    <div className="panel panel-glass rounded-xl p-6">
+      <h3 className="mb-2 text-sm font-medium text-slate-400">{title}</h3>
       <p className="mb-1 text-2xl font-bold">{value}</p>
-      <p className="text-xs text-gray-500">{subtitle}</p>
+      <p className="text-xs text-slate-500">{subtitle}</p>
     </div>
   )
 }
