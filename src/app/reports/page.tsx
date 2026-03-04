@@ -289,7 +289,7 @@ function OwnerDetailModal({
             <div className="text-xs text-slate-400">????? ?????</div>
           </div>
           <div className="panel panel-soft rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-emerald-400">—</div>
+            <div className="text-2xl font-bold text-emerald-400">â€”</div>
             <div className="text-xs text-slate-400">?????????</div>
           </div>
         </div>
@@ -997,7 +997,7 @@ export default function ReportsPage() {
         const label = `${start.toLocaleDateString('ru-RU', {
           day: '2-digit',
           month: 'short',
-        })} – ${end.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })} ${start.getFullYear()}`
+        })} â€“ ${end.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })} ${start.getFullYear()}`
         return { key, label, sortValue: start.getTime() }
       }
       if (reportGranularity === 'quarter') {
@@ -2521,7 +2521,7 @@ export default function ReportsPage() {
                                 return (
                                   <div
                                     key={`${group.key}-${period.key}`}
-                                    title={`${group.label} — ${period.label}: ${count}`}
+                                    title={`${group.label} â€” ${period.label}: ${count}`}
                                     className="flex h-8 items-center justify-center rounded-md text-xs font-medium text-white"
                                     style={{ backgroundColor: background }}
                                   >
