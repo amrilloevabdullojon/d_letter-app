@@ -822,7 +822,7 @@ export default function RequestPage() {
                         {files.map((file, index) => (
                           <div
                             key={`${file.name}-${index}`}
-                            className="group flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2"
+                            className="group flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2"
                           >
                             {filePreviews[index] ? (
                               <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-white/10">
@@ -881,7 +881,7 @@ export default function RequestPage() {
               )}
 
               {/* Navigation buttons */}
-              <div className="mt-8 flex items-center justify-between border-t border-gray-700 pt-6">
+              <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
                 {step > 1 ? (
                   <button
                     type="button"
