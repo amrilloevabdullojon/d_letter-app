@@ -104,6 +104,31 @@ export type ProfileData = Omit<UserProfile, 'publicProfileTokenEncrypted'> & {
   coverUrl: string | null
 }
 
+type ProfileWriteData = {
+  bio?: string | null
+  phone?: string | null
+  position?: string | null
+  department?: string | null
+  location?: string | null
+  timezone?: string | null
+  skills?: string[]
+  avatarUrl?: string | null
+  coverUrl?: string | null
+  publicEmail?: boolean
+  publicPhone?: boolean
+  publicBio?: boolean
+  publicPosition?: boolean
+  publicDepartment?: boolean
+  publicLocation?: boolean
+  publicTimezone?: boolean
+  publicSkills?: boolean
+  publicLastLogin?: boolean
+  publicProfileEnabled?: boolean
+  publicProfileToken?: string | null
+  publicProfileTokenEncrypted?: string | null
+  visibility?: UserProfile['visibility']
+}
+
 export type ProfileActivity = {
   letters: Array<{
     id: string
@@ -527,7 +552,7 @@ export class SettingsService {
         | (UserProfile & { publicProfileTokenEncrypted?: string | null })
         | null
 
-      const data: Prisma.UserProfileUncheckedUpdateInput = {}
+      const data: ProfileWriteData = {}
 
       // Normalize string fields
       if ('bio' in updates) data.bio = normalizeOptional(updates.bio)
