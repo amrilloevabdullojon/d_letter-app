@@ -1,7 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger.server'
-import { randomUUID } from 'crypto'
 import { resolveProfileAssetUrl } from '@/lib/profile-assets'
+import {
+  encryptToken,
+  generateSecureStoredToken,
+  hashToken,
+  isHashedTokenValue,
+  resolveRawStoredToken,
+} from '@/lib/token'
 import {
   DEFAULT_NOTIFICATION_SETTINGS,
   normalizeNotificationSettings,
@@ -93,7 +99,7 @@ export type ProfileUpdateInput = Partial<{
   visibility: 'INTERNAL' | 'PRIVATE'
 }>
 
-export type ProfileData = UserProfile & {
+export type ProfileData = Omit<UserProfile, 'publicProfileTokenEncrypted'> & {
   avatarUrl: string | null
   coverUrl: string | null
 }
@@ -188,6 +194,62 @@ const parseSkills = (value: unknown) => {
   const raw = Array.isArray(value) ? value : String(value).split(',')
   const unique = new Set(raw.map((item) => String(item).trim()).filter((item) => item.length > 0))
   return Array.from(unique)
+}
+
+function createStoredPublicProfileToken(rawToken?: string) {
+  if (rawToken) {
+    return {
+      raw: rawToken,
+      hashed: hashToken(rawToken),
+      encrypted: encryptToken(rawToken),
+    }
+  }
+
+  return generateSecureStoredToken()
+}
+
+async function migrateLegacyPublicProfileToken(
+  profile: Pick<UserProfile, 'id' | 'publicProfileToken'> & {
+    publicProfileTokenEncrypted?: string | null
+  },
+  rawToken: string
+) {
+  if (!profile.publicProfileToken || profile.publicProfileToken !== rawToken) {
+    return
+  }
+
+  if (profile.publicProfileTokenEncrypted || isHashedTokenValue(profile.publicProfileToken)) {
+    return
+  }
+
+  const stored = createStoredPublicProfileToken(rawToken)
+  await prisma.userProfile.update({
+    where: { id: profile.id },
+    data: {
+      publicProfileToken: stored.hashed,
+      publicProfileTokenEncrypted: stored.encrypted,
+    },
+  })
+}
+
+function buildProfileData(
+  profile: (UserProfile & { publicProfileTokenEncrypted?: string | null }) | typeof emptyProfile,
+  assetVersion?: Date | null
+): ProfileData {
+  const { publicProfileTokenEncrypted, ...safeProfile } = profile as UserProfile & {
+    publicProfileTokenEncrypted?: string | null
+  }
+  const rawPublicProfileToken = resolveRawStoredToken(
+    safeProfile.publicProfileToken,
+    publicProfileTokenEncrypted
+  )
+
+  return {
+    ...safeProfile,
+    publicProfileToken: rawPublicProfileToken,
+    avatarUrl: resolveProfileAssetUrl(safeProfile.avatarUrl, assetVersion),
+    coverUrl: resolveProfileAssetUrl(safeProfile.coverUrl, assetVersion),
+  } as ProfileData
 }
 
 const mapDigestFrequency = (digest: NotificationSettings['emailDigest']): DigestFrequency => {
@@ -418,11 +480,7 @@ export class SettingsService {
 
       const profile = user.profile ?? emptyProfile
       const profileUpdatedAt = user.profile?.updatedAt ?? null
-      const normalizedProfile: ProfileData = {
-        ...profile,
-        avatarUrl: resolveProfileAssetUrl(profile.avatarUrl, profileUpdatedAt),
-        coverUrl: resolveProfileAssetUrl(profile.coverUrl, profileUpdatedAt),
-      } as ProfileData
+      const normalizedProfile = buildProfileData(profile, profileUpdatedAt)
 
       return {
         user: {
@@ -465,8 +523,11 @@ export class SettingsService {
       const before = await prisma.userProfile.findUnique({
         where: { userId },
       })
+      const beforeProfile = before as
+        | (UserProfile & { publicProfileTokenEncrypted?: string | null })
+        | null
 
-      const data: ProfileUpdateInput = {}
+      const data: Prisma.UserProfileUncheckedUpdateInput = {}
 
       // Normalize string fields
       if ('bio' in updates) data.bio = normalizeOptional(updates.bio)
@@ -502,6 +563,29 @@ export class SettingsService {
         data.visibility = updates.visibility
       }
 
+      const existingRawToken = resolveRawStoredToken(
+        beforeProfile?.publicProfileToken ?? null,
+        beforeProfile?.publicProfileTokenEncrypted ?? null
+      )
+      const shouldEnablePublicProfile = data.publicProfileEnabled === true
+      const needsSecureToken = shouldEnablePublicProfile && !existingRawToken
+
+      if (
+        existingRawToken &&
+        (!beforeProfile?.publicProfileTokenEncrypted ||
+          !isHashedTokenValue(beforeProfile.publicProfileToken))
+      ) {
+        const storedLegacyToken = createStoredPublicProfileToken(existingRawToken)
+        data.publicProfileToken = storedLegacyToken.hashed
+        data.publicProfileTokenEncrypted = storedLegacyToken.encrypted
+      }
+
+      if (needsSecureToken) {
+        const storedToken = createStoredPublicProfileToken()
+        data.publicProfileToken = storedToken.hashed
+        data.publicProfileTokenEncrypted = storedToken.encrypted
+      }
+
       const profile = await prisma.userProfile.upsert({
         where: { userId },
         update: data,
@@ -509,8 +593,6 @@ export class SettingsService {
           userId,
           ...emptyProfile,
           ...data,
-          publicProfileToken:
-            data.publicProfileToken || (data.publicProfileEnabled ? randomUUID() : null),
         },
       })
 
@@ -519,17 +601,21 @@ export class SettingsService {
         userId,
         'PROFILE',
         profile.id,
-        before ? 'UPDATED' : 'CREATED',
-        before,
+        beforeProfile ? 'UPDATED' : 'CREATED',
+        beforeProfile,
         profile,
         changedBy
       )
 
       // Ensure public profile token exists if enabled
-      if (data.publicProfileEnabled && !profile.publicProfileToken) {
+      if (shouldEnablePublicProfile && !profile.publicProfileToken) {
+        const storedToken = createStoredPublicProfileToken()
         const updated = await prisma.userProfile.update({
           where: { id: profile.id },
-          data: { publicProfileToken: randomUUID() },
+          data: {
+            publicProfileToken: storedToken.hashed,
+            publicProfileTokenEncrypted: storedToken.encrypted,
+          },
         })
 
         logger.info('settings.service', 'Profile updated', {
@@ -537,11 +623,7 @@ export class SettingsService {
           fields: Object.keys(data),
         })
 
-        return {
-          ...updated,
-          avatarUrl: resolveProfileAssetUrl(updated.avatarUrl, updated.updatedAt),
-          coverUrl: resolveProfileAssetUrl(updated.coverUrl, updated.updatedAt),
-        } as ProfileData
+        return buildProfileData(updated, updated.updatedAt)
       }
 
       logger.info('settings.service', 'Profile updated', {
@@ -549,11 +631,7 @@ export class SettingsService {
         fields: Object.keys(data),
       })
 
-      return {
-        ...profile,
-        avatarUrl: resolveProfileAssetUrl(profile.avatarUrl, profile.updatedAt),
-        coverUrl: resolveProfileAssetUrl(profile.coverUrl, profile.updatedAt),
-      } as ProfileData
+      return buildProfileData(profile, profile.updatedAt)
     } catch (error) {
       logger.error('settings.service', error, { userId, updates })
       throw new SettingsServiceError('Ошибка при обновлении профиля', 'UPDATE_FAILED', 500)
@@ -590,25 +668,27 @@ export class SettingsService {
    */
   static async generatePublicProfileToken(userId: string): Promise<string> {
     try {
-      const token = randomUUID()
+      const storedToken = createStoredPublicProfileToken()
 
       await prisma.userProfile.upsert({
         where: { userId },
         update: {
-          publicProfileToken: token,
+          publicProfileToken: storedToken.hashed,
+          publicProfileTokenEncrypted: storedToken.encrypted,
           publicProfileEnabled: true,
         },
         create: {
           userId,
           ...emptyProfile,
-          publicProfileToken: token,
+          publicProfileToken: storedToken.hashed,
+          publicProfileTokenEncrypted: storedToken.encrypted,
           publicProfileEnabled: true,
         },
       })
 
       logger.info('settings.service', 'Public profile token generated', { userId })
 
-      return token
+      return storedToken.raw
     } catch (error) {
       logger.error('settings.service', error, { userId })
       throw new SettingsServiceError('Ошибка при генерации токена', 'TOKEN_GENERATION_FAILED', 500)
@@ -632,10 +712,11 @@ export class SettingsService {
     profile: Partial<ProfileData>
   } | null> {
     try {
-      const profile = await prisma.userProfile.findUnique({
+      const tokenHash = hashToken(token)
+      const profile = await prisma.userProfile.findFirst({
         where: {
-          publicProfileToken: token,
           publicProfileEnabled: true,
+          OR: [{ publicProfileToken: tokenHash }, { publicProfileToken: token }],
         },
         include: {
           user: {
@@ -653,6 +734,8 @@ export class SettingsService {
       if (!profile) {
         return null
       }
+
+      await migrateLegacyPublicProfileToken(profile, token)
 
       // Filter fields based on privacy settings
       const publicProfile: Partial<ProfileData> = {}

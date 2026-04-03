@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
 import { formatDate } from '@/lib/utils'
 import { resolveProfileAssetUrl } from '@/lib/profile-assets'
+import { encryptToken, hashToken } from '@/lib/token'
 import {
   Mail,
   Phone,
@@ -45,10 +46,11 @@ type PageProps = {
 
 export default async function PublicProfilePage({ params }: PageProps) {
   const { token } = await params
+  const tokenHash = hashToken(token)
   const profile = await prisma.userProfile.findFirst({
     where: {
       publicProfileEnabled: true,
-      publicProfileToken: token,
+      OR: [{ publicProfileToken: tokenHash }, { publicProfileToken: token }],
     },
     include: {
       user: {
@@ -67,6 +69,18 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
   if (!profile) {
     notFound()
+  }
+
+  if (profile.publicProfileToken === token) {
+    await prisma.userProfile
+      .update({
+        where: { id: profile.id },
+        data: {
+          publicProfileToken: tokenHash,
+          publicProfileTokenEncrypted: encryptToken(token),
+        },
+      })
+      .catch(() => null)
   }
 
   const user = profile.user

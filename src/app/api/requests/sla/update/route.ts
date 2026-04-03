@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger.server'
 import { calculateSlaStatus } from '@/lib/request-sla'
+import { csrfGuard } from '@/lib/security'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 
 // POST /api/requests/sla/update - обновить SLA статусы для всех активных заявок
 export async function POST(request: NextRequest) {
@@ -11,6 +13,16 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const csrfError = csrfGuard(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     // Получаем все активные заявки с SLA дедлайнами
@@ -37,11 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Обновляем статусы
     for (const req of requests) {
-      const newStatus = calculateSlaStatus(
-        req.slaDeadline,
-        req.resolvedAt,
-        req.status
-      )
+      const newStatus = calculateSlaStatus(req.slaDeadline, req.resolvedAt, req.status)
 
       if (newStatus !== req.slaStatus) {
         await prisma.request.update({

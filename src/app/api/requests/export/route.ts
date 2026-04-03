@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'VIEW_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     const searchParams = request.nextUrl.searchParams
@@ -108,9 +114,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Failed to export requests:', error)
-    return NextResponse.json(
-      { error: 'Ошибка при экспорте данных' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Ошибка при экспорте данных' }, { status: 500 })
   }
 }

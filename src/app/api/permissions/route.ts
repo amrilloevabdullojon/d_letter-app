@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import type { Role } from '@prisma/client'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
+import { invalidatePermissionsCache } from '@/lib/permissions'
 
 // Все доступные разрешения
 const ALL_PERMISSIONS = [
@@ -165,6 +166,8 @@ export async function PUT(request: NextRequest) {
       },
     })
 
+    invalidatePermissionsCache()
+
     return NextResponse.json({ success: true })
   } catch (error) {
     logger.error('PUT /api/permissions', error)
@@ -205,6 +208,8 @@ export async function POST(request: NextRequest) {
         where: { role: { not: 'SUPERADMIN' } },
       })
     }
+
+    invalidatePermissionsCache()
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -1,4 +1,6 @@
 /**
+ * @jest-environment node
+ *
  * Error Handling Tests
  */
 

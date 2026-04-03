@@ -20,7 +20,7 @@ import { formatNewRequestMessage, sendTelegramMessage } from '@/lib/telegram'
 import { createHash, randomUUID } from 'crypto'
 import { extname } from 'path'
 import { logger } from '@/lib/logger.server'
-import { requirePermission } from '@/lib/permission-guard'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 import { calculateSlaDeadline } from '@/lib/request-sla'
 import { sendRequestCreatedEmail } from '@/lib/request-email'
 import { CACHE_TTL } from '@/lib/cache'
@@ -144,7 +144,7 @@ export const GET = withValidation<RequestsListResult, unknown, RequestQueryInput
     const requestId = getRequestContext()?.requestId ?? randomUUID()
     const startTime = Date.now()
     try {
-      const permissionError = requirePermission(session.user.role, 'VIEW_REQUESTS')
+      const permissionError = await requirePermissionAsync(session.user.role, 'VIEW_REQUESTS')
       if (permissionError) {
         return permissionError
       }

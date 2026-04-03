@@ -2,7 +2,7 @@
  * Test utilities for API testing
  */
 
-import { NextRequest } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 /**
  * Create a mock NextRequest for testing
@@ -25,19 +25,53 @@ export function createMockRequest(
     })
   }
 
-  const requestInit: RequestInit = {
+  const requestHeaders = new Headers({
+    'Content-Type': 'application/json',
+    ...headers,
+  })
+
+  const cookieHeader = requestHeaders.get('cookie') || ''
+  const cookies = new Map(
+    cookieHeader
+      .split(';')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const separatorIndex = part.indexOf('=')
+        if (separatorIndex === -1) {
+          return [part, '']
+        }
+
+        return [part.slice(0, separatorIndex), part.slice(separatorIndex + 1)]
+      })
+  )
+
+  return {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
+    url: urlWithParams.toString(),
+    headers: requestHeaders,
+    nextUrl: urlWithParams,
+    cookies: {
+      get: (name: string) => {
+        const value = cookies.get(name)
+        return value ? { name, value } : undefined
+      },
     },
-  }
+    json: async () => body,
+    formData: async () => {
+      if (body instanceof FormData) {
+        return body
+      }
 
-  if (body && method !== 'GET') {
-    requestInit.body = JSON.stringify(body)
-  }
-
-  return new NextRequest(urlWithParams.toString(), requestInit)
+      const formData = new FormData()
+      if (body && typeof body === 'object' && !Array.isArray(body)) {
+        Object.entries(body as Record<string, string>).forEach(([key, value]) => {
+          formData.set(key, value)
+        })
+      }
+      return formData
+    },
+  } as unknown as NextRequest
 }
 
 /**

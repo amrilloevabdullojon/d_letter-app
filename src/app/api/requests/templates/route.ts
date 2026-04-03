@@ -6,6 +6,7 @@ import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
 import { z } from 'zod'
 import { RequestCategory } from '@prisma/client'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 
 const createTemplateSchema = z.object({
   name: z.string().min(1).max(100),
@@ -27,6 +28,11 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'VIEW_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     const { searchParams } = new URL(request.url)
@@ -77,14 +83,16 @@ export async function POST(request: NextRequest) {
       return csrfError
     }
 
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
+    if (permissionError) {
+      return permissionError
+    }
+
     const body = await request.json()
     const result = createTemplateSchema.safeParse(body)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error.errors[0].message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
     }
 
     const { name, content, category, isPublic } = result.data
@@ -128,6 +136,11 @@ export async function PATCH(request: NextRequest) {
       return csrfError
     }
 
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
+    if (permissionError) {
+      return permissionError
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -151,10 +164,7 @@ export async function PATCH(request: NextRequest) {
     const result = updateTemplateSchema.safeParse(body)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error.errors[0].message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
     }
 
     const template = await prisma.requestResponseTemplate.update({
@@ -189,6 +199,11 @@ export async function DELETE(request: NextRequest) {
     const csrfError = csrfGuard(request)
     if (csrfError) {
       return csrfError
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     const { searchParams } = new URL(request.url)

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
-import { hasPermission } from '@/lib/permissions'
+import { hasPermissionAsync } from '@/lib/permissions'
 import { resolveProfileAssetUrl } from '@/lib/profile-assets'
 import { logger } from '@/lib/logger.server'
+import { resolveRawStoredToken } from '@/lib/token'
 
 const emptyProfile = {
   bio: null,
@@ -106,10 +107,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const profile = user.profile ?? emptyProfile
-    const profileUpdatedAt = user.profile?.updatedAt ?? null
+    const storedProfile = (user.profile ?? null) as
+      | (NonNullable<typeof user.profile> & { publicProfileTokenEncrypted?: string | null })
+      | null
+    const profile = storedProfile ?? emptyProfile
+    const profileUpdatedAt = storedProfile?.updatedAt ?? null
     const isSelf = session.user.id === user.id
-    const isPrivileged = hasPermission(session.user.role, 'MANAGE_USERS')
+    const isPrivileged = await hasPermissionAsync(session.user.role, 'MANAGE_USERS')
 
     if (profile.visibility === 'PRIVATE' && !isSelf && !isPrivileged) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -122,8 +126,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const allowField = (flag: boolean | null | undefined) => (canViewAll ? true : flag === true)
 
+    const { publicProfileTokenEncrypted, ...safeProfile } = profile as typeof profile & {
+      publicProfileTokenEncrypted?: string | null
+    }
+
     const filteredProfile = {
-      ...profile,
+      ...safeProfile,
       bio: allowField(profile.publicBio) ? profile.bio : null,
       position: allowField(profile.publicPosition) ? profile.position : null,
       department: allowField(profile.publicDepartment) ? profile.department : null,
@@ -131,7 +139,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       timezone: allowField(profile.publicTimezone) ? profile.timezone : null,
       skills: allowField(profile.publicSkills) ? profile.skills : [],
       phone: canShowPhone ? profile.phone : null,
-      publicProfileToken: canViewAll ? profile.publicProfileToken : null,
+      publicProfileToken: canViewAll
+        ? resolveRawStoredToken(profile.publicProfileToken, publicProfileTokenEncrypted)
+        : null,
     }
     const normalizedProfile = {
       ...filteredProfile,

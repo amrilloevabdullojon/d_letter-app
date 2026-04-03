@@ -1,3 +1,7 @@
+/**
+ * @jest-environment node
+ */
+
 import { requirePermission } from '@/lib/permission-guard'
 
 describe('requirePermission', () => {

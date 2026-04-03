@@ -5,16 +5,14 @@ import { prisma } from '@/lib/prisma'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
 import { z } from 'zod'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 
 const updateTagsSchema = z.object({
   tagIds: z.array(z.string()),
 })
 
 // PUT /api/requests/:id/tags - обновить теги заявки
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const session = await getServerSession(authOptions)
@@ -25,6 +23,11 @@ export async function PUT(
     const csrfError = csrfGuard(request)
     if (csrfError) {
       return csrfError
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     const requestId = id
@@ -41,10 +44,7 @@ export async function PUT(
     const result = updateTagsSchema.safeParse(body)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error.errors[0].message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
     }
 
     const { tagIds } = result.data

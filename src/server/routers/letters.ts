@@ -9,13 +9,15 @@
  */
 
 import { z } from 'zod'
-import { router, publicProcedure, protectedProcedure } from '../trpc'
+import { router, letterManagerProcedure, letterViewerProcedure } from '../trpc'
 import { TRPCError } from '@trpc/server'
 import type { LetterStatus } from '@prisma/client'
 
 // Zod схемы для валидации
 const getLettersInputSchema = z.object({
-  status: z.enum(['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION', 'READY', 'DONE']).optional(),
+  status: z
+    .enum(['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION', 'READY', 'DONE'])
+    .optional(),
   search: z.string().optional(),
   ownerId: z.string().optional(),
   limit: z.number().min(1).max(100).default(50),
@@ -29,7 +31,9 @@ const createLetterInputSchema = z.object({
   deadlineDate: z.date(),
   content: z.string().optional(),
   type: z.string().optional(),
-  status: z.enum(['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION', 'READY', 'DONE']).default('NOT_REVIEWED'),
+  status: z
+    .enum(['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION', 'READY', 'DONE'])
+    .default('NOT_REVIEWED'),
   priority: z.number().min(0).max(100).default(50),
 })
 
@@ -39,7 +43,9 @@ const updateLetterInputSchema = z.object({
     number: z.string().optional(),
     org: z.string().optional(),
     content: z.string().optional(),
-    status: z.enum(['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION', 'READY', 'DONE']).optional(),
+    status: z
+      .enum(['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION', 'READY', 'DONE'])
+      .optional(),
     priority: z.number().min(0).max(100).optional(),
     answer: z.string().optional(),
     ownerId: z.string().optional(),
@@ -53,64 +59,62 @@ export const lettersRouter = router({
    * @example
    * const { data } = trpc.letters.getAll.useQuery({ status: 'IN_PROGRESS', limit: 10 })
    */
-  getAll: protectedProcedure
-    .input(getLettersInputSchema)
-    .query(async ({ ctx, input }) => {
-      const { status, search, ownerId, limit, cursor } = input
+  getAll: letterViewerProcedure.input(getLettersInputSchema).query(async ({ ctx, input }) => {
+    const { status, search, ownerId, limit, cursor } = input
 
-      const where: any = {
-        deletedAt: null,
-      }
+    const where: any = {
+      deletedAt: null,
+    }
 
-      if (status) {
-        where.status = status
-      }
+    if (status) {
+      where.status = status
+    }
 
-      if (ownerId) {
-        where.ownerId = ownerId
-      }
+    if (ownerId) {
+      where.ownerId = ownerId
+    }
 
-      if (search) {
-        where.OR = [
-          { number: { contains: search, mode: 'insensitive' } },
-          { org: { contains: search, mode: 'insensitive' } },
-          { content: { contains: search, mode: 'insensitive' } },
-        ]
-      }
+    if (search) {
+      where.OR = [
+        { number: { contains: search, mode: 'insensitive' } },
+        { org: { contains: search, mode: 'insensitive' } },
+        { content: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
-      const letters = await ctx.prisma.letter.findMany({
-        where,
-        take: limit + 1, // +1 для определения hasMore
-        cursor: cursor ? { id: cursor } : undefined,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          owner: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          _count: {
-            select: {
-              comments: true,
-              files: true,
-            },
+    const letters = await ctx.prisma.letter.findMany({
+      where,
+      take: limit + 1, // +1 для определения hasMore
+      cursor: cursor ? { id: cursor } : undefined,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-      })
+        _count: {
+          select: {
+            comments: true,
+            files: true,
+          },
+        },
+      },
+    })
 
-      let nextCursor: string | undefined = undefined
-      if (letters.length > limit) {
-        const nextItem = letters.pop()
-        nextCursor = nextItem!.id
-      }
+    let nextCursor: string | undefined = undefined
+    if (letters.length > limit) {
+      const nextItem = letters.pop()
+      nextCursor = nextItem!.id
+    }
 
-      return {
-        letters,
-        nextCursor,
-      }
-    }),
+    return {
+      letters,
+      nextCursor,
+    }
+  }),
 
   /**
    * Получить одно письмо по ID
@@ -118,7 +122,7 @@ export const lettersRouter = router({
    * @example
    * const { data } = trpc.letters.getById.useQuery({ id: 'letter-123' })
    */
-  getById: protectedProcedure
+  getById: letterViewerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const letter = await ctx.prisma.letter.findFirst({
@@ -181,37 +185,35 @@ export const lettersRouter = router({
    * const mutation = trpc.letters.create.useMutation()
    * mutation.mutate({ number: '123/2024', org: 'ООО Компания', ... })
    */
-  create: protectedProcedure
-    .input(createLetterInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const letter = await ctx.prisma.letter.create({
-        data: {
-          ...input,
-          ownerId: ctx.session.user.id,
-        },
-        include: {
-          owner: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+  create: letterManagerProcedure.input(createLetterInputSchema).mutation(async ({ ctx, input }) => {
+    const letter = await ctx.prisma.letter.create({
+      data: {
+        ...input,
+        ownerId: ctx.session.user.id,
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-      })
+      },
+    })
 
-      // Записать в историю
-      await ctx.prisma.history.create({
-        data: {
-          letterId: letter.id,
-          userId: ctx.session.user.id,
-          field: 'created',
-          newValue: `Письмо создано: ${letter.number}`,
-        },
-      })
+    // Записать в историю
+    await ctx.prisma.history.create({
+      data: {
+        letterId: letter.id,
+        userId: ctx.session.user.id,
+        field: 'created',
+        newValue: `Письмо создано: ${letter.number}`,
+      },
+    })
 
-      return letter
-    }),
+    return letter
+  }),
 
   /**
    * Обновить письмо
@@ -220,55 +222,53 @@ export const lettersRouter = router({
    * const mutation = trpc.letters.update.useMutation()
    * mutation.mutate({ id: 'letter-123', data: { status: 'DONE' } })
    */
-  update: protectedProcedure
-    .input(updateLetterInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { id, data } = input
+  update: letterManagerProcedure.input(updateLetterInputSchema).mutation(async ({ ctx, input }) => {
+    const { id, data } = input
 
-      // Проверить существование
-      const existing = await ctx.prisma.letter.findFirst({
-        where: { id, deletedAt: null },
+    // Проверить существование
+    const existing = await ctx.prisma.letter.findFirst({
+      where: { id, deletedAt: null },
+    })
+
+    if (!existing) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Письмо не найдено',
       })
+    }
 
-      if (!existing) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Письмо не найдено',
-        })
-      }
-
-      // Обновить
-      const updated = await ctx.prisma.letter.update({
-        where: { id },
-        data,
-        include: {
-          owner: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+    // Обновить
+    const updated = await ctx.prisma.letter.update({
+      where: { id },
+      data,
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-      })
+      },
+    })
 
-      // Записать изменения в историю
-      for (const [field, value] of Object.entries(data)) {
-        if (value !== undefined) {
-          await ctx.prisma.history.create({
-            data: {
-              letterId: id,
-              userId: ctx.session.user.id,
-              field,
-              oldValue: String((existing as any)[field] || ''),
-              newValue: String(value),
-            },
-          })
-        }
+    // Записать изменения в историю
+    for (const [field, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        await ctx.prisma.history.create({
+          data: {
+            letterId: id,
+            userId: ctx.session.user.id,
+            field,
+            oldValue: String((existing as any)[field] || ''),
+            newValue: String(value),
+          },
+        })
       }
+    }
 
-      return updated
-    }),
+    return updated
+  }),
 
   /**
    * Удалить письмо (soft delete)
@@ -277,7 +277,7 @@ export const lettersRouter = router({
    * const mutation = trpc.letters.delete.useMutation()
    * mutation.mutate({ id: 'letter-123' })
    */
-  delete: protectedProcedure
+  delete: letterManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const letter = await ctx.prisma.letter.update({
@@ -305,7 +305,7 @@ export const lettersRouter = router({
    * @example
    * const { data } = trpc.letters.stats.useQuery()
    */
-  stats: protectedProcedure.query(async ({ ctx }) => {
+  stats: letterViewerProcedure.query(async ({ ctx }) => {
     const [total, byStatus] = await Promise.all([
       ctx.prisma.letter.count({
         where: { deletedAt: null },
@@ -317,10 +317,13 @@ export const lettersRouter = router({
       }),
     ])
 
-    const statusCounts = byStatus.reduce((acc, item) => {
-      acc[item.status] = item._count
-      return acc
-    }, {} as Record<LetterStatus, number>)
+    const statusCounts = byStatus.reduce(
+      (acc, item) => {
+        acc[item.status] = item._count
+        return acc
+      },
+      {} as Record<LetterStatus, number>
+    )
 
     return {
       total,

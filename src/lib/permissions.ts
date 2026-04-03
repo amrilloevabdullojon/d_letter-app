@@ -45,42 +45,73 @@ const DEFAULT_ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 let permissionsCache: Record<Role, Permission[]> | null = null
 let cacheTimestamp = 0
 const CACHE_TTL = 60000 // 1 минута
+let permissionsLoadPromise: Promise<Record<Role, Permission[]>> | null = null
 
-/**
- * Получить разрешения для роли из БД или кэша
- */
-async function loadPermissions(): Promise<Record<Role, Permission[]>> {
-  const now = Date.now()
-  if (permissionsCache && now - cacheTimestamp < CACHE_TTL) {
+function canLoadPermissionsFromDatabase(): boolean {
+  return Boolean(process.env.DATABASE_URL)
+}
+
+function getFreshPermissionsCache(): Record<Role, Permission[]> | null {
+  if (!permissionsCache) return null
+  if (Date.now() - cacheTimestamp < CACHE_TTL) {
     return permissionsCache
   }
 
-  // ИСПРАВЛЕНИЕ: загружаем разрешения из БД
+  permissionsCache = null
+  cacheTimestamp = 0
+  return null
+}
+
+function cloneDefaultPermissions(): Record<Role, Permission[]> {
+  return Object.fromEntries(
+    Object.entries(DEFAULT_ROLE_PERMISSIONS).map(([role, permissions]) => [role, [...permissions]])
+  ) as Record<Role, Permission[]>
+}
+
+async function loadPermissionsFromSource(): Promise<Record<Role, Permission[]>> {
+  const cached = getFreshPermissionsCache()
+  if (cached) {
+    return cached
+  }
+
+  if (!canLoadPermissionsFromDatabase()) {
+    const fallback = cloneDefaultPermissions()
+    permissionsCache = fallback
+    cacheTimestamp = Date.now()
+    return fallback
+  }
+
+  // ИСПРАВЛЕНИЕ: загружаем разрешения из БД с учетом enabled=true/false
   try {
     const { prisma } = await import('@/lib/prisma')
     const dbPermissions = await prisma.rolePermission.findMany({
       select: {
         role: true,
         permission: true,
+        enabled: true,
       },
     })
 
-    // Если есть записи в БД, используем их
     if (dbPermissions.length > 0) {
-      const permissions: Record<Role, Permission[]> = { ...DEFAULT_ROLE_PERMISSIONS }
+      const permissions = cloneDefaultPermissions()
 
-      // Группируем разрешения по ролям
-      for (const { role, permission } of dbPermissions) {
-        if (!permissions[role]) {
-          permissions[role] = []
+      for (const { role, permission, enabled } of dbPermissions) {
+        if (role === 'SUPERADMIN') {
+          continue
         }
-        if (!permissions[role].includes(permission as Permission)) {
-          permissions[role].push(permission as Permission)
+
+        const rolePermissions = new Set(permissions[role] ?? [])
+        if (enabled) {
+          rolePermissions.add(permission as Permission)
+        } else {
+          rolePermissions.delete(permission as Permission)
         }
+        permissions[role] = [...rolePermissions]
       }
 
+      permissions.SUPERADMIN = [...DEFAULT_ROLE_PERMISSIONS.SUPERADMIN]
       permissionsCache = permissions
-      cacheTimestamp = now
+      cacheTimestamp = Date.now()
       return permissions
     }
   } catch (error) {
@@ -88,10 +119,23 @@ async function loadPermissions(): Promise<Record<Role, Permission[]>> {
     console.error('Failed to load permissions from DB:', error)
   }
 
-  // Используем дефолтные разрешения как fallback
-  permissionsCache = DEFAULT_ROLE_PERMISSIONS
-  cacheTimestamp = now
-  return DEFAULT_ROLE_PERMISSIONS
+  const fallback = cloneDefaultPermissions()
+  permissionsCache = fallback
+  cacheTimestamp = Date.now()
+  return fallback
+}
+
+/**
+ * Получить разрешения для роли из БД или кэша
+ */
+async function loadPermissions(): Promise<Record<Role, Permission[]>> {
+  if (!permissionsLoadPromise) {
+    permissionsLoadPromise = loadPermissionsFromSource().finally(() => {
+      permissionsLoadPromise = null
+    })
+  }
+
+  return permissionsLoadPromise
 }
 
 /**
@@ -100,6 +144,7 @@ async function loadPermissions(): Promise<Record<Role, Permission[]>> {
 export function invalidatePermissionsCache() {
   permissionsCache = null
   cacheTimestamp = 0
+  permissionsLoadPromise = null
 }
 
 /**
@@ -111,12 +156,15 @@ export const hasPermission = (role: Role | null | undefined, permission: Permiss
   // SUPERADMIN всегда имеет все разрешения
   if (role === 'SUPERADMIN') return true
 
-  // Если кэш доступен - используем его
-  if (permissionsCache) {
-    return permissionsCache[role]?.includes(permission) ?? false
+  const cached = getFreshPermissionsCache()
+  if (cached) {
+    return cached[role]?.includes(permission) ?? false
   }
 
-  // Иначе используем дефолтные разрешения
+  // Для sync-вызовов в UI используем последнюю известную snapshot-модель и запускаем фоновое обновление.
+  if (canLoadPermissionsFromDatabase()) {
+    void loadPermissions()
+  }
   return DEFAULT_ROLE_PERMISSIONS[role]?.includes(permission) ?? false
 }
 
@@ -142,12 +190,14 @@ export const hasPermissionAsync = async (
 export const getRolePermissions = (role: Role | null | undefined): Permission[] => {
   if (!role) return []
 
-  // Если кэш доступен - используем его
-  if (permissionsCache) {
-    return permissionsCache[role] ?? []
+  const cached = getFreshPermissionsCache()
+  if (cached) {
+    return cached[role] ?? []
   }
 
-  // Иначе используем дефолтные разрешения
+  if (canLoadPermissionsFromDatabase()) {
+    void loadPermissions()
+  }
   return DEFAULT_ROLE_PERMISSIONS[role] ?? []
 }
 
@@ -170,5 +220,3 @@ export const getDefaultPermissions = (role: Role | null | undefined): Permission
   if (!role) return []
   return DEFAULT_ROLE_PERMISSIONS[role] ?? []
 }
-
-

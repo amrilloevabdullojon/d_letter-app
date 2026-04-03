@@ -13,7 +13,12 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^server-only$': '<rootDir>/src/lib/__tests__/server-only.ts',
   },
-  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/'],
+  testPathIgnorePatterns: [
+    '<rootDir>/node_modules/',
+    '<rootDir>/.next/',
+    '<rootDir>/src/app/api/__tests__/test-utils.ts',
+    '<rootDir>/src/lib/__tests__/server-only.ts',
+  ],
   collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}', '!src/**/*.d.ts', '!src/**/types/**'],
   coverageThreshold: {
     global: {

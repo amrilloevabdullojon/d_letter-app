@@ -1,3 +1,7 @@
+jest.mock('@/lib/redis', () => ({
+  getRedisClient: jest.fn(() => null),
+}))
+
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '../rate-limit'
 
 describe('checkRateLimit', () => {

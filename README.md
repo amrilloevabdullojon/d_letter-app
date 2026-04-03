@@ -24,6 +24,7 @@
 ## ✨ Features
 
 ### Core Functionality
+
 - 📨 **Letter Management**: Create, edit, track, and manage official correspondence
 - 🔄 **Status Tracking**: Monitor letter execution status with real-time updates
 - 💬 **Comments & Collaboration**: Thread-based commenting system with replies
@@ -35,6 +36,7 @@
 - 📊 **Statistics Dashboard**: Real-time analytics and reporting
 
 ### Integration & Automation
+
 - 🔗 **Google Sheets Sync**: Bidirectional sync with Google Sheets
 - ☁️ **Google Drive Storage**: Automatic file backup to Google Drive
 - 🤖 **Telegram Bot**: Real-time notifications via Telegram
@@ -43,6 +45,7 @@
 - 📱 **SMS Integration**: SMS notifications for critical updates
 
 ### Security & Monitoring
+
 - 🔒 **NextAuth.js**: Secure OAuth 2.0 authentication with Google
 - 🛡️ **CSRF Protection**: Built-in CSRF token validation
 - ⚡ **Rate Limiting**: API rate limiting with Redis/in-memory fallback
@@ -51,6 +54,7 @@
 - 🏥 **Health Checks**: Comprehensive health monitoring endpoints
 
 ### Performance & Quality
+
 - ⚡ **Optimized Queries**: N+1 query prevention with pagination
 - 💾 **Redis Caching**: Optional Redis for session and rate limit storage
 - 🎯 **Type Safety**: Full TypeScript coverage with strict mode
@@ -60,6 +64,7 @@
 ## 🛠 Tech Stack
 
 ### Frontend
+
 - **Framework**: [Next.js 16.1.1](https://nextjs.org/) (App Router)
 - **UI Library**: [React 19.2.3](https://react.dev/)
 - **Styling**: [Tailwind CSS 3.4.1](https://tailwindcss.com/)
@@ -69,6 +74,7 @@
 - **Tables**: [TanStack Table 8.21](https://tanstack.com/table)
 
 ### Backend
+
 - **Runtime**: Node.js 20+
 - **Database**: PostgreSQL 14+
 - **ORM**: [Prisma 5.22](https://www.prisma.io/)
@@ -77,6 +83,7 @@
 - **Validation**: [Zod 3.24](https://zod.dev/)
 
 ### Infrastructure
+
 - **Deployment**: [Vercel](https://vercel.com/)
 - **Database Hosting**: Railway / Neon / Supabase
 - **Storage**: Google Drive API
@@ -85,6 +92,7 @@
 - **CI/CD**: GitHub Actions
 
 ### Integrations
+
 - **Google APIs**: Sheets, Drive, OAuth
 - **Telegram Bot API**: Real-time notifications
 - **Gemini AI**: Document parsing
@@ -175,8 +183,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 1. Click "Sign in with Google"
 2. Authorize with your Google account
-3. First user becomes SUPERADMIN automatically
-4. Configure additional settings in Profile
+3. Sign-in is allowed only for users already provisioned in the `User` table
+4. Create the first administrator manually via seed/import/admin tooling before the first OAuth login
+5. Configure additional settings in Profile
 
 ## 🔑 Environment Variables
 
@@ -275,7 +284,7 @@ PRISMA_LOG_QUERIES="false"
    - Share with Service Account email
    - Grant "Editor" permission
    - Copy Sheet ID from URL: `https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit`
-</details>
+   </details>
 
 <details>
 <summary><strong>Telegram Bot Setup (Click to expand)</strong></summary>
@@ -287,7 +296,7 @@ PRISMA_LOG_QUERIES="false"
    - Send a message to your bot
    - Visit: `https://api.telegram.org/bot{YOUR_BOT_TOKEN}/getUpdates`
    - Find `"chat":{"id":123456}` in response
-</details>
+   </details>
 
 ## 💻 Development
 
@@ -320,21 +329,25 @@ npm run db:seed          # Seed database with sample data
 ### Database Management
 
 **Create a new migration:**
+
 ```bash
 npx prisma migrate dev --name descriptive_name
 ```
 
 **Apply migrations to production:**
+
 ```bash
 npx prisma migrate deploy
 ```
 
 **Reset database (WARNING: deletes all data):**
+
 ```bash
 npx prisma migrate reset
 ```
 
 **Open Prisma Studio (database GUI):**
+
 ```bash
 npm run db:studio
 ```
@@ -342,6 +355,7 @@ npm run db:studio
 ### Code Style
 
 This project uses:
+
 - **ESLint** for linting
 - **Prettier** for code formatting
 - **Husky** for git hooks
@@ -352,11 +366,13 @@ Code is automatically formatted on commit via git hooks.
 ### Testing
 
 Run tests with coverage:
+
 ```bash
 npm run test:coverage
 ```
 
 Coverage thresholds are enforced in CI:
+
 - **Branches**: 50%
 - **Functions**: 50%
 - **Lines**: 50%
@@ -367,21 +383,25 @@ Coverage thresholds are enforced in CI:
 ### Deploy to Vercel (Recommended)
 
 1. **Install Vercel CLI:**
+
 ```bash
 npm i -g vercel
 ```
 
 2. **Login to Vercel:**
+
 ```bash
 vercel login
 ```
 
 3. **Link project:**
+
 ```bash
 vercel link
 ```
 
 4. **Set environment variables:**
+
 ```bash
 vercel env add DATABASE_URL production
 vercel env add NEXTAUTH_SECRET production
@@ -389,6 +409,7 @@ vercel env add NEXTAUTH_SECRET production
 ```
 
 5. **Deploy:**
+
 ```bash
 vercel --prod
 ```

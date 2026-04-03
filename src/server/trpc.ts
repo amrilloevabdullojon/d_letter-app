@@ -12,7 +12,7 @@ import { type NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { hasPermission as checkPermission, type Permission } from '@/lib/permissions'
+import { hasPermissionAsync, type Permission } from '@/lib/permissions'
 import superjson from 'superjson'
 import type { Session } from 'next-auth'
 
@@ -80,7 +80,7 @@ export const requirePermission = (permission: Permission) =>
 
     const userRole = ctx.session.user.role
 
-    if (!checkPermission(userRole, permission)) {
+    if (!(await hasPermissionAsync(userRole, permission))) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: `Permission denied: ${permission}`,
@@ -120,20 +120,29 @@ export const adminProcedure = protectedProcedure.use(
 /**
  * Процедура с проверкой прав на управление письмами
  */
-export const letterManagerProcedure = protectedProcedure.use(
-  requirePermission('MANAGE_LETTERS')
-)
+export const letterManagerProcedure = protectedProcedure.use(requirePermission('MANAGE_LETTERS'))
+
+/**
+ * Процедура с проверкой прав на просмотр писем
+ */
+export const letterViewerProcedure = protectedProcedure.use(requirePermission('VIEW_LETTERS'))
 
 /**
  * Процедура с проверкой прав на просмотр отчётов
  */
-export const reportViewerProcedure = protectedProcedure.use(
-  requirePermission('VIEW_REPORTS')
-)
+export const reportViewerProcedure = protectedProcedure.use(requirePermission('VIEW_REPORTS'))
+
+/**
+ * Процедура с проверкой прав на просмотр заявок
+ */
+export const requestViewerProcedure = protectedProcedure.use(requirePermission('VIEW_REQUESTS'))
+
+/**
+ * Процедура с проверкой прав на управление заявками
+ */
+export const requestManagerProcedure = protectedProcedure.use(requirePermission('MANAGE_REQUESTS'))
 
 /**
  * Процедура с проверкой прав на управление пользователями
  */
-export const userManagerProcedure = protectedProcedure.use(
-  requirePermission('MANAGE_USERS')
-)
+export const userManagerProcedure = protectedProcedure.use(requirePermission('MANAGE_USERS'))

@@ -137,7 +137,6 @@ export const CSRF_PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE']
 export const CSRF_EXCLUDED_PATHS = [
   '/api/auth', // NextAuth handles its own CSRF
   '/api/health',
-  '/api/requests', // Public intake form uses captcha + rate limits
   '/api/webhook', // Webhooks use signatures
 ]
 

@@ -6,6 +6,7 @@ import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
 import { z } from 'zod'
 import { invalidateRequestsCache } from '@/lib/list-cache'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 
 const createTagSchema = z.object({
   name: z.string().min(1).max(50),
@@ -29,6 +30,11 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'VIEW_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     const tags = await prisma.requestTag.findMany({
@@ -58,6 +64,11 @@ export async function POST(request: NextRequest) {
     const csrfError = csrfGuard(request)
     if (csrfError) {
       return csrfError
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     const body = await request.json()
@@ -107,6 +118,11 @@ export async function PATCH(request: NextRequest) {
     const csrfError = csrfGuard(request)
     if (csrfError) {
       return csrfError
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     const { searchParams } = new URL(request.url)
@@ -172,6 +188,11 @@ export async function DELETE(request: NextRequest) {
     const csrfError = csrfGuard(request)
     if (csrfError) {
       return csrfError
+    }
+
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
+    if (permissionError) {
+      return permissionError
     }
 
     const { searchParams } = new URL(request.url)

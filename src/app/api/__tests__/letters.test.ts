@@ -1,4 +1,6 @@
 /**
+ * @jest-environment node
+ *
  * Letters API Tests
  */
 

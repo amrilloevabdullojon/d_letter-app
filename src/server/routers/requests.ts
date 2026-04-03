@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod'
-import { router, publicProcedure, protectedProcedure } from '../trpc'
+import { router, requestManagerProcedure, requestViewerProcedure } from '../trpc'
 import { TRPCError } from '@trpc/server'
 import { sendNotification } from '@/lib/notifications'
 import type { RequestStatus, RequestPriority, RequestCategory } from '@prisma/client'
@@ -55,7 +55,7 @@ export const requestsRouter = router({
   /**
    * Получить список заявок
    */
-  getAll: protectedProcedure.input(getRequestsInputSchema).query(async ({ ctx, input }) => {
+  getAll: requestViewerProcedure.input(getRequestsInputSchema).query(async ({ ctx, input }) => {
     const { status, priority, category, assignedToId, search, limit, cursor } = input
 
     const where: any = {
@@ -124,233 +124,241 @@ export const requestsRouter = router({
   /**
    * Получить заявку по ID
    */
-  getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
-    const request = await ctx.prisma.request.findFirst({
-      where: {
-        id: input.id,
-        deletedAt: null,
-      },
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
+  getById: requestViewerProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const request = await ctx.prisma.request.findFirst({
+        where: {
+          id: input.id,
+          deletedAt: null,
         },
-        files: true,
-        comments: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              },
+        include: {
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
             },
           },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-        history: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
+          files: true,
+          comments: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
               },
             },
+            orderBy: {
+              createdAt: 'desc',
+            },
           },
-          orderBy: {
-            createdAt: 'desc',
+          history: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 20,
           },
-          take: 20,
         },
-      },
-    })
-
-    if (!request) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Заявка не найдена',
       })
-    }
 
-    return request
-  }),
+      if (!request) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Заявка не найдена',
+        })
+      }
+
+      return request
+    }),
 
   /**
-   * Создать заявку (публичный endpoint)
+   * Создать заявку (внутренний endpoint для сотрудников)
    */
-  create: publicProcedure.input(createRequestInputSchema).mutation(async ({ ctx, input }) => {
-    // Создать заявку
-    const request = await ctx.prisma.request.create({
-      data: {
-        ...input,
-        status: 'NEW',
-        priority: 'NORMAL',
-      },
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+  create: requestManagerProcedure
+    .input(createRequestInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Создать заявку
+      const request = await ctx.prisma.request.create({
+        data: {
+          ...input,
+          status: 'NEW',
+          priority: 'NORMAL',
+        },
+        include: {
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
         },
-      },
-    })
-
-    // Отправить уведомления админам о новой заявке
-    try {
-      const admins = await ctx.prisma.user.findMany({
-        where: {
-          role: { in: ['ADMIN', 'SUPERADMIN'] },
-          canLogin: true,
-        },
-        select: { id: true },
       })
 
-      await Promise.all(
-        admins.map((admin) =>
-          sendNotification({
-            userId: admin.id,
-            type: 'SYSTEM',
-            title: 'Новая заявка',
-            message: `Поступила новая заявка от ${input.organization}`,
-            link: `/requests/${request.id}`,
-          }).catch((err) => {
-            console.error('Failed to send notification to admin:', admin.id, err)
-          })
-        )
-      )
-    } catch (notifyError) {
-      // Не прерываем процесс если уведомления не отправились
-      console.error('Failed to notify admins about new request:', notifyError)
-    }
+      // Отправить уведомления админам о новой заявке
+      try {
+        const admins = await ctx.prisma.user.findMany({
+          where: {
+            role: { in: ['ADMIN', 'SUPERADMIN'] },
+            canLogin: true,
+          },
+          select: { id: true },
+        })
 
-    return request
-  }),
+        await Promise.all(
+          admins.map((admin) =>
+            sendNotification({
+              userId: admin.id,
+              type: 'SYSTEM',
+              title: 'Новая заявка',
+              message: `Поступила новая заявка от ${input.organization}`,
+              link: `/requests/${request.id}`,
+            }).catch((err) => {
+              console.error('Failed to send notification to admin:', admin.id, err)
+            })
+          )
+        )
+      } catch (notifyError) {
+        // Не прерываем процесс если уведомления не отправились
+        console.error('Failed to notify admins about new request:', notifyError)
+      }
+
+      return request
+    }),
 
   /**
    * Обновить заявку
    */
-  update: protectedProcedure.input(updateRequestInputSchema).mutation(async ({ ctx, input }) => {
-    if (!ctx.session?.user) {
-      throw new TRPCError({ code: 'UNAUTHORIZED' })
-    }
+  update: requestManagerProcedure
+    .input(updateRequestInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.session?.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' })
+      }
 
-    const { id, data } = input
+      const { id, data } = input
 
-    // Проверить существование
-    const existing = await ctx.prisma.request.findFirst({
-      where: { id, deletedAt: null },
-    })
-
-    if (!existing) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Заявка не найдена',
+      // Проверить существование
+      const existing = await ctx.prisma.request.findFirst({
+        where: { id, deletedAt: null },
       })
-    }
 
-    // Обновить
-    const updated = await ctx.prisma.request.update({
-      where: { id },
-      data,
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
-
-    // Записать изменения в историю
-    for (const [field, value] of Object.entries(data)) {
-      if (value !== undefined) {
-        await ctx.prisma.requestHistory.create({
-          data: {
-            requestId: id,
-            userId: ctx.session.user.id,
-            field,
-            oldValue: String((existing as any)[field] || ''),
-            newValue: String(value),
-          },
+      if (!existing) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Заявка не найдена',
         })
       }
-    }
 
-    return updated
-  }),
+      // Обновить
+      const updated = await ctx.prisma.request.update({
+        where: { id },
+        data,
+        include: {
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      })
+
+      // Записать изменения в историю
+      for (const [field, value] of Object.entries(data)) {
+        if (value !== undefined) {
+          await ctx.prisma.requestHistory.create({
+            data: {
+              requestId: id,
+              userId: ctx.session.user.id,
+              field,
+              oldValue: String((existing as any)[field] || ''),
+              newValue: String(value),
+            },
+          })
+        }
+      }
+
+      return updated
+    }),
 
   /**
    * Добавить комментарий к заявке
    */
-  addComment: protectedProcedure.input(addCommentInputSchema).mutation(async ({ ctx, input }) => {
-    if (!ctx.session?.user) {
-      throw new TRPCError({ code: 'UNAUTHORIZED' })
-    }
+  addComment: requestManagerProcedure
+    .input(addCommentInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.session?.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' })
+      }
 
-    const { requestId, text } = input
+      const { requestId, text } = input
 
-    // Проверить существование заявки
-    const request = await ctx.prisma.request.findFirst({
-      where: { id: requestId, deletedAt: null },
-    })
-
-    if (!request) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Заявка не найдена',
+      // Проверить существование заявки
+      const request = await ctx.prisma.request.findFirst({
+        where: { id: requestId, deletedAt: null },
       })
-    }
 
-    // Создать комментарий
-    const comment = await ctx.prisma.requestComment.create({
-      data: {
-        requestId,
-        authorId: ctx.session.user.id,
-        text,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
+      if (!request) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Заявка не найдена',
+        })
+      }
+
+      // Создать комментарий
+      const comment = await ctx.prisma.requestComment.create({
+        data: {
+          requestId,
+          authorId: ctx.session.user.id,
+          text,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
           },
         },
-      },
-    })
+      })
 
-    // Отправить уведомление назначенному сотруднику о новом комментарии
-    if (request.assignedToId && request.assignedToId !== ctx.session.user.id) {
-      try {
-        await sendNotification({
-          userId: request.assignedToId,
-          type: 'COMMENT',
-          title: 'Новый комментарий к заявке',
-          message: `${ctx.session.user.name || 'Пользователь'} оставил комментарий к заявке`,
-          link: `/requests/${requestId}`,
-        })
-      } catch (notifyError) {
-        console.error('Failed to send comment notification:', notifyError)
+      // Отправить уведомление назначенному сотруднику о новом комментарии
+      if (request.assignedToId && request.assignedToId !== ctx.session.user.id) {
+        try {
+          await sendNotification({
+            userId: request.assignedToId,
+            type: 'COMMENT',
+            title: 'Новый комментарий к заявке',
+            message: `${ctx.session.user.name || 'Пользователь'} оставил комментарий к заявке`,
+            link: `/requests/${requestId}`,
+          })
+        } catch (notifyError) {
+          console.error('Failed to send comment notification:', notifyError)
+        }
       }
-    }
 
-    return comment
-  }),
+      return comment
+    }),
 
   /**
    * Удалить заявку (soft delete)
    */
-  delete: protectedProcedure
+  delete: requestManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.session?.user) {
@@ -379,7 +387,7 @@ export const requestsRouter = router({
   /**
    * Получить статистику по заявкам
    */
-  stats: protectedProcedure.query(async ({ ctx }) => {
+  stats: requestViewerProcedure.query(async ({ ctx }) => {
     const [total, byStatus, byPriority, byCategory] = await Promise.all([
       ctx.prisma.request.count({
         where: { deletedAt: null },

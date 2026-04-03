@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
 import { idParamSchema, updateRequestSchema } from '@/lib/schemas'
 import { logger } from '@/lib/logger.server'
-import { requirePermission } from '@/lib/permission-guard'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 import { formatRequestStatusChangeMessage, sendTelegramMessage } from '@/lib/telegram'
 import { csrfGuard } from '@/lib/security'
 import type { Prisma } from '@prisma/client'
@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const permissionError = requirePermission(session.user.role, 'VIEW_REQUESTS')
+    const permissionError = await requirePermissionAsync(session.user.role, 'VIEW_REQUESTS')
     if (permissionError) {
       return permissionError
     }
@@ -73,7 +73,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return csrfError
     }
 
-    const permissionError = requirePermission(session.user.role, 'MANAGE_REQUESTS')
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
     if (permissionError) {
       return permissionError
     }
@@ -302,7 +302,7 @@ export async function DELETE(
     }
 
     // Только админы могут удалять заявки
-    const permissionError = requirePermission(session.user.role, 'MANAGE_REQUESTS')
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_REQUESTS')
     if (permissionError) {
       return permissionError
     }

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger.server'
-import { requirePermission } from '@/lib/permission-guard'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 
 // GET /api/requests/[id]/history - история изменений заявки
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,7 +14,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const permissionError = requirePermission(session.user.role, 'VIEW_REQUESTS')
+    const permissionError = await requirePermissionAsync(session.user.role, 'VIEW_REQUESTS')
     if (permissionError) {
       return permissionError
     }

@@ -1,3 +1,7 @@
+/**
+ * @jest-environment node
+ */
+
 import { csrfGuard, isValidCsrfRequest } from '@/lib/security'
 import type { NextRequest } from 'next/server'
 
@@ -31,6 +35,11 @@ describe('csrf', () => {
   it('skips excluded paths', () => {
     const request = createRequest({ method: 'POST', path: '/api/auth/callback' })
     expect(isValidCsrfRequest(request)).toBe(true)
+  })
+
+  it('does not skip nested request routes', () => {
+    const request = createRequest({ method: 'PATCH', path: '/api/requests/request-123' })
+    expect(isValidCsrfRequest(request)).toBe(false)
   })
 
   it('validates matching header and cookie', () => {
