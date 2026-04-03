@@ -2,15 +2,37 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { calculateDeadline } from '@/lib/parsePdfLetter'
-import { extractLetterDataFromPdf, translateToRussian } from '@/lib/ai'
+import { extractLetterDataFromPdf } from '@/lib/ai'
 import { withTimeout } from '@/lib/ai-utils'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
 import { parseDateValue } from '@/lib/utils'
-import { DEFAULT_DEADLINE_WORKING_DAYS } from '@/lib/constants'
+import {
+  AI_PARSE_ALLOWED_FILE_EXTENSIONS,
+  AI_PARSE_ALLOWED_FILE_TYPES,
+  AI_PARSE_MAX_FILE_SIZE,
+  AI_PARSE_MAX_FILE_SIZE_LABEL,
+  DEFAULT_DEADLINE_WORKING_DAYS,
+} from '@/lib/constants'
+import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit'
+import { requirePermissionAsync } from '@/lib/permission-guard'
 
 export async function POST(request: NextRequest) {
   try {
+    const clientId = getClientIdentifier(request.headers)
+    const rateLimitResult = await checkRateLimit(
+      `${clientId}:/api/parse-pdf:POST`,
+      RATE_LIMITS.heavy.limit,
+      RATE_LIMITS.heavy.windowMs
+    )
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Слишком много AI-запросов. Попробуйте чуть позже.' },
+        { status: 429 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
@@ -21,6 +43,11 @@ export async function POST(request: NextRequest) {
       return csrfError
     }
 
+    const permissionError = await requirePermissionAsync(session.user.role, 'MANAGE_LETTERS')
+    if (permissionError) {
+      return permissionError
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
 
@@ -28,8 +55,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Файл не предоставлен' }, { status: 400 })
     }
 
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      return NextResponse.json({ error: 'Файл должен быть в формате PDF' }, { status: 400 })
+    if (file.size > AI_PARSE_MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `PDF слишком большой для AI-анализа. Максимум ${AI_PARSE_MAX_FILE_SIZE_LABEL}.` },
+        { status: 400 }
+      )
+    }
+
+    const hasPdfExtension = file.name.toLowerCase().endsWith('.pdf')
+    const hasAllowedMime =
+      file.type.length === 0 ||
+      AI_PARSE_ALLOWED_FILE_TYPES.includes(
+        file.type as (typeof AI_PARSE_ALLOWED_FILE_TYPES)[number]
+      )
+
+    if (!hasPdfExtension || !hasAllowedMime) {
+      return NextResponse.json(
+        {
+          error: `Для AI-анализа поддерживаются только PDF файлы (${AI_PARSE_ALLOWED_FILE_EXTENSIONS}).`,
+        },
+        { status: 400 }
+      )
     }
 
     // Читаем файл как base64
@@ -76,12 +122,6 @@ export async function POST(request: NextRequest) {
       return match ? match[1] : trimmed
     }
 
-    const translateIfNeeded = async (value: string | null) => {
-      if (!value) return null
-      if (!/[A-Za-z]/.test(value)) return value
-      return (await translateToRussian(value)) || value
-    }
-
     // Объединяем данные (приоритет: AI > filename)
     const number = normalizeNumber(aiData?.number || filenameData.number || null)
     const dateStr = aiData?.date || null
@@ -98,14 +138,9 @@ export async function POST(request: NextRequest) {
     // Дедлайн +7 рабочих дней
     const deadline = finalDate ? calculateDeadline(finalDate, DEFAULT_DEADLINE_WORKING_DAYS) : null
 
-    // ✅ ОПТИМИЗАЦИЯ: Параллельное выполнение переводов вместо последовательного
-    // Было: 3 последовательных await (~600ms)
-    // Стало: Promise.all (~200ms)
-    const [organization, region, district] = await Promise.all([
-      translateIfNeeded(aiData?.organization || null),
-      translateIfNeeded(aiData?.region || null),
-      translateIfNeeded(aiData?.district || null),
-    ])
+    const organization = aiData?.organization || null
+    const region = aiData?.region || null
+    const district = aiData?.district || null
 
     return NextResponse.json({
       success: true,

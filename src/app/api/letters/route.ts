@@ -1,48 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { FileStatus, FileStorageProvider } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
-import { addWorkingDays, parseDateValue, sanitizeInput } from '@/lib/utils'
+import { addWorkingDays, sanitizeInput } from '@/lib/utils'
 import { buildApplicantPortalLink, sendMultiChannelNotification } from '@/lib/notifications'
 import { dispatchNotification } from '@/lib/notification-dispatcher'
 import { logger } from '@/lib/logger.server'
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit'
 import { withValidation } from '@/lib/api-handler'
-import { letterFiltersSchema, paginationSchema } from '@/lib/schemas'
-import { PORTAL_TOKEN_EXPIRY_DAYS, DEFAULT_DEADLINE_WORKING_DAYS } from '@/lib/constants'
+import {
+  createLetterSchema,
+  letterFiltersSchema,
+  paginationSchema,
+  quickLetterAiMetadataSchema,
+} from '@/lib/schemas'
+import {
+  ALLOWED_FILE_TYPES,
+  MAX_FILE_SIZE,
+  PORTAL_TOKEN_EXPIRY_DAYS,
+  DEFAULT_DEADLINE_WORKING_DAYS,
+} from '@/lib/constants'
 import { CACHE_TTL } from '@/lib/cache'
 import { getLettersListCached, invalidateLettersCache } from '@/lib/list-cache'
 import { requirePermission } from '@/lib/permission-guard'
 import { csrfGuard } from '@/lib/security'
 import { generatePortalToken } from '@/lib/token'
+import { deleteLocalFile, saveLocalUpload } from '@/lib/file-storage'
+import { syncFileToDrive } from '@/lib/file-sync'
 import { z } from 'zod'
 import type { LetterSummary, PaginationMeta } from '@/types/dto'
-
-// Схема валидации для создания письма
-const createLetterSchema = z.object({
-  number: z.string().min(1, 'Номер письма обязателен').max(50),
-  org: z.string().min(1, 'Организация обязательна').max(500),
-  date: z
-    .string()
-    .refine((val) => parseDateValue(val), { message: 'Invalid date' })
-    .transform((val) => parseDateValue(val) as Date),
-  deadlineDate: z
-    .string()
-    .optional()
-    .refine((val) => !val || parseDateValue(val), { message: 'Invalid deadline date' })
-    .transform((val) => (val ? (parseDateValue(val) as Date) : null)),
-  type: z.string().optional(),
-  content: z.string().max(10000).optional(),
-  comment: z.string().max(5000).optional(),
-  contacts: z.string().max(500).optional(),
-  jiraLink: z.string().max(500).optional(),
-  ownerId: z.string().optional(),
-  priority: z.number().int().min(0).max(100).optional(),
-  applicantName: z.string().max(200).optional(),
-  applicantEmail: z.string().max(320).optional(),
-  applicantPhone: z.string().max(50).optional(),
-  applicantTelegramChatId: z.string().max(50).optional(),
-})
 
 const lettersQuerySchema = paginationSchema.merge(letterFiltersSchema)
 
@@ -50,6 +37,226 @@ type LettersQueryInput = z.infer<typeof lettersQuerySchema>
 type LettersListResponse =
   | { letters: LetterSummary[]; pagination: PaginationMeta }
   | { error: string }
+
+type CreateLetterPayload = z.infer<typeof createLetterSchema>
+
+const UPLOAD_STRATEGY = process.env.FILE_UPLOAD_STRATEGY || 'async'
+const ENABLE_ASYNC_SYNC = process.env.FILE_SYNC_ASYNC !== 'false'
+
+function readFormValue(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key)
+  return typeof value === 'string' ? value : undefined
+}
+
+function appendCommentSection(sections: string[], label: string, value?: string) {
+  const trimmed = value?.trim()
+  if (!trimmed) return
+  sections.push(`${label}:\n${trimmed}`)
+}
+
+function buildQuickImportComment(
+  baseComment: string | undefined,
+  metadata: z.infer<typeof quickLetterAiMetadataSchema>
+): string | undefined {
+  const sections: string[] = []
+  const existingComment = baseComment?.trim()
+
+  if (existingComment) {
+    sections.push(existingComment)
+  }
+
+  const location = [metadata.region?.trim(), metadata.district?.trim()].filter(Boolean).join(', ')
+  if (location) {
+    sections.push(`AI-извлечение: регион и район — ${location}`)
+  }
+
+  appendCommentSection(sections, 'AI-перевод письма', metadata.contentRussian)
+
+  if (sections.length === 0) {
+    return undefined
+  }
+
+  const combined = sections.join('\n\n')
+  if (combined.length <= 5000) {
+    return combined
+  }
+
+  return `${combined.slice(0, 4950).trimEnd()}\n\n[AI-перевод сокращён]`
+}
+
+async function parseCreateLetterRequest(
+  request: NextRequest
+): Promise<
+  | { success: true; data: CreateLetterPayload; file: File | null }
+  | { success: false; response: NextResponse<{ error: string }> }
+> {
+  const contentType = request.headers.get('content-type') || ''
+
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await request.formData()
+    const rawPayload = {
+      number: readFormValue(formData, 'number'),
+      org: readFormValue(formData, 'org'),
+      date: readFormValue(formData, 'date'),
+      deadlineDate: readFormValue(formData, 'deadlineDate'),
+      type: readFormValue(formData, 'type'),
+      content: readFormValue(formData, 'content'),
+      comment: readFormValue(formData, 'comment'),
+      contacts: readFormValue(formData, 'contacts'),
+      jiraLink: readFormValue(formData, 'jiraLink'),
+      ownerId: readFormValue(formData, 'ownerId'),
+      priority: readFormValue(formData, 'priority'),
+      applicantName: readFormValue(formData, 'applicantName'),
+      applicantEmail: readFormValue(formData, 'applicantEmail'),
+      applicantPhone: readFormValue(formData, 'applicantPhone'),
+      applicantTelegramChatId: readFormValue(formData, 'applicantTelegramChatId'),
+    }
+
+    const parsedPayload = createLetterSchema.safeParse(rawPayload)
+    if (!parsedPayload.success) {
+      return {
+        success: false,
+        response: NextResponse.json(
+          { error: parsedPayload.error.errors[0].message },
+          { status: 400 }
+        ),
+      }
+    }
+
+    const parsedMetadata = quickLetterAiMetadataSchema.safeParse({
+      contentRussian: readFormValue(formData, 'contentRussian') || '',
+      region: readFormValue(formData, 'region') || '',
+      district: readFormValue(formData, 'district') || '',
+    })
+
+    if (!parsedMetadata.success) {
+      return {
+        success: false,
+        response: NextResponse.json(
+          { error: parsedMetadata.error.errors[0].message },
+          { status: 400 }
+        ),
+      }
+    }
+
+    const fileEntry = formData.get('file')
+    const file = fileEntry instanceof File ? fileEntry : null
+    const data = parsedPayload.data
+    data.comment = buildQuickImportComment(data.comment, parsedMetadata.data)
+
+    return { success: true, data, file }
+  }
+
+  const body = await request.json()
+  const parsedPayload = createLetterSchema.safeParse(body)
+  if (!parsedPayload.success) {
+    return {
+      success: false,
+      response: NextResponse.json(
+        { error: parsedPayload.error.errors[0].message },
+        { status: 400 }
+      ),
+    }
+  }
+
+  return { success: true, data: parsedPayload.data, file: null }
+}
+
+async function attachFileToLetter(params: { file: File; letterId: string; userId: string }) {
+  if (params.file.size > MAX_FILE_SIZE) {
+    throw new Error('Файл слишком большой. Максимум 10 MB.')
+  }
+
+  if (!ALLOWED_FILE_TYPES.includes(params.file.type as (typeof ALLOWED_FILE_TYPES)[number])) {
+    throw new Error('Тип файла не поддерживается.')
+  }
+
+  const timestamp = Date.now()
+  const safeFileName = params.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+  const storedFileName = `${timestamp}_${safeFileName}`
+
+  let storagePath: string | null = null
+  let fileId: string | null = null
+
+  try {
+    const bytes = await params.file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    const localUpload = await saveLocalUpload({
+      buffer,
+      letterId: params.letterId,
+      fileName: storedFileName,
+    })
+
+    storagePath = localUpload.storagePath
+
+    let fileRecord = await prisma.file.create({
+      data: {
+        name: params.file.name,
+        url: localUpload.url,
+        size: params.file.size,
+        mimeType: params.file.type,
+        letterId: params.letterId,
+        uploadedById: params.userId,
+        storageProvider: FileStorageProvider.LOCAL,
+        storagePath: localUpload.storagePath,
+        status: FileStatus.PENDING_SYNC,
+      },
+    })
+
+    fileId = fileRecord.id
+
+    const queueSync = () => {
+      if (!ENABLE_ASYNC_SYNC) return
+      setTimeout(() => {
+        syncFileToDrive(fileRecord.id).catch((error) => {
+          logger.error('Background drive sync failed', error, { fileId: fileRecord.id })
+        })
+      }, 0)
+    }
+
+    if (UPLOAD_STRATEGY === 'sync') {
+      try {
+        const uploadResult = await syncFileToDrive(fileRecord.id)
+        if (uploadResult) {
+          const refreshed = await prisma.file.findUnique({ where: { id: fileRecord.id } })
+          if (refreshed) {
+            fileRecord = refreshed
+          }
+        } else {
+          queueSync()
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Drive upload failed'
+        await prisma.file.update({
+          where: { id: fileRecord.id },
+          data: { uploadError: message, status: FileStatus.PENDING_SYNC },
+        })
+        queueSync()
+      }
+    } else {
+      queueSync()
+    }
+
+    await prisma.history.create({
+      data: {
+        letterId: params.letterId,
+        userId: params.userId,
+        field: 'file_added',
+        newValue: params.file.name,
+      },
+    })
+
+    return fileRecord
+  } catch (error) {
+    if (fileId) {
+      await prisma.file.delete({ where: { id: fileId } }).catch(() => null)
+    }
+    if (storagePath) {
+      await deleteLocalFile(storagePath).catch(() => null)
+    }
+    throw error
+  }
+}
 
 // ОПТИМИЗАЦИЯ: используем один SQL запрос вместо загрузки всех пользователей
 const resolveAutoOwnerId = async (): Promise<string | null> => {
@@ -130,15 +337,12 @@ export async function POST(request: NextRequest) {
       return permissionError
     }
 
-    const body = await request.json()
-
-    // Валидация
-    const result = createLetterSchema.safeParse(body)
-    if (!result.success) {
-      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
+    const parsedRequest = await parseCreateLetterRequest(request)
+    if (!parsedRequest.success) {
+      return parsedRequest.response
     }
 
-    const data = result.data
+    const { data, file } = parsedRequest
 
     // Санитизация
     data.number = sanitizeInput(data.number, 50)
@@ -244,6 +448,22 @@ export async function POST(request: NextRequest) {
 
       return newLetter
     })
+
+    if (file) {
+      try {
+        await attachFileToLetter({
+          file,
+          letterId: letter.id,
+          userId: session.user.id,
+        })
+      } catch (error) {
+        await prisma.letter.delete({ where: { id: letter.id } }).catch(() => null)
+
+        const message =
+          error instanceof Error ? error.message : 'Не удалось прикрепить исходный файл к письму.'
+        return NextResponse.json({ error: message }, { status: 500 })
+      }
+    }
 
     if (letter.ownerId && letter.ownerId !== session.user.id) {
       await dispatchNotification({

@@ -11,6 +11,8 @@ import { useUserPreferences } from '@/hooks/useUserPreferences'
 
 installCsrfFetch()
 
+import { Toaster } from 'sonner'
+
 export function Providers({ children }: { children: ReactNode }) {
   const [newYearVibe] = useLocalStorage<boolean>('new-year-vibe', false)
   const { preferences } = useUserPreferences()
@@ -111,7 +113,8 @@ export function Providers({ children }: { children: ReactNode }) {
     <TRPCProvider>
       <SessionProvider>
         <ErrorBoundary>
-          <ToastWrapper>{children}</ToastWrapper>
+          {children}
+          <Toaster richColors position="bottom-right" />
         </ErrorBoundary>
       </SessionProvider>
     </TRPCProvider>

@@ -26,6 +26,7 @@ export interface CreateLetterDTO {
   contacts?: string
   jiraLink?: string
   ownerId?: string
+  priority?: number
   applicantName?: string
   applicantEmail?: string
   applicantPhone?: string

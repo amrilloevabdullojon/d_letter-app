@@ -50,10 +50,17 @@ export const createLetterSchema = z.object({
   contacts: z.string().max(500).optional(),
   jiraLink: z.string().url().max(500).optional().or(z.literal('')),
   ownerId: z.string().cuid().optional(),
+  priority: z.coerce.number().int().min(0).max(100).optional(),
   applicantName: z.string().max(200).optional(),
   applicantEmail: z.string().email().max(320).optional().or(z.literal('')),
   applicantPhone: z.string().max(50).optional(),
   applicantTelegramChatId: z.string().max(50).optional(),
+})
+
+export const quickLetterAiMetadataSchema = z.object({
+  contentRussian: z.string().max(20000).optional().or(z.literal('')),
+  region: z.string().max(200).optional().or(z.literal('')),
+  district: z.string().max(200).optional().or(z.literal('')),
 })
 
 // QuickLetterUpload - упрощенная схема без transform для форм
@@ -352,6 +359,7 @@ export const syncSchema = z.object({
 
 export type CreateLetterInput = z.infer<typeof createLetterSchema>
 export type QuickLetterUploadInput = z.infer<typeof quickLetterUploadSchema>
+export type QuickLetterAiMetadataInput = z.infer<typeof quickLetterAiMetadataSchema>
 export type PortalLetterInput = z.infer<typeof portalLetterSchema>
 export type BulkLetterRowInput = z.infer<typeof bulkLetterRowSchema>
 export type BulkCreateLettersInput = z.infer<typeof bulkCreateLettersSchema>

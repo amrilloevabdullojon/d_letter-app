@@ -38,7 +38,7 @@ export function MobileBottomNav({ isAdmin, hidden }: MobileBottomNavProps) {
 
   return (
     <nav
-      className={`fixed bottom-0 left-0 right-0 z-[130] border-t border-white/10 bg-slate-950/80 backdrop-blur md:hidden ${hidden ? 'hidden' : ''}`}
+      className={`fixed bottom-0 left-0 right-0 z-[130] border-t border-border bg-background/90 backdrop-blur-md md:hidden ${hidden ? 'hidden' : ''}`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Mobile navigation"
     >
@@ -56,7 +56,7 @@ export function MobileBottomNav({ isAdmin, hidden }: MobileBottomNavProps) {
               onClick={(event) => handleNavClick(event, item.href)}
               aria-current={active ? 'page' : undefined}
               className={`tap-highlight flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2.5 text-[11px] leading-tight transition ${
-                active ? 'text-teal-200' : 'text-slate-400 hover:text-white'
+                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Icon className="h-5 w-5" />

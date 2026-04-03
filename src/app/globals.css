@@ -49,21 +49,7 @@
   opacity: 0.3;
 }
 
-.light body::after {
-  background:
-    /* Teal — верхний левый */
-    radial-gradient(ellipse 1200px 650px at 10% -5%, rgba(20, 184, 166, 0.26) 0%, transparent 58%),
-    /* Sky blue — верхний правый */
-    radial-gradient(ellipse 950px 560px at 92% 2%, rgba(56, 189, 248, 0.22) 0%, transparent 60%),
-    /* Amber — нижний центр */
-    radial-gradient(ellipse 1100px 580px at 50% 112%, rgba(245, 158, 11, 0.18) 0%, transparent 65%),
-    /* Emerald — левый центр */
-    radial-gradient(ellipse 750px 520px at 2% 62%, rgba(16, 185, 129, 0.16) 0%, transparent 56%),
-    /* Indigo — правый низ */
-    radial-gradient(ellipse 680px 480px at 96% 75%, rgba(99, 102, 241, 0.14) 0%, transparent 55%),
-    /* Центральное мягкое свечение */
-    radial-gradient(ellipse 120% 80% at 50% 50%, rgba(20, 184, 166, 0.05) 0%, transparent 70%);
-}
+.light 
 
 /* Violet theme colors - Deep purple aesthetic */
 .violet {
@@ -98,19 +84,7 @@
   opacity: 1;
 }
 
-.violet body::after {
-  background:
-    /* Фиолет — верхний левый */
-    radial-gradient(ellipse 950px 650px at 10% 0%, rgba(139, 92, 246, 0.36) 0%, transparent 60%),
-    /* Розовый — верхний правый */
-    radial-gradient(ellipse 800px 560px at 90% 5%, rgba(236, 72, 153, 0.28) 0%, transparent 58%),
-    /* Пурпур — нижний */
-    radial-gradient(ellipse 950px 580px at 50% 112%, rgba(168, 85, 247, 0.24) 0%, transparent 62%),
-    /* Синий — левый */
-    radial-gradient(ellipse 600px 450px at 2% 65%, rgba(99, 102, 241, 0.18) 0%, transparent 54%),
-    /* Розовый — нижний правый */
-    radial-gradient(ellipse 650px 480px at 95% 80%, rgba(244, 114, 182, 0.16) 0%, transparent 55%);
-}
+.violet 
 
 /* Violet theme component overrides */
 .violet .panel {
@@ -173,46 +147,14 @@
 .violet .text-teal-300,
 .violet .text-teal-400,
 .violet .text-emerald-300,
-.violet .text-emerald-400 {
-  color: #a78bfa;
-}
-
-.violet .text-teal-200 {
-  color: #c4b5fd;
-}
-
 .violet .border-teal-400\/20,
 .violet .border-teal-400\/30,
-.violet .border-emerald-400\/50 {
-  border-color: rgba(139, 92, 246, 0.3);
-}
-
 .violet .bg-teal-500\/15,
 .violet .bg-teal-400\/15,
-.violet .bg-emerald-500\/15 {
-  background-color: rgba(139, 92, 246, 0.15);
-}
-
 .violet .shadow-teal-500\/25,
-.violet .shadow-emerald-500\/25 {
-  --tw-shadow-color: rgba(139, 92, 246, 0.25);
-}
-
 .violet .from-teal-500,
-.violet .from-emerald-500 {
-  --tw-gradient-from: #8b5cf6;
-}
-
 .violet .to-teal-600,
-.violet .to-emerald-600 {
-  --tw-gradient-to: #7c3aed;
-}
-
 .violet .ring-teal-500\/30,
-.violet .ring-emerald-500\/30 {
-  --tw-ring-color: rgba(139, 92, 246, 0.3);
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
@@ -251,124 +193,18 @@ body::before {
 }
 
 /* Animated wallpaper layer */
-body::after {
-  content: '';
-  position: fixed;
-  inset: -15%;
-  background:
-    /* Основной teal — верхний левый */
-    radial-gradient(ellipse 900px 600px at 12% 0%, rgba(20, 184, 166, 0.3) 0%, transparent 58%),
-    /* Sky blue — верхний правый */
-    radial-gradient(ellipse 750px 500px at 90% 5%, rgba(56, 189, 248, 0.24) 0%, transparent 56%),
-    /* Amber — нижний центр */
-    radial-gradient(ellipse 1000px 600px at 50% 112%, rgba(245, 158, 11, 0.2) 0%, transparent 62%),
-    /* Green — левый центр */
-    radial-gradient(ellipse 650px 450px at 3% 62%, rgba(16, 185, 129, 0.16) 0%, transparent 54%),
-    /* Indigo — правый низ */
-    radial-gradient(ellipse 700px 500px at 96% 78%, rgba(99, 102, 241, 0.13) 0%, transparent 55%),
-    /* Мягкое центральное свечение */
-    radial-gradient(ellipse 120% 80% at 50% 50%, rgba(20, 184, 166, 0.04) 0%, transparent 70%);
-  opacity: var(--wallpaper-opacity, 0.6);
-  pointer-events: none;
-  z-index: 0;
-  animation: wallpaper-drift 30s ease-in-out infinite;
-  will-change: transform;
-  backface-visibility: hidden;
-  perspective: 1000px;
-}
 
-html[data-wallpaper-style='nebula'] body::after {
-  background:
-    /* Глубокий синий — верхний левый */
-    radial-gradient(ellipse 1100px 700px at 15% 0%, rgba(30, 64, 175, 0.34) 0%, transparent 58%),
-    /* Бирюза — верхний правый */
-    radial-gradient(ellipse 900px 620px at 88% 10%, rgba(14, 116, 144, 0.28) 0%, transparent 60%),
-    /* Amber — нижний */
-    radial-gradient(ellipse 950px 560px at 50% 108%, rgba(251, 191, 36, 0.2) 0%, transparent 62%),
-    /* Изумруд — центр */
-    radial-gradient(ellipse 1000px 700px at 55% 45%, rgba(16, 185, 129, 0.14) 0%, transparent 65%),
-    /* Фиолет — нижний левый */
-    radial-gradient(ellipse 600px 450px at 8% 78%, rgba(99, 102, 241, 0.16) 0%, transparent 55%);
-  animation-duration: 36s;
-}
+html[data-wallpaper-style='nebula'] 
 
-html[data-wallpaper-style='glow'] body::after {
-  background:
-    /* Teal — яркий верхний */
-    radial-gradient(ellipse 1000px 550px at 50% -5%, rgba(20, 184, 166, 0.36) 0%, transparent 62%),
-    /* Синий — нижний левый */
-    radial-gradient(ellipse 800px 600px at 8% 85%, rgba(59, 130, 246, 0.28) 0%, transparent 65%),
-    /* Amber — нижний правый */
-    radial-gradient(ellipse 800px 600px at 92% 85%, rgba(245, 158, 11, 0.26) 0%, transparent 65%),
-    /* Cyan — центральное свечение */
-    radial-gradient(ellipse 700px 500px at 50% 50%, rgba(34, 211, 238, 0.16) 0%, transparent 62%),
-    /* Pink — небольшое правое пятно */
-    radial-gradient(ellipse 500px 350px at 85% 30%, rgba(236, 72, 153, 0.14) 0%, transparent 55%);
-  animation-duration: 22s;
-}
+html[data-wallpaper-style='glow'] 
 
-html[data-wallpaper-style='aurora'] body::after {
-  background:
-    /* Зелёная полоса — верхний левый */
-    linear-gradient(135deg, rgba(16, 185, 129, 0.26) 0%, transparent 42%),
-    /* Фиолетовая полоса — верхний правый */
-    linear-gradient(225deg, rgba(139, 92, 246, 0.22) 0%, transparent 50%),
-    /* Розовая полоса — нижний */
-    linear-gradient(315deg, rgba(236, 72, 153, 0.16) 0%, transparent 44%),
-    /* Синий — центр */
-    radial-gradient(ellipse 1400px 650px at 30% 25%, rgba(59, 130, 246, 0.14) 0%, transparent 68%),
-    /* Зелёный — нижний правый */
-    radial-gradient(ellipse 1100px 700px at 72% 82%, rgba(16, 185, 129, 0.18) 0%, transparent 62%),
-    /* Amber — правый верх */
-    radial-gradient(ellipse 700px 400px at 88% 18%, rgba(251, 191, 36, 0.1) 0%, transparent 55%);
-  animation-duration: 35s;
-  background-size: 180% 180%;
-}
+html[data-wallpaper-style='aurora'] 
 
-html[data-wallpaper-style='cosmic'] body::after {
-  background:
-    /* Фиолет — верхний левый */
-    radial-gradient(circle 380px at 18% 20%, rgba(139, 92, 246, 0.38) 0%, transparent 68%),
-    /* Розовый — верхний правый */
-    radial-gradient(circle 300px at 82% 16%, rgba(236, 72, 153, 0.3) 0%, transparent 62%),
-    /* Синий — нижний левый */
-    radial-gradient(circle 340px at 32% 80%, rgba(59, 130, 246, 0.32) 0%, transparent 65%),
-    /* Teal — нижний правый */
-    radial-gradient(circle 280px at 88% 74%, rgba(20, 184, 166, 0.26) 0%, transparent 58%),
-    /* Amber — центр */
-    radial-gradient(circle 220px at 58% 44%, rgba(251, 191, 36, 0.2) 0%, transparent 58%),
-    /* Глубокое фоновое свечение */
-    radial-gradient(ellipse 130% 90% at 50% 50%, rgba(79, 70, 229, 0.07) 0%, transparent 72%);
-  animation-duration: 44s;
-  background-size: 200% 200%;
-}
-
-@keyframes wallpaper-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: var(--wallpaper-opacity, 0.6);
-  }
-  25% {
-    transform: translate3d(2%, -1.5%, 0) scale(1.02);
-    opacity: calc(var(--wallpaper-opacity, 0.6) * 1.12);
-  }
-  50% {
-    transform: translate3d(1%, 2%, 0) scale(1.015);
-    opacity: calc(var(--wallpaper-opacity, 0.6) * 1.22);
-  }
-  75% {
-    transform: translate3d(-1.5%, 0.5%, 0) scale(1.025);
-    opacity: calc(var(--wallpaper-opacity, 0.6) * 1.1);
-  }
-}
+html[data-wallpaper-style='cosmic'] 
 
 /* Optimized wallpaper for low-power devices */
 @media (prefers-reduced-motion: no-preference) and (hover: none) {
   /* Touch devices - use simpler animation */
-  body::after {
-    animation-duration: 45s;
-  }
 }
 
 .app-body > * {
@@ -458,238 +294,6 @@ h4 {
   opacity: 1;
 }
 
-.light .bg-gray-900 {
-  background-color: #f9fafb;
-}
-
-.light .bg-gray-800 {
-  background-color: #ffffff;
-}
-
-.light .bg-gray-700 {
-  background-color: #f3f4f6;
-}
-
-.light .bg-gray-900\/60 {
-  background-color: rgba(248, 250, 252, 0.92);
-}
-
-.light .bg-gray-900\/50 {
-  background-color: rgba(248, 250, 252, 0.88);
-}
-
-.light .bg-gray-900\/40 {
-  background-color: rgba(248, 250, 252, 0.8);
-}
-
-.light .bg-gray-800\/80 {
-  background-color: rgba(248, 250, 252, 0.95);
-}
-
-.light .bg-gray-800\/60 {
-  background-color: rgba(248, 250, 252, 0.9);
-}
-
-.light .bg-gray-800\/50 {
-  background-color: rgba(248, 250, 252, 0.88);
-}
-
-.light .bg-gray-800\/40 {
-  background-color: rgba(248, 250, 252, 0.8);
-}
-
-.light .bg-gray-700\/50 {
-  background-color: rgba(241, 245, 249, 0.85);
-}
-
-.light .bg-gray-700\/40 {
-  background-color: rgba(241, 245, 249, 0.75);
-}
-
-.light .bg-slate-900 {
-  background-color: #f8fafc;
-}
-
-.light .bg-slate-900\/90 {
-  background-color: rgba(248, 250, 252, 0.9);
-}
-
-.light .bg-slate-900\/70 {
-  background-color: rgba(248, 250, 252, 0.7);
-}
-
-.light .bg-slate-900\/60 {
-  background-color: rgba(248, 250, 252, 0.6);
-}
-
-.light .bg-slate-900\/50 {
-  background-color: rgba(248, 250, 252, 0.5);
-}
-
-.light .bg-slate-800 {
-  background-color: #f1f5f9;
-}
-
-.light .bg-slate-800\/80 {
-  background-color: rgba(241, 245, 249, 0.8);
-}
-
-.light .bg-slate-800\/70 {
-  background-color: rgba(241, 245, 249, 0.7);
-}
-
-.light .text-white {
-  color: #111827;
-}
-
-.light .text-gray-400 {
-  color: #475569;
-}
-
-.light .text-gray-300 {
-  color: #334155;
-}
-
-.light .text-gray-500 {
-  color: #64748b;
-}
-
-.light .text-slate-200 {
-  color: #1f2937;
-}
-
-.light .text-slate-300 {
-  color: #334155;
-}
-
-.light .text-slate-400 {
-  color: #475569;
-}
-
-.light .text-slate-500 {
-  color: #64748b;
-}
-
-.light .text-teal-200 {
-  color: #0f766e;
-}
-
-.light .text-teal-300 {
-  color: #0f766e;
-}
-
-.light .text-teal-400 {
-  color: #0f766e;
-}
-
-.light .text-emerald-300 {
-  color: #047857;
-}
-
-.light .text-emerald-400 {
-  color: #059669;
-}
-
-.light .text-cyan-400 {
-  color: #0e7490;
-}
-
-.light .text-sky-400 {
-  color: #0284c7;
-}
-
-.light .text-blue-400 {
-  color: #2563eb;
-}
-
-.light .text-purple-400 {
-  color: #7c3aed;
-}
-
-.light .text-amber-300 {
-  color: #b45309;
-}
-
-.light .text-amber-400 {
-  color: #b45309;
-}
-
-.light .text-yellow-400 {
-  color: #a16207;
-}
-
-.light .text-red-300 {
-  color: #b91c1c;
-}
-
-.light .text-red-400 {
-  color: #dc2626;
-}
-
-.light .border-gray-700 {
-  border-color: #e5e7eb;
-}
-
-.light .border-gray-600 {
-  border-color: #d1d5db;
-}
-
-.light .border-gray-700\/60 {
-  border-color: rgba(148, 163, 184, 0.5);
-}
-
-.light .border-gray-700\/50 {
-  border-color: rgba(148, 163, 184, 0.45);
-}
-
-.light .border-gray-600\/60 {
-  border-color: rgba(148, 163, 184, 0.45);
-}
-
-.light .border-gray-800\/80 {
-  border-color: rgba(148, 163, 184, 0.55);
-}
-
-.light .border-slate-800\/80 {
-  border-color: rgba(148, 163, 184, 0.5);
-}
-
-.light .border-slate-800\/70 {
-  border-color: rgba(148, 163, 184, 0.45);
-}
-
-.light .border-slate-700\/70 {
-  border-color: rgba(148, 163, 184, 0.4);
-}
-
-.light .border-slate-700\/60 {
-  border-color: rgba(148, 163, 184, 0.35);
-}
-
-.light .bg-teal-400\/15 {
-  background-color: rgba(13, 148, 136, 0.12);
-}
-
-.light .bg-teal-500\/15 {
-  background-color: rgba(13, 148, 136, 0.12);
-}
-
-.light .border-teal-400\/20 {
-  border-color: rgba(13, 148, 136, 0.35);
-}
-
-.light .border-slate-600\/70 {
-  border-color: rgba(148, 163, 184, 0.35);
-}
-
-.light .hover\:bg-gray-700:hover {
-  background-color: #f3f4f6;
-}
-
-.light .hover\:bg-gray-600:hover {
-  background-color: #e5e7eb;
-}
-
 .light header {
   background-color: #ffffff;
   border-color: #e5e7eb;
@@ -741,26 +345,19 @@ h4 {
 
 /* App surfaces */
 .panel {
-  background: linear-gradient(160deg, rgba(var(--panel) / 0.98), rgba(var(--panel-2) / 0.92));
-  border: 1px solid rgba(var(--panel-border) / 0.6);
-  box-shadow: var(--shadow-2);
+  @apply rounded-2xl border border-border bg-card shadow-md;
 }
 
 .panel-solid {
-  background: rgb(var(--panel));
-  border: 1px solid rgba(var(--panel-border) / 0.7);
-  box-shadow: var(--shadow-1);
+  @apply rounded-2xl border border-border bg-card shadow-sm;
 }
 
 .panel-soft {
-  background: rgba(var(--panel) / 0.7);
-  border: 1px solid rgba(var(--panel-border) / 0.4);
-  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.3);
+  @apply rounded-2xl border border-border/40 bg-card/70 shadow-sm;
 }
 
 .panel-glass {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  @apply bg-card/85 backdrop-blur-md;
 }
 
 .text-muted {
@@ -788,35 +385,27 @@ h4 {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, rgba(var(--accent) / 0.9), rgba(var(--accent) / 0.7));
-  border: 1px solid rgba(var(--accent) / 0.6);
-  box-shadow: 0 12px 30px rgba(var(--accent) / 0.35);
-  color: #ffffff;
+  @apply rounded-lg border-transparent bg-primary px-4 py-2 font-medium text-primary-foreground shadow-md shadow-primary/30 transition-all;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.05);
-  box-shadow: 0 16px 36px rgba(var(--accent) / 0.45);
+  @apply -translate-y-px transform bg-primary/90 shadow-lg shadow-primary/40;
 }
 
 .btn-secondary {
-  background: rgba(var(--panel) / 0.7);
-  border: 1px solid rgba(var(--panel-border) / 0.45);
-  color: rgb(var(--text-primary));
+  @apply rounded-lg border border-border bg-secondary px-4 py-2 font-medium text-secondary-foreground transition-all;
 }
 
 .btn-secondary:hover {
-  background: rgba(var(--panel-2) / 0.85);
-  border-color: rgba(var(--panel-border) / 0.7);
+  @apply border-border/80 bg-secondary/80;
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  @apply rounded-lg border border-transparent px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted;
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
+  @apply bg-muted;
 }
 
 .app-header {
@@ -1228,26 +817,6 @@ h4 {
   box-shadow: inset 0 0 0 1px rgba(var(--accent) / 0.25);
 }
 
-.light .bg-white\/5 {
-  background-color: rgba(15, 23, 42, 0.06);
-}
-
-.light .bg-white\/10 {
-  background-color: rgba(15, 23, 42, 0.1);
-}
-
-.light .bg-white\/20 {
-  background-color: rgba(15, 23, 42, 0.14);
-}
-
-.light .border-white\/10 {
-  border-color: rgba(15, 23, 42, 0.12);
-}
-
-.light .border-white\/20 {
-  border-color: rgba(15, 23, 42, 0.18);
-}
-
 .light .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
   border-color: rgba(15, 23, 42, 0.08);
 }
@@ -1256,74 +825,7 @@ h4 {
   border-color: rgba(15, 23, 42, 0.12);
 }
 
-.light .text-slate-200\/80 {
-  color: rgba(15, 23, 42, 0.8);
-}
-
-.light .text-slate-200\/70 {
-  color: rgba(15, 23, 42, 0.7);
-}
-
-.light .text-slate-200\/60 {
-  color: rgba(15, 23, 42, 0.6);
-}
-
-.light .text-slate-200\/50 {
-  color: rgba(15, 23, 42, 0.5);
-}
-
-.light .text-slate-300\/70 {
-  color: rgba(15, 23, 42, 0.7);
-}
-
-.light .text-slate-300\/80 {
-  color: rgba(15, 23, 42, 0.8);
-}
-
-.light .text-amber-300\/80 {
-  color: rgba(180, 83, 9, 0.85);
-}
-
-.light .text-white\/80 {
-  color: rgba(15, 23, 42, 0.8);
-}
-
-.light .text-white\/70 {
-  color: rgba(15, 23, 42, 0.7);
-}
-
-.light .text-white\/60 {
-  color: rgba(15, 23, 42, 0.6);
-}
-
-.light .text-white\/50 {
-  color: rgba(15, 23, 42, 0.5);
-}
-
 /* Light theme hover state overrides */
-.light .hover\:text-white:hover {
-  color: #0f172a;
-}
-
-.light .hover\:bg-white\/5:hover {
-  background-color: rgba(15, 23, 42, 0.06);
-}
-
-.light .hover\:bg-white\/10:hover {
-  background-color: rgba(15, 23, 42, 0.1);
-}
-
-.light .hover\:bg-white\/20:hover {
-  background-color: rgba(15, 23, 42, 0.14);
-}
-
-.light .hover\:border-white\/20:hover {
-  border-color: rgba(15, 23, 42, 0.18);
-}
-
-.light .hover\:border-white\/30:hover {
-  border-color: rgba(15, 23, 42, 0.22);
-}
 
 .mobile-overlay {
   background: rgba(2, 6, 23, 0.55);
@@ -1348,26 +850,12 @@ h4 {
 }
 
 /* Additional light theme fixes for gradient backgrounds */
-.light .bg-gradient-to-br {
-  --tw-gradient-from: rgba(248, 250, 252, 0.9);
-  --tw-gradient-to: rgba(241, 245, 249, 0.85);
-}
 
 .light .from-slate-800\/80,
 .light .from-slate-800\/60,
-.light .from-slate-800 {
-  --tw-gradient-from: rgba(255, 255, 255, 0.95);
-}
 
 .light .to-slate-800\/60,
 .light .to-slate-900\/80,
-.light .to-slate-800 {
-  --tw-gradient-to: rgba(248, 250, 252, 0.9);
-}
-
-.light .via-slate-800\/60 {
-  --tw-gradient-via: rgba(248, 250, 252, 0.85);
-}
 
 /* Light theme gradient panels */
 .light [class*='from-slate-800'][class*='to-slate-'] {
@@ -1380,24 +868,11 @@ h4 {
 
 /* Light theme shadows */
 .light .shadow-teal-500\/25,
-.light .shadow-emerald-500\/25 {
-  --tw-shadow-color: rgba(20, 184, 166, 0.15);
-}
 
 .light .shadow-purple-500\/25,
-.light .shadow-violet-500\/25 {
-  --tw-shadow-color: rgba(139, 92, 246, 0.15);
-}
-
-.light .shadow-blue-500\/25 {
-  --tw-shadow-color: rgba(59, 130, 246, 0.15);
-}
 
 /* Light theme ring colors */
 .light .ring-slate-700\/50,
-.light .ring-slate-600\/50 {
-  --tw-ring-color: rgba(203, 213, 225, 0.6);
-}
 
 /* Light theme input focus */
 .light input:focus,
@@ -1431,35 +906,20 @@ h4 {
 
 /* Light theme status colors - more vibrant */
 .light .bg-red-500\/10,
-.light .bg-red-500\/15 {
-  background-color: rgba(239, 68, 68, 0.12);
-}
 
 .light .bg-green-500\/10,
 .light .bg-green-500\/15,
 .light .bg-emerald-500\/10,
-.light .bg-emerald-500\/15 {
-  background-color: rgba(16, 185, 129, 0.12);
-}
 
 .light .bg-yellow-500\/10,
 .light .bg-yellow-500\/15,
 .light .bg-amber-500\/10,
-.light .bg-amber-500\/15 {
-  background-color: rgba(245, 158, 11, 0.12);
-}
 
 .light .bg-blue-500\/10,
-.light .bg-blue-500\/15 {
-  background-color: rgba(59, 130, 246, 0.12);
-}
 
 .light .bg-purple-500\/10,
 .light .bg-purple-500\/15,
 .light .bg-violet-500\/10,
-.light .bg-violet-500\/15 {
-  background-color: rgba(139, 92, 246, 0.12);
-}
 
 /* Light theme code/kbd */
 .light kbd {
@@ -1488,77 +948,14 @@ h4 {
 }
 
 /* Light theme - slate/gray background overrides for cleaner appearance */
-.light .bg-slate-700 {
-  background-color: rgba(255, 255, 255, 0.9);
-}
-
-.light .bg-slate-700\/50 {
-  background-color: rgba(255, 255, 255, 0.85);
-}
-
-.light .bg-slate-700\/40 {
-  background-color: rgba(255, 255, 255, 0.8);
-}
-
-.light .bg-slate-600 {
-  background-color: rgba(248, 250, 252, 0.95);
-}
-
-.light .bg-slate-600\/50 {
-  background-color: rgba(248, 250, 252, 0.9);
-}
-
-.light .bg-gray-700\/50 {
-  background-color: rgba(255, 255, 255, 0.85);
-}
-
-.light .bg-gray-700\/40 {
-  background-color: rgba(255, 255, 255, 0.8);
-}
-
-.light .bg-gray-600\/50 {
-  background-color: rgba(248, 250, 252, 0.9);
-}
 
 /* Light theme - info blocks and cards */
-.light .bg-slate-800\/50 {
-  background-color: rgba(255, 255, 255, 0.92);
-}
-
-.light .bg-slate-800\/40 {
-  background-color: rgba(255, 255, 255, 0.88);
-}
-
-.light .bg-slate-800\/30 {
-  background-color: rgba(255, 255, 255, 0.85);
-}
 
 /* Light theme - navigation buttons */
-.light .bg-slate-700\/60 {
-  background-color: rgba(255, 255, 255, 0.9);
-}
 
 /* Light theme - quick action buttons */
-.light .bg-slate-700\/80 {
-  background-color: rgba(255, 255, 255, 0.95);
-}
 
 /* Light theme - borders for better contrast */
-.light .border-slate-600 {
-  border-color: rgba(203, 213, 225, 0.8);
-}
-
-.light .border-slate-600\/50 {
-  border-color: rgba(203, 213, 225, 0.6);
-}
-
-.light .border-slate-700 {
-  border-color: rgba(203, 213, 225, 0.7);
-}
-
-.light .border-slate-700\/50 {
-  border-color: rgba(203, 213, 225, 0.5);
-}
 
 /* Light theme - letter cards in kanban */
 .light .bg-gradient-to-br.from-slate-800\/80.to-slate-800\/60,
@@ -1572,46 +969,12 @@ h4 {
 }
 
 /* Light theme - better shadow for cards */
-.light .shadow-lg {
-  --tw-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.06);
-  box-shadow:
-    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
 
 /* Light theme - ring colors for kanban cards */
-.light .ring-red-500\/20 {
-  --tw-ring-color: rgba(239, 68, 68, 0.25);
-}
-
-.light .ring-amber-500\/20 {
-  --tw-ring-color: rgba(245, 158, 11, 0.25);
-}
 
 /* Light theme - info section cards and blocks */
-.light .bg-slate-800\/60 {
-  background-color: rgba(255, 255, 255, 0.9);
-}
-
-.light .bg-slate-800\/20 {
-  background-color: rgba(248, 250, 252, 0.85);
-}
-
-.light .bg-slate-700\/30 {
-  background-color: rgba(255, 255, 255, 0.8);
-}
 
 /* Light theme - hover states for action buttons */
-.light .hover\:bg-slate-700\/50:hover {
-  background-color: rgba(226, 232, 240, 0.7);
-}
-
-.light .hover\:bg-slate-800\/60:hover {
-  background-color: rgba(226, 232, 240, 0.6);
-}
-
-.light .hover\:bg-slate-700:hover {
-  background-color: rgba(226, 232, 240, 0.8);
-}
 
 /* Light theme - keyboard hints */
 .light kbd {
@@ -2074,11 +1437,6 @@ h4 {
   display: none;
 }
 
-.no-bg-animations body::after {
-  opacity: 0;
-  animation: none;
-}
-
 /* Urgent priority pulse animation */
 @keyframes urgentPulse {
   0%,
@@ -2288,17 +1646,9 @@ html.reduce-motion *::after {
   transition-duration: 0.01ms;
 }
 
-html.reduce-motion body::after {
-  animation: none;
-}
-
-html.animations-paused *,
+html.reduce-motion html.animations-paused *,
 html.animations-paused *::before,
 html.animations-paused *::after {
-  animation-play-state: paused;
-}
-
-html.animations-paused body::after {
   animation-play-state: paused;
 }
 
@@ -2377,20 +1727,7 @@ html.animations-paused body::after {
   --accent-2: 239 68 68;
 }
 
-.new-year body::after {
-  content: '';
-  position: fixed;
-  inset: -10%;
-  background:
-    radial-gradient(220px 220px at 12% 10%, rgba(239, 68, 68, 0.25), transparent 70%),
-    radial-gradient(180px 180px at 80% 15%, rgba(16, 185, 129, 0.2), transparent 70%),
-    radial-gradient(140px 140px at 25% 80%, rgba(250, 204, 21, 0.18), transparent 72%);
-  opacity: var(--wallpaper-opacity, 0.6);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.new-year .app-header {
+.new-year .new-year .app-header {
   border-color: rgba(239, 68, 68, 0.35);
   box-shadow: 0 14px 30px rgba(16, 185, 129, 0.18);
 }
@@ -2609,10 +1946,6 @@ html.animations-paused body::after {
   .skeleton::after {
     animation: none;
   }
-
-  body::after {
-    animation: none;
-  }
 }
 
 /* Print styles */
@@ -2823,4 +2156,9 @@ html.animations-paused body::after {
   [class*='badge'] {
     @apply min-h-[36px] px-3 py-2 text-sm;
   }
+}
+
+/* Global A11y Focus Rings */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
 }

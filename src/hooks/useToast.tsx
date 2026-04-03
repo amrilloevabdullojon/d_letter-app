@@ -1,15 +1,10 @@
 'use client'
 
-import { useState, useCallback, useRef, createContext, useContext, ReactNode } from 'react'
+import { toast as sonnerToast } from 'sonner'
+import { useCallback, useState } from 'react'
 
-/**
- * Toast types
- */
 export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'loading'
 
-/**
- * Toast message
- */
 export interface Toast {
   id: string
   type: ToastType
@@ -23,220 +18,141 @@ export interface Toast {
 }
 
 export interface ToastOptions {
-  id?: string
+  id?: string | number
   message?: string
   duration?: number
+  action?: {
+    label: string
+    onClick: () => void
+  }
 }
 
-/**
- * Toast context value
- */
 interface ToastContextValue {
-  toasts: Toast[]
-  addToast: (toast: Omit<Toast, 'id'> & { id?: string }) => string
-  removeToast: (id: string) => void
+  toasts: Toast[] // deprecated, kept for compatibility if any code reads it
+  addToast: (toast: Omit<Toast, 'id'> & { id?: string | number }) => string | number
+  removeToast: (id: string | number) => void
   clearToasts: () => void
 
-  // Shorthand methods
-  success: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => string
-  error: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => string
-  warning: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => string
-  info: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => string
-  message: (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => string
-  loading: (title: string, options?: ToastOptions) => string
-}
-
-const ToastContext = createContext<ToastContextValue | null>(null)
-
-/**
- * Generate unique ID
- */
-function generateId(): string {
-  return `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-}
-
-/**
- * Default durations by type
- */
-const DEFAULT_DURATIONS: Record<ToastType, number> = {
-  success: 3000,
-  error: 5000,
-  warning: 4000,
-  info: 3000,
-  loading: 0,
-}
-
-/**
- * Hook to access toast functions
- *
- * @example
- * ```tsx
- * function MyComponent() {
- *   const toast = useToast()
- *
- *   const handleSave = async () => {
- *     try {
- *       await saveData()
- *       toast.success('Сохранено', 'Данные успешно сохранены')
- *     } catch (error) {
- *       toast.error('Ошибка', error.message)
- *     }
- *   }
- * }
- * ```
- */
-export function useToast(): ToastContextValue {
-  const context = useContext(ToastContext)
-  if (!context) {
-    throw new Error('useToast must be used within ToastProvider')
-  }
-  return context
-}
-
-/**
- * Hook for managing toasts (used internally by ToastProvider)
- */
-export function useToastState(): ToastContextValue {
-  const [toasts, setToasts] = useState<Toast[]>([])
-  const timeoutIds = useRef<Map<string, NodeJS.Timeout>>(new Map())
-
-  const removeToast = useCallback((id: string) => {
-    const existingTimeout = timeoutIds.current.get(id)
-    if (existingTimeout) {
-      clearTimeout(existingTimeout)
-      timeoutIds.current.delete(id)
-    }
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }, [])
-
-  const addToast = useCallback(
-    (toast: Omit<Toast, 'id'> & { id?: string }): string => {
-      const id = toast.id ?? generateId()
-      const duration = toast.duration ?? DEFAULT_DURATIONS[toast.type]
-
-      const newToast: Toast = {
-        ...toast,
-        id,
-        duration,
-      }
-
-      setToasts((prev) => {
-        const existingIndex = prev.findIndex((item) => item.id === id)
-        if (existingIndex === -1) {
-          return [...prev, newToast]
-        }
-
-        const next = [...prev]
-        next[existingIndex] = newToast
-        return next
-      })
-
-      // Auto remove after duration
-      if (duration > 0) {
-        const existingTimeout = timeoutIds.current.get(id)
-        if (existingTimeout) {
-          clearTimeout(existingTimeout)
-        }
-        const timeoutId = setTimeout(() => {
-          removeToast(id)
-        }, duration)
-        timeoutIds.current.set(id, timeoutId)
-      }
-
-      return id
-    },
-    [removeToast]
-  )
-
-  const clearToasts = useCallback(() => {
-    setToasts([])
-  }, [])
-
-  const resolveOptions = (
+  success: (
+    title: string,
     messageOrOptions?: string | ToastOptions,
     options?: ToastOptions
-  ): { message?: string; options?: ToastOptions } => {
-    if (typeof messageOrOptions === 'string') {
-      return { message: messageOrOptions, options }
-    }
-    return { message: messageOrOptions?.message, options: messageOrOptions }
+  ) => string | number
+  error: (
+    title: string,
+    messageOrOptions?: string | ToastOptions,
+    options?: ToastOptions
+  ) => string | number
+  warning: (
+    title: string,
+    messageOrOptions?: string | ToastOptions,
+    options?: ToastOptions
+  ) => string | number
+  info: (
+    title: string,
+    messageOrOptions?: string | ToastOptions,
+    options?: ToastOptions
+  ) => string | number
+  message: (
+    title: string,
+    messageOrOptions?: string | ToastOptions,
+    options?: ToastOptions
+  ) => string | number
+  loading: (title: string, options?: ToastOptions) => string | number
+}
+
+function resolveOptions(
+  messageOrOptions?: string | ToastOptions,
+  options?: ToastOptions
+): { message?: string; options?: ToastOptions } {
+  if (typeof messageOrOptions === 'string') {
+    return { message: messageOrOptions, options }
   }
+  return { message: messageOrOptions?.message, options: messageOrOptions }
+}
+
+function buildSonnerOptions(resolved: { message?: string; options?: ToastOptions }) {
+  const opts: any = {}
+  if (resolved.message) opts.description = resolved.message
+  if (resolved.options?.duration) opts.duration = resolved.options.duration
+  if (resolved.options?.id) opts.id = resolved.options.id
+  if (resolved.options?.action) {
+    opts.action = {
+      label: resolved.options.action.label,
+      onClick: resolved.options.action.onClick,
+    }
+  }
+  return opts
+}
+
+export function useToast(): ToastContextValue {
+  const [toasts] = useState<Toast[]>([]) // Provide empty array for legacy compatibility
+
+  const addToast = useCallback((toast: Omit<Toast, 'id'> & { id?: string | number }) => {
+    const opts = buildSonnerOptions({ message: toast.message, options: toast.options as any })
+    switch (toast.type) {
+      case 'success':
+        return sonnerToast.success(toast.title, opts)
+      case 'error':
+        return sonnerToast.error(toast.title, opts)
+      case 'warning':
+        return sonnerToast.warning(toast.title, opts)
+      case 'info':
+        return sonnerToast.info(toast.title, opts)
+      case 'loading':
+        return sonnerToast.loading(toast.title, opts)
+      default:
+        return sonnerToast(toast.title, opts)
+    }
+  }, [])
+
+  const removeToast = useCallback((id: string | number) => sonnerToast.dismiss(id), [])
+  const clearToasts = useCallback(() => sonnerToast.dismiss(), [])
 
   const success = useCallback(
     (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => {
-      const resolved = resolveOptions(messageOrOptions, options)
-      return addToast({
-        type: 'success',
+      return sonnerToast.success(
         title,
-        message: resolved.message,
-        duration: resolved.options?.duration,
-        id: resolved.options?.id,
-      })
+        buildSonnerOptions(resolveOptions(messageOrOptions, options))
+      )
     },
-    [addToast]
+    []
   )
 
   const error = useCallback(
     (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => {
-      const resolved = resolveOptions(messageOrOptions, options)
-      return addToast({
-        type: 'error',
-        title,
-        message: resolved.message,
-        duration: resolved.options?.duration,
-        id: resolved.options?.id,
-      })
+      return sonnerToast.error(title, buildSonnerOptions(resolveOptions(messageOrOptions, options)))
     },
-    [addToast]
+    []
   )
 
   const warning = useCallback(
     (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => {
-      const resolved = resolveOptions(messageOrOptions, options)
-      return addToast({
-        type: 'warning',
+      return sonnerToast.warning(
         title,
-        message: resolved.message,
-        duration: resolved.options?.duration,
-        id: resolved.options?.id,
-      })
+        buildSonnerOptions(resolveOptions(messageOrOptions, options))
+      )
     },
-    [addToast]
+    []
   )
 
   const info = useCallback(
     (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => {
-      const resolved = resolveOptions(messageOrOptions, options)
-      return addToast({
-        type: 'info',
-        title,
-        message: resolved.message,
-        duration: resolved.options?.duration,
-        id: resolved.options?.id,
-      })
+      return sonnerToast.info(title, buildSonnerOptions(resolveOptions(messageOrOptions, options)))
     },
-    [addToast]
+    []
   )
 
-  const message = useCallback(
+  const messageFn = useCallback(
     (title: string, messageOrOptions?: string | ToastOptions, options?: ToastOptions) => {
-      return info(title, messageOrOptions, options)
+      return sonnerToast(title, buildSonnerOptions(resolveOptions(messageOrOptions, options)))
     },
-    [info]
+    []
   )
 
-  const loading = useCallback(
-    (title: string, options?: ToastOptions) => {
-      return addToast({
-        type: 'loading',
-        title,
-        message: options?.message,
-        duration: options?.duration ?? 0,
-        id: options?.id,
-      })
-    },
-    [addToast]
-  )
+  const loading = useCallback((title: string, options?: ToastOptions) => {
+    return sonnerToast.loading(title, buildSonnerOptions({ options }))
+  }, [])
 
   return {
     toasts,
@@ -247,40 +163,17 @@ export function useToastState(): ToastContextValue {
     error,
     warning,
     info,
-    message,
+    message: messageFn,
     loading,
   }
 }
 
-/**
- * Toast Provider component
- */
-export function ToastProvider({
-  children,
-  value,
-}: {
-  children: ReactNode
-  value: ToastContextValue
-}) {
-  return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>
+// Deprecated legacy exports mapping to dummy to prevent build errors
+import { createContext, ReactNode } from 'react'
+export const ToastContext = createContext<any>(null)
+export function ToastProvider({ children }: { children: ReactNode; value?: any }) {
+  return <>{children}</>
 }
-
-/**
- * Toast container component (renders toasts)
- *
- * @example
- * ```tsx
- * // In your layout or app component
- * function App() {
- *   const toastState = useToastState()
- *
- *   return (
- *     <ToastProvider value={toastState}>
- *       <YourApp />
- *       <ToastContainer />
- *     </ToastProvider>
- *   )
- * }
- * ```
- */
-export { ToastContext }
+export function useToastState() {
+  return useToast()
+}

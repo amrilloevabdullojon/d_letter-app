@@ -46,6 +46,12 @@ export const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 export const MAX_FILE_SIZE_LABEL = '10 MB'
 
+export const AI_PARSE_MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
+export const AI_PARSE_MAX_FILE_SIZE_LABEL = '5 MB'
+
+export const AI_PARSE_ALLOWED_FILE_TYPES = ['application/pdf'] as const
+export const AI_PARSE_ALLOWED_FILE_EXTENSIONS = '.pdf'
+
 export const ALLOWED_FILE_TYPES = [
   'application/pdf',
   'application/msword',

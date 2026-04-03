@@ -10,6 +10,7 @@ import { PageTransition } from '@/components/PageTransition'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { PWAProvider } from '@/components/PWAProvider'
 import { ClientEffects } from '@/components/ClientEffects'
+import { BackgroundEffects } from '@/components/BackgroundEffects'
 
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${manrope.variable} ${spaceGrotesk.variable} app-body min-h-screen text-white`}
       >
+        <BackgroundEffects />
         <Providers>
           <PWAProvider>
             <ThemeProvider>

@@ -35,50 +35,50 @@ const VARIANTS: Record<
     icon: Inbox,
     defaultTitle: 'Заявок пока нет',
     defaultDescription: 'Новые заявки появятся здесь',
-    iconColor: 'text-sky-400',
-    bgColor: 'bg-sky-500/10',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+    bgColor: 'bg-sky-500/20 dark:bg-sky-500/10',
   },
   letters: {
     icon: FileText,
     defaultTitle: 'Писем не найдено',
     defaultDescription: 'Письма появятся после синхронизации',
-    iconColor: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    bgColor: 'bg-emerald-500/20 dark:bg-emerald-500/10',
   },
   search: {
     icon: Search,
     defaultTitle: 'Ничего не найдено',
     defaultDescription: 'Попробуйте изменить параметры поиска',
-    iconColor: 'text-amber-400',
-    bgColor: 'bg-amber-500/10',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-500/20 dark:bg-amber-500/10',
   },
   error: {
     icon: AlertCircle,
     defaultTitle: 'Произошла ошибка',
     defaultDescription: 'Не удалось загрузить данные',
-    iconColor: 'text-red-400',
-    bgColor: 'bg-red-500/10',
+    iconColor: 'text-red-600 dark:text-red-400',
+    bgColor: 'bg-red-500/20 dark:bg-red-500/10',
   },
   files: {
     icon: FolderOpen,
     defaultTitle: 'Нет файлов',
     defaultDescription: 'Прикреплённые файлы появятся здесь',
-    iconColor: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    bgColor: 'bg-purple-500/20 dark:bg-purple-500/10',
   },
   comments: {
     icon: MessageSquare,
     defaultTitle: 'Нет комментариев',
     defaultDescription: 'Будьте первым, кто оставит комментарий',
-    iconColor: 'text-teal-400',
-    bgColor: 'bg-teal-500/10',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    bgColor: 'bg-teal-500/20 dark:bg-teal-500/10',
   },
   default: {
     icon: Inbox,
     defaultTitle: 'Пусто',
     defaultDescription: 'Здесь пока ничего нет',
-    iconColor: 'text-slate-400',
-    bgColor: 'bg-slate-500/10',
+    iconColor: 'text-slate-600 dark:text-slate-400',
+    bgColor: 'bg-slate-500/20 dark:bg-slate-500/10',
   },
 }
 
@@ -103,7 +103,7 @@ export function EmptyState({
         <Icon className={cn('h-8 w-8', config.iconColor)} />
       </div>
       <h3 className="mb-2 text-lg font-medium text-white">{title || config.defaultTitle}</h3>
-      <p className="text-muted max-w-sm text-sm">{description || config.defaultDescription}</p>
+      <p className="max-w-sm text-sm text-muted">{description || config.defaultDescription}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   )
@@ -126,7 +126,7 @@ export function EmptyStateCompact({
 
   return (
     <div
-      className={cn('text-muted flex items-center gap-3 rounded-lg p-4', config.bgColor, className)}
+      className={cn('flex items-center gap-3 rounded-lg p-4 text-muted', config.bgColor, className)}
     >
       <Icon className={cn('h-5 w-5', config.iconColor)} />
       <span className="text-sm">{message || config.defaultTitle}</span>

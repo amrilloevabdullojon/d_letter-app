@@ -1,5 +1,6 @@
 import 'server-only'
-import { GoogleGenAI } from '@google/genai'
+import { GoogleGenAI, Type } from '@google/genai'
+import { z } from 'zod'
 import { logger } from '@/lib/logger.server'
 
 const genai = new GoogleGenAI({
@@ -39,6 +40,49 @@ export interface ExtractedLetterData {
   contentRussian: string | null
 }
 
+const nullableExtractedString = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((value) => {
+    if (typeof value !== 'string') {
+      return null
+    }
+
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : null
+  })
+
+const extractedLetterDataSchema = z.object({
+  number: nullableExtractedString,
+  date: nullableExtractedString,
+  organization: nullableExtractedString,
+  region: nullableExtractedString,
+  district: nullableExtractedString,
+  contentSummary: nullableExtractedString,
+  contentRussian: nullableExtractedString,
+})
+
+const EXTRACTION_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    number: { type: Type.STRING, nullable: true },
+    date: { type: Type.STRING, nullable: true },
+    organization: { type: Type.STRING, nullable: true },
+    region: { type: Type.STRING, nullable: true },
+    district: { type: Type.STRING, nullable: true },
+    contentSummary: { type: Type.STRING, nullable: true },
+    contentRussian: { type: Type.STRING, nullable: true },
+  },
+  required: [
+    'number',
+    'date',
+    'organization',
+    'region',
+    'district',
+    'contentSummary',
+    'contentRussian',
+  ],
+} as const
+
 const EXTRACTION_PROMPT = `Extract letter data from the PDF.
 Return clean JSON only (no markdown, no code fences).
 
@@ -59,6 +103,43 @@ Rules:
 - Output JSON only.`
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function parseExtractedLetterData(content: string): ExtractedLetterData | null {
+  const trimmed = content.trim()
+  if (!trimmed) return null
+
+  let jsonStr = trimmed
+
+  if (jsonStr.startsWith('```json')) {
+    jsonStr = jsonStr.slice(7)
+  } else if (jsonStr.startsWith('```')) {
+    jsonStr = jsonStr.slice(3)
+  }
+
+  if (jsonStr.endsWith('```')) {
+    jsonStr = jsonStr.slice(0, -3)
+  }
+
+  jsonStr = jsonStr.trim()
+
+  try {
+    const parsed = JSON.parse(jsonStr)
+    const result = extractedLetterDataSchema.safeParse(parsed)
+    if (!result.success) {
+      logger.warn('AI', 'Invalid extraction payload', {
+        issues: result.error.issues.map((issue) => issue.message),
+      })
+      return null
+    }
+
+    return result.data
+  } catch (error) {
+    logger.warn('AI', 'Failed to parse extraction payload', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+    return null
+  }
+}
 
 const isRateLimitError = (error: unknown) => {
   if (!error || typeof error !== 'object') return false
@@ -123,28 +204,16 @@ export async function extractLetterDataFromPdf(
             ],
           },
         ],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: EXTRACTION_RESPONSE_SCHEMA,
+        },
       })
     )
 
     const content = response.text
     if (!content) return null
-
-    // Парсим JSON ответ
-    let jsonStr = content.trim()
-
-    // Убираем markdown code blocks если есть
-    if (jsonStr.startsWith('```json')) {
-      jsonStr = jsonStr.slice(7)
-    } else if (jsonStr.startsWith('```')) {
-      jsonStr = jsonStr.slice(3)
-    }
-    if (jsonStr.endsWith('```')) {
-      jsonStr = jsonStr.slice(0, -3)
-    }
-    jsonStr = jsonStr.trim()
-
-    const data = JSON.parse(jsonStr) as ExtractedLetterData
-    return data
+    return parseExtractedLetterData(content)
   } catch (error) {
     logger.error('AI', error, { action: 'extractLetterDataFromPdf' })
     return null
@@ -167,19 +236,16 @@ export async function extractLetterDataWithAI(
       genai.models.generateContent({
         model: 'gemini-2.0-flash',
         contents: EXTRACTION_PROMPT + '\n\nТекст письма:\n' + pdfText.substring(0, 4000),
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: EXTRACTION_RESPONSE_SCHEMA,
+        },
       })
     )
 
     const content = response.text
     if (!content) return null
-
-    let jsonStr = content.trim()
-    if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7)
-    else if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3)
-    if (jsonStr.endsWith('```')) jsonStr = jsonStr.slice(0, -3)
-    jsonStr = jsonStr.trim()
-
-    return JSON.parse(jsonStr) as ExtractedLetterData
+    return parseExtractedLetterData(content)
   } catch (error) {
     logger.error('AI', error, { action: 'extractLetterDataWithAI' })
     return null

@@ -73,6 +73,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   // Дополнительные поля (не в схеме)
   const [contentRussian, setContentRussian] = useState('')
   const [region, setRegion] = useState('')
+  const [district, setDistrict] = useState('')
 
   // React Hook Form
   const {
@@ -105,7 +106,9 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
    * Парсит PDF через API
    */
   const parsePdfContent = useCallback(
-    async (f: File): Promise<{ data: ParsedPdfData; meta: ParseMeta } | null> => {
+    async (
+      f: File
+    ): Promise<{ data: ParsedPdfData | null; meta: ParseMeta | null; error?: string }> => {
       try {
         const formData = new FormData()
         formData.append('file', f)
@@ -116,16 +119,24 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
         })
 
         if (!res.ok) {
-          const err = await res.json()
+          const err = await res.json().catch(() => null)
           console.error('PDF parse error:', err)
-          return null
+          return {
+            data: null,
+            meta: null,
+            error: err?.error || 'Не удалось выполнить AI-анализ PDF',
+          }
         }
 
         const result = await res.json()
         return { data: result.data, meta: result.meta }
       } catch (error) {
         console.error('Failed to parse PDF:', error)
-        return null
+        return {
+          data: null,
+          meta: null,
+          error: error instanceof Error ? error.message : 'Не удалось выполнить AI-анализ PDF',
+        }
       }
     },
     []
@@ -133,92 +144,103 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
 
   const handleFile = useCallback(
     async (f: File) => {
+      const isPdf = f.name.toLowerCase().endsWith('.pdf')
+
+      if (!isPdf) {
+        toast.error('Быстрое AI-добавление поддерживает только PDF файлы')
+        return
+      }
+
       setFile(f)
       setParsing(true)
       setParseSource(null)
       setServerError(null)
       setCreatedLetterId(null)
-
-      const isPdf = f.name.toLowerCase().endsWith('.pdf')
+      setContentRussian('')
+      setRegion('')
+      setDistrict('')
 
       // Сначала пробуем распарсить содержимое PDF
-      if (isPdf) {
-        toast.loading('Анализ PDF с помощью AI...', { id: 'parsing' })
+      toast.loading('Анализ PDF с помощью AI...', { id: 'parsing' })
 
-        const result = await parsePdfContent(f)
+      const parseResult = await parsePdfContent(f)
 
-        if (result?.data) {
-          const { data, meta } = result
+      if (parseResult.data && parseResult.meta) {
+        const { data, meta } = parseResult
 
-          // Определяем источник данных
-          if (meta.extractedFrom?.ai) {
-            setParseSource('ai')
-          } else if (meta.extractedFrom?.pdf) {
-            setParseSource('pdf')
-          } else if (meta.extractedFrom?.filename) {
-            setParseSource('filename')
-          }
-
-          if (data.number) setValue('number', data.number)
-          if (data.organization) setValue('org', data.organization)
-          if (data.date) {
-            const dateObj = new Date(data.date)
-            setValue('date', formatDateForInput(dateObj))
-          }
-          if (data.deadline) {
-            const deadlineObj = new Date(data.deadline)
-            setValue('deadlineDate', formatDateForInput(deadlineObj))
-          } else if (data.date) {
-            const dateObj = new Date(data.date)
-            // +7 рабочих дней
-            setValue(
-              'deadlineDate',
-              formatDateForInput(calculateDeadline(dateObj, DEFAULT_DEADLINE_WORKING_DAYS))
-            )
-          }
-          if (data.content) setValue('content', data.content)
-          if (data.contentRussian) setContentRussian(data.contentRussian)
-          if (data.region || data.district) {
-            setRegion([data.region, data.district].filter(Boolean).join(', '))
-          }
-          const recommendedType = recommendLetterType({
-            content: data.content,
-            contentRussian: data.contentRussian,
-            organization: data.organization,
-            filename: f.name,
-          })
-          if (recommendedType) {
-            setValue('type', recommendedType)
-          }
-
-          const sourceText = meta.extractedFrom?.ai
-            ? 'AI'
-            : meta.extractedFrom?.pdf
-              ? 'PDF'
-              : 'имени файла'
-          toast.success(`Данные извлечены из ${sourceText}`, { id: 'parsing' })
-          setParsing(false)
-          return
+        // Определяем источник данных
+        if (meta.extractedFrom?.ai) {
+          setParseSource('ai')
+        } else if (meta.extractedFrom?.pdf) {
+          setParseSource('pdf')
+        } else if (meta.extractedFrom?.filename) {
+          setParseSource('filename')
         }
+
+        if (data.number) setValue('number', data.number)
+        if (data.organization) setValue('org', data.organization)
+        if (data.date) {
+          const dateObj = new Date(data.date)
+          setValue('date', formatDateForInput(dateObj))
+        }
+        if (data.deadline) {
+          const deadlineObj = new Date(data.deadline)
+          setValue('deadlineDate', formatDateForInput(deadlineObj))
+        } else if (data.date) {
+          const dateObj = new Date(data.date)
+          // +7 рабочих дней
+          setValue(
+            'deadlineDate',
+            formatDateForInput(calculateDeadline(dateObj, DEFAULT_DEADLINE_WORKING_DAYS))
+          )
+        }
+        if (data.content) setValue('content', data.content)
+        if (data.contentRussian) setContentRussian(data.contentRussian)
+        setRegion(data.region || '')
+        setDistrict(data.district || '')
+        const recommendedType = recommendLetterType({
+          content: data.content,
+          contentRussian: data.contentRussian,
+          organization: data.organization,
+          filename: f.name,
+        })
+        if (recommendedType) {
+          setValue('type', recommendedType)
+        }
+
+        const sourceText = meta.extractedFrom?.ai
+          ? 'AI'
+          : meta.extractedFrom?.pdf
+            ? 'PDF'
+            : 'имени файла'
+        toast.success(`Данные извлечены из ${sourceText}`, { id: 'parsing' })
+        setParsing(false)
+        return
+      }
+
+      if (parseResult.error) {
+        toast.warning(`${parseResult.error} Используем распознавание по имени файла.`, {
+          id: 'parsing',
+        })
       }
 
       // Fallback: парсим имя файла
-      const result = parseLetterFilename(f.name)
+      const filenameResult = parseLetterFilename(f.name)
 
-      if (result.isValid) {
+      if (filenameResult.isValid) {
         setParseSource('filename')
-        setValue('number', result.number)
-        setValue('date', formatDateForInput(result.date))
+        setValue('number', filenameResult.number)
+        setValue('date', formatDateForInput(filenameResult.date))
         // +7 рабочих дней
         setValue(
           'deadlineDate',
-          formatDateForInput(calculateDeadline(result.date, DEFAULT_DEADLINE_WORKING_DAYS))
+          formatDateForInput(calculateDeadline(filenameResult.date, DEFAULT_DEADLINE_WORKING_DAYS))
         )
-        setValue('content', result.content)
-        const guessedOrg = guessOrganization(result.content)
+        setValue('content', filenameResult.content)
+        const guessedOrg = guessOrganization(filenameResult.content)
         setValue('org', guessedOrg)
         const recommendedType = recommendLetterType({
-          content: result.content,
+          content: filenameResult.content,
           organization: guessedOrg,
           filename: f.name,
         })
@@ -272,23 +294,28 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     const toastId = toast.loading('Создание письма...')
 
     try {
-      // 1. Создаём письмо
+      const formData = new FormData()
+      formData.append('number', data.number)
+      formData.append('org', data.org)
+      formData.append('date', data.date)
+      if (data.deadlineDate) formData.append('deadlineDate', data.deadlineDate)
+      if (data.type) formData.append('type', data.type)
+      if (data.content) formData.append('content', data.content)
+      if (data.applicantName) formData.append('applicantName', data.applicantName)
+      if (data.applicantEmail) formData.append('applicantEmail', data.applicantEmail)
+      if (data.applicantPhone) formData.append('applicantPhone', data.applicantPhone)
+      if (data.applicantTelegramChatId)
+        formData.append('applicantTelegramChatId', data.applicantTelegramChatId)
+      if (contentRussian) formData.append('contentRussian', contentRussian)
+      if (region) formData.append('region', region)
+      if (district) formData.append('district', district)
+      if (file) {
+        formData.append('file', file)
+      }
+
       const letterRes = await fetch('/api/letters', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          number: data.number,
-          org: data.org,
-          date: data.date,
-          deadlineDate: data.deadlineDate || undefined,
-          type: data.type || undefined,
-          content: data.content || undefined,
-          contacts: region ? `Регион: ${region}` : undefined,
-          applicantName: data.applicantName || undefined,
-          applicantEmail: data.applicantEmail || undefined,
-          applicantPhone: data.applicantPhone || undefined,
-          applicantTelegramChatId: data.applicantTelegramChatId || undefined,
-        }),
+        body: formData,
       })
 
       const letterData = await letterRes.json()
@@ -304,27 +331,6 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       const letterId = createdLetter?.id
       if (!letterId) {
         throw new Error('Missing letter id from server')
-      }
-
-      // 2. Загружаем файл, если есть
-      if (file) {
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('letterId', letterId)
-
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        })
-
-        if (uploadRes.status === 413) {
-          toast.error('Файл слишком большой (413)')
-        } else if (!uploadRes.ok) {
-          const uploadError = await uploadRes.json().catch(() => null)
-          const uploadMessage = uploadError?.error || 'Failed to upload file'
-          console.error(uploadMessage)
-          toast.error(uploadMessage)
-        }
       }
 
       toast.success('Письмо создано!', { id: toastId })
@@ -344,6 +350,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     setParseSource(null)
     setContentRussian('')
     setRegion('')
+    setDistrict('')
     setServerError(null)
     setCreatedLetterId(null)
     resetForm()
@@ -379,7 +386,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       </div>
 
       <p className="mb-4 text-sm text-gray-400">
-        Перетащите PDF файл письма. Gemini AI автоматически извлечёт данные и переведёт на русский.
+        Перетащите PDF файл письма. Gemini AI извлечёт данные, а исходный PDF будет прикреплён к
+        письму одним серверным запросом.
       </p>
 
       {!file ? (
@@ -400,14 +408,14 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
             aria-label="Выбрать файл"
             type="file"
             className="hidden"
-            accept=".pdf,.doc,.docx"
+            accept=".pdf"
             onChange={handleFileSelect}
           />
           <Upload className="mx-auto mb-3 h-10 w-10 text-gray-500" />
           <p className="text-gray-300">
             Перетащите файл сюда или <span className="text-emerald-400">выберите</span>
           </p>
-          <p className="mt-2 text-xs text-gray-500">PDF, DOC, DOCX</p>
+          <p className="mt-2 text-xs text-gray-500">Только PDF</p>
         </div>
       ) : createdLetterId ? (
         // Баннер успешного создания
@@ -575,7 +583,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
           </div>
 
           {/* Additional fields from PDF */}
-          {region && (
+          {(region || district) && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 flex items-center gap-2 text-sm text-gray-400">
@@ -586,6 +594,18 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
                   type="text"
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
+                  className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 flex items-center gap-2 text-sm text-gray-400">
+                  <MapPin className="h-4 w-4" />
+                  Район
+                </label>
+                <input
+                  type="text"
+                  value={district}
+                  onChange={(e) => setDistrict(e.target.value)}
                   className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                 />
               </div>
