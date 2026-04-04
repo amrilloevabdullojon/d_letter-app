@@ -89,7 +89,10 @@ export function useToast(): ToastContextValue {
   const [toasts] = useState<Toast[]>([]) // Provide empty array for legacy compatibility
 
   const addToast = useCallback((toast: Omit<Toast, 'id'> & { id?: string | number }) => {
-    const opts = buildSonnerOptions({ message: toast.message, options: toast.options as any })
+    const opts = buildSonnerOptions({
+      message: toast.message,
+      options: { duration: toast.duration, action: toast.action, id: toast.id },
+    })
     switch (toast.type) {
       case 'success':
         return sonnerToast.success(toast.title, opts)
