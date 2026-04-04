@@ -7,14 +7,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className }: SkeletonProps) {
-  return (
-    <div
-      className={cn(
-        'animate-pulse rounded-md bg-white/10',
-        className
-      )}
-    />
-  )
+  return <div className={cn('skeleton', className)} />
 }
 
 /**
@@ -22,9 +15,9 @@ export function Skeleton({ className }: SkeletonProps) {
  */
 export function RequestCardSkeleton() {
   return (
-    <div className="panel panel-soft panel-glass rounded-2xl p-5 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div className="space-y-3 flex-1">
+    <div className="panel panel-soft panel-glass animate-fadeIn rounded-2xl p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex-1 space-y-3">
           <Skeleton className="h-6 w-3/4 max-w-[300px]" />
           <Skeleton className="h-4 w-full max-w-[400px]" />
           <div className="flex gap-2">
@@ -34,9 +27,9 @@ export function RequestCardSkeleton() {
         </div>
         <Skeleton className="h-6 w-20 rounded-full" />
       </div>
-      <Skeleton className="h-4 w-full mt-3" />
-      <Skeleton className="h-4 w-2/3 mt-2" />
-      <div className="flex gap-4 mt-4">
+      <Skeleton className="mt-3 h-4 w-full" />
+      <Skeleton className="mt-2 h-4 w-2/3" />
+      <div className="mt-4 flex gap-4">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-4 w-32" />
@@ -63,7 +56,7 @@ export function RequestListSkeleton({ count = 5 }: { count?: number }) {
  */
 export function LetterRowSkeleton() {
   return (
-    <div className="flex items-center gap-4 p-4 border-b border-gray-700/50">
+    <div className="flex items-center gap-4 border-b border-gray-700/50 p-4">
       <Skeleton className="h-5 w-5 rounded" />
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-3">
@@ -96,7 +89,7 @@ export function LetterListSkeleton({ count = 10 }: { count?: number }) {
  */
 export function CardSkeleton() {
   return (
-    <div className="panel panel-glass rounded-2xl p-6 space-y-4">
+    <div className="panel panel-glass space-y-4 rounded-2xl p-6">
       <Skeleton className="h-6 w-1/3" />
       <div className="space-y-2">
         <Skeleton className="h-4 w-full" />
@@ -112,10 +105,10 @@ export function CardSkeleton() {
  */
 export function StatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="panel panel-glass rounded-xl p-4">
-          <Skeleton className="h-4 w-20 mb-2" />
+          <Skeleton className="mb-2 h-4 w-20" />
           <Skeleton className="h-8 w-16" />
         </div>
       ))}

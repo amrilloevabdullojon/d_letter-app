@@ -1,5 +1,6 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { ReactNode, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useUserPreferences } from '@/hooks/useUserPreferences'
@@ -81,17 +82,17 @@ export function PageTransition({ children }: PageTransitionProps) {
         />
       )}
 
-      <div
-        className={`transition-opacity duration-150 ease-out ${
-          transitionStage === 'fadeOut'
-            ? 'opacity-0'
-            : transitionStage === 'fadeIn'
-              ? 'animate-fadeIn'
-              : 'opacity-100'
-        }`}
+      <motion.div
+        initial={false}
+        animate={{
+          opacity: transitionStage === 'fadeOut' ? 0 : 1,
+          scale: transitionStage === 'fadeOut' ? 0.98 : 1,
+          y: transitionStage === 'fadeOut' ? 10 : 0,
+        }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       >
         {displayChildren}
-      </div>
+      </motion.div>
     </>
   )
 }

@@ -2,7 +2,7 @@
 import '@/lib/env.validation'
 
 import type { Metadata, Viewport } from 'next'
-import { Manrope, Rubik } from 'next/font/google'
+import { Manrope, Rubik, Outfit } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
 import { AuthGuard } from '@/components/AuthGuard'
@@ -24,6 +24,13 @@ const spaceGrotesk = Rubik({
   display: 'swap',
   preload: true,
   variable: '--font-space',
+})
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+  variable: '--font-outfit',
 })
 
 export const metadata: Metadata = {
@@ -59,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru" className="dark">
       <body
-        className={`${manrope.variable} ${spaceGrotesk.variable} app-body min-h-screen text-white`}
+        className={`${manrope.variable} ${spaceGrotesk.variable} ${outfit.variable} app-body min-h-screen text-white`}
       >
         <BackgroundEffects />
         <Providers>
