@@ -24,48 +24,34 @@ import { useIsMobileOrTablet } from '@/hooks/useMediaQuery'
 import dynamic from 'next/dynamic'
 import { ScrollIndicator } from '@/components/mobile/ScrollIndicator'
 import { MobileTabs } from '@/components/mobile/MobileTabs'
+import { TabSkeleton } from '@/components/settings/TabSkeleton'
+import { AnimatePresence, motion } from 'framer-motion'
 
 // Lazy load tab components for better performance
 const PermissionsManager = dynamic(
   () =>
     import('@/components/PermissionsManager').then((mod) => ({ default: mod.PermissionsManager })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-      </div>
-    ),
+    loading: () => <TabSkeleton />,
   }
 )
 const UsersTab = dynamic(
   () => import('@/components/settings/UsersTab').then((mod) => ({ default: mod.UsersTab })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-      </div>
-    ),
+    loading: () => <TabSkeleton />,
   }
 )
 const SyncTab = dynamic(
   () => import('@/components/settings/SyncTab').then((mod) => ({ default: mod.SyncTab })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-      </div>
-    ),
+    loading: () => <TabSkeleton />,
   }
 )
 const LoginAuditTab = dynamic(
   () =>
     import('@/components/settings/LoginAuditTab').then((mod) => ({ default: mod.LoginAuditTab })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-      </div>
-    ),
+    loading: () => <TabSkeleton />,
   }
 )
 const NotificationsTab = dynamic(
@@ -74,11 +60,7 @@ const NotificationsTab = dynamic(
       default: mod.NotificationsTab,
     })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-      </div>
-    ),
+    loading: () => <TabSkeleton />,
   }
 )
 const MobileNotificationsTab = dynamic(
@@ -100,21 +82,13 @@ const PersonalizationTab = dynamic(
       default: mod.PersonalizationTab,
     })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-      </div>
-    ),
+    loading: () => <TabSkeleton />,
   }
 )
 const WorkflowTab = dynamic(
   () => import('@/components/settings/WorkflowTab').then((mod) => ({ default: mod.WorkflowTab })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-      </div>
-    ),
+    loading: () => <TabSkeleton />,
   }
 )
 const StatusConfigTab = dynamic(
@@ -123,11 +97,7 @@ const StatusConfigTab = dynamic(
       default: mod.StatusConfigTab,
     })),
   {
-    loading: () => (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-      </div>
-    ),
+    loading: () => <TabSkeleton />,
   }
 )
 
@@ -167,7 +137,9 @@ export default function SettingsPage() {
   )
 
   // Get active tab from URL, defaulting to 'users'
-  const activeTab = (searchParams.get('tab') as TabType) || 'users'
+  const tabParam = searchParams.get('tab') as string
+  const isValidTab = Object.keys(TAB_INFO).includes(tabParam)
+  const activeTab = (isValidTab ? tabParam : 'users') as TabType
 
   const isSuperAdmin = session?.user?.role === 'SUPERADMIN'
 
@@ -424,42 +396,52 @@ export default function SettingsPage() {
         )}
 
         {/* Tab Content */}
-        {activeTab === 'permissions' && isSuperAdmin && (
-          <div className="panel panel-glass mb-8 rounded-2xl p-6">
-            <PermissionsManager />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            {activeTab === 'permissions' && isSuperAdmin && (
+              <div className="panel panel-glass mb-8 rounded-2xl p-6">
+                <PermissionsManager />
+              </div>
+            )}
 
-        {activeTab === 'users' && (
-          <UsersTab
-            session={session}
-            isSuperAdmin={isSuperAdmin}
-            onSuccess={handleSuccess}
-            onError={handleError}
-          />
-        )}
+            {activeTab === 'users' && (
+              <UsersTab
+                session={session}
+                isSuperAdmin={isSuperAdmin}
+                onSuccess={handleSuccess}
+                onError={handleError}
+              />
+            )}
 
-        {activeTab === 'sync' && <SyncTab onSuccess={handleSuccess} onError={handleError} />}
+            {activeTab === 'sync' && <SyncTab onSuccess={handleSuccess} onError={handleError} />}
 
-        {activeTab === 'audit' && <LoginAuditTab onError={handleError} />}
+            {activeTab === 'audit' && <LoginAuditTab onError={handleError} />}
 
-        {activeTab === 'notifications' &&
-          (isMobile ? <MobileNotificationsTab /> : <NotificationsTab />)}
+            {activeTab === 'notifications' &&
+              (isMobile ? <MobileNotificationsTab /> : <NotificationsTab />)}
 
-        {activeTab === 'personalization' && (
-          <PersonalizationTab
-            newYearVibe={newYearVibe}
-            onNewYearVibeChange={handleNewYearVibeToggle}
-          />
-        )}
+            {activeTab === 'personalization' && (
+              <PersonalizationTab
+                newYearVibe={newYearVibe}
+                onNewYearVibeChange={handleNewYearVibeToggle}
+              />
+            )}
 
-        {activeTab === 'workflow' && <WorkflowTab />}
+            {activeTab === 'workflow' && <WorkflowTab />}
 
-        {activeTab === 'statuses' && (
-          <div className="panel panel-glass rounded-2xl p-6">
-            <StatusConfigTab />
-          </div>
-        )}
+            {activeTab === 'statuses' && (
+              <div className="panel panel-glass rounded-2xl p-6">
+                <StatusConfigTab />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   )

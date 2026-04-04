@@ -50,11 +50,6 @@ export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUser
   const [editSnapshot, setEditSnapshot] = useState<UserEditData | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
 
-  // Create state
-  const [createData, setCreateData] = useState<UserCreateData>(getInitialCreateData())
-  const [creating, setCreating] = useState(false)
-  const [showCreateForm, setShowCreateForm] = useState(false)
-
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkAction, setBulkAction] = useState<'role' | 'canLogin' | 'delete' | ''>('')
@@ -322,40 +317,6 @@ export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUser
     [editData, editSnapshot, cancelEdit, loadUsers, onSuccess, onError]
   )
 
-  // Create user
-  const createUser = useCallback(async () => {
-    if (!createData.email.trim()) {
-      onError?.('Email обязателен')
-      return
-    }
-
-    setCreating(true)
-    try {
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createData),
-      })
-
-      const data = await res.json().catch(() => ({}))
-
-      if (!res.ok) {
-        onError?.(data.error || 'Не удалось создать пользователя')
-        return
-      }
-
-      onSuccess?.('Пользователь создан')
-      setCreateData(getInitialCreateData())
-      setShowCreateForm(false)
-      loadUsers()
-    } catch (error) {
-      console.error('Failed to create user:', error)
-      onError?.('Ошибка создания пользователя')
-    } finally {
-      setCreating(false)
-    }
-  }, [createData, loadUsers, onSuccess, onError])
-
   // Delete user
   const deleteUser = useCallback(
     async (userId: string) => {
@@ -566,14 +527,6 @@ export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUser
     startEdit,
     cancelEdit,
     saveEdit,
-
-    // Create
-    createData,
-    creating,
-    showCreateForm,
-    setCreateData,
-    setShowCreateForm,
-    createUser,
 
     // Delete
     deleteUser,

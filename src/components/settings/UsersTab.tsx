@@ -1,19 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
   Users,
-  UserPlus,
-  Search,
   CheckCircle,
   Loader2,
-  Download,
   ChevronLeft,
   ChevronRight,
-  ShieldAlert,
-  RefreshCw,
   XCircle,
   Clock,
   LayoutGrid,
@@ -32,9 +27,13 @@ import {
 import { useUsers } from '@/hooks/useUsers'
 import { UserCard } from './UserCard'
 import { UserEditModal } from './UserEditModal'
-import type { User, UserRole, AdminApproval } from '@/lib/settings-types'
+import type { User, UserRole } from '@/lib/settings-types'
 import { ROLE_OPTIONS, ROLE_ORDER, ROLE_LABELS, fieldBase } from '@/lib/settings-types'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+
+import { ApprovalsPanel } from './users/ApprovalsPanel'
+import { CreateUserForm } from './users/CreateUserForm'
+import { UsersFilterBar } from './users/UsersFilterBar'
 
 interface UsersTabProps {
   session: {
@@ -97,10 +96,6 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
     startEdit,
     cancelEdit,
     saveEdit,
-    createData,
-    creating,
-    setCreateData,
-    createUser,
     deleteUser,
     selectedIds,
     bulkAction,
@@ -126,37 +121,10 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
 
   const [viewMode, setViewMode] = useLocalStorage<'cards' | 'table'>('users-view-mode', 'cards')
 
-  // Approvals state
-  const [approvals, setApprovals] = useState<AdminApproval[]>([])
-  const [approvalsLoading, setApprovalsLoading] = useState(false)
-  const [approvalActionId, setApprovalActionId] = useState<string | null>(null)
-
-  // Load users on mount
-  useEffect(() => {
+  // Create handle approval done to refresh users tab data
+  const handleApprovalDone = useCallback(() => {
     loadUsers()
   }, [loadUsers])
-
-  // Load approvals
-  const loadApprovals = useCallback(async () => {
-    setApprovalsLoading(true)
-    try {
-      const res = await fetch('/api/approvals?status=PENDING')
-      if (res.ok) {
-        const data = await res.json()
-        setApprovals(data.approvals || [])
-      }
-    } catch (error) {
-      console.error('Failed to load approvals:', error)
-    } finally {
-      setApprovalsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (isSuperAdmin) {
-      loadApprovals()
-    }
-  }, [isSuperAdmin, loadApprovals])
 
   const roleOptions = useMemo(
     () =>
@@ -169,34 +137,6 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
       setRoleFilter('all')
     }
   }, [isSuperAdmin, roleFilter, setRoleFilter])
-
-  // Handle approval
-  const handleApproval = useCallback(
-    async (approvalId: string, action: 'approve' | 'reject') => {
-      setApprovalActionId(approvalId)
-      try {
-        const res = await fetch(`/api/approvals/${approvalId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action }),
-        })
-        if (res.ok) {
-          onSuccess(action === 'approve' ? 'Запрос подтверждён' : 'Запрос отклонён')
-          loadApprovals()
-          loadUsers()
-        } else {
-          const data = await res.json().catch(() => ({}))
-          onError(data.error || 'Ошибка обработки запроса')
-        }
-      } catch (error) {
-        console.error('Approval action failed:', error)
-        onError('Ошибка обработки запроса')
-      } finally {
-        setApprovalActionId(null)
-      }
-    },
-    [loadApprovals, loadUsers, onSuccess, onError]
-  )
 
   // Toggle user access
   const toggleUserAccess = useCallback(
@@ -271,21 +211,6 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
       selectAll()
     }
   }, [allVisibleSelected, clearSelection, selectAll])
-
-  const resetFilters = useCallback(() => {
-    setSearchQuery('')
-    setRoleFilter('all')
-    setAccessFilter('all')
-    setTelegramFilter('all')
-    setEmailFilter('all')
-  }, [setSearchQuery, setRoleFilter, setAccessFilter, setTelegramFilter, setEmailFilter])
-
-  const hasFilters =
-    searchQuery ||
-    roleFilter !== 'all' ||
-    accessFilter !== 'all' ||
-    telegramFilter !== 'all' ||
-    emailFilter !== 'all'
 
   const toggleAccessFilter = useCallback(
     (value: 'active' | 'invited' | 'blocked') => {
@@ -451,269 +376,55 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
       </div>
 
       {/* Approvals Panel (SuperAdmin only) */}
-      {isSuperAdmin && (
-        <div className="panel-soft panel-glass mb-6 rounded-2xl p-4">
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <ShieldAlert className="h-4 w-4 text-amber-400" />
-              Запросы на подтверждение
-            </div>
-            <button
-              onClick={loadApprovals}
-              aria-label="Обновить запросы"
-              className="p-2 text-slate-400 transition hover:text-white"
-              title="Обновить"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-          </div>
-          {approvalsLoading ? (
-            <div className="text-xs text-slate-500">Загрузка...</div>
-          ) : approvals.length > 0 ? (
-            <div className="space-y-3">
-              {approvals.map((approval) => {
-                const approvalTitle =
-                  approval.action === 'DEMOTE_ADMIN' ? 'Понижение роли админа' : 'Удаление админа'
-                const requester =
-                  approval.requestedBy.name || approval.requestedBy.email || 'Неизвестный'
-                const targetLabel =
-                  approval.targetUser.name || approval.targetUser.email || 'Без имени'
-                const needsSecondAdmin = approval.requestedBy.id === session.user.id
-                return (
-                  <div
-                    key={approval.id}
-                    className="panel-soft panel-glass flex flex-col gap-3 rounded-xl p-3"
-                  >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="space-y-1">
-                        <div className="text-sm text-white">{approvalTitle}</div>
-                        <div className="text-xs text-slate-400">
-                          {targetLabel} · {ROLE_LABELS[approval.targetUser.role]}
-                        </div>
-                        {approval.action === 'DEMOTE_ADMIN' && approval.payload?.newRole && (
-                          <div className="text-xs text-teal-400">
-                            Новая роль: {ROLE_LABELS[approval.payload.newRole]}
-                          </div>
-                        )}
-                        <div className="text-xs text-slate-500">
-                          {requester} · {formatDate(approval.createdAt)}
-                          {needsSecondAdmin && (
-                            <span className="ml-2 text-amber-400">Нужен второй админ</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleApproval(approval.id, 'approve')}
-                          disabled={approvalActionId === approval.id || needsSecondAdmin}
-                          title={needsSecondAdmin ? 'Нужен второй админ' : undefined}
-                          className="inline-flex items-center gap-2 rounded bg-teal-600 px-3 py-1.5 text-xs text-white transition hover:bg-teal-500 disabled:opacity-50"
-                        >
-                          {approvalActionId === approval.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <CheckCircle className="h-3 w-3" />
-                          )}
-                          Подтвердить
-                        </button>
-                        <button
-                          onClick={() => handleApproval(approval.id, 'reject')}
-                          disabled={approvalActionId === approval.id || needsSecondAdmin}
-                          title={needsSecondAdmin ? 'Нужен второй админ' : undefined}
-                          className="btn-secondary inline-flex items-center gap-2 rounded px-3 py-1.5 text-xs transition disabled:opacity-50"
-                        >
-                          <XCircle className="h-3 w-3" />
-                          Отклонить
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="text-xs text-slate-500">Нет запросов на подтверждение</div>
-          )}
-        </div>
-      )}
+      <ApprovalsPanel
+        sessionUserId={session.user.id}
+        isSuperAdmin={isSuperAdmin}
+        onSuccess={onSuccess}
+        onError={onError}
+        onApprovalDone={handleApprovalDone}
+      />
 
       {/* Create User Form */}
-      <div className="panel-soft panel-glass mb-6 rounded-2xl p-4">
-        <div className="mb-4 flex items-center gap-2 text-sm text-slate-400">
-          <UserPlus className="h-4 w-4 text-teal-400" />
-          Добавить пользователя
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <input
-            type="text"
-            value={createData.name}
-            onChange={(e) => setCreateData({ ...createData, name: e.target.value })}
-            className={`${fieldBase} w-full px-3 py-2`}
-            aria-label="Имя"
-            placeholder="Имя"
-          />
-          <input
-            type="email"
-            value={createData.email}
-            onChange={(e) => setCreateData({ ...createData, email: e.target.value })}
-            className={`${fieldBase} w-full px-3 py-2`}
-            aria-label="Email"
-            placeholder="email@example.com"
-          />
-          <select
-            value={createData.role}
-            onChange={(e) => setCreateData({ ...createData, role: e.target.value as UserRole })}
-            disabled={!isSuperAdmin}
-            className={`${fieldBase} w-full px-3 py-2 disabled:opacity-60`}
-            aria-label="Роль"
-          >
-            {roleOptions.map((role) => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={createData.telegramChatId}
-            onChange={(e) => setCreateData({ ...createData, telegramChatId: e.target.value })}
-            className={`${fieldBase} w-full px-3 py-2`}
-            aria-label="Telegram Chat ID"
-            placeholder="Telegram Chat ID"
-          />
-        </div>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1 text-xs text-slate-500">
-            <p>Для входа через Google требуется email.</p>
-            {!isSuperAdmin && <p className="text-amber-400">Роли назначает только суперадмин.</p>}
-          </div>
-          <button
-            onClick={createUser}
-            disabled={creating}
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-white transition hover:bg-teal-500 disabled:opacity-50"
-          >
-            {creating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <UserPlus className="h-4 w-4" />
-            )}
-            Добавить
-          </button>
-        </div>
-      </div>
-
+      <CreateUserForm
+        isSuperAdmin={isSuperAdmin}
+        roleOptions={roleOptions}
+        onSuccess={onSuccess}
+        onError={onError}
+        onUserCreated={loadUsers}
+      />
       {/* Search & Filters */}
-      <div className="panel-soft panel-glass mb-6 rounded-2xl p-4">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs uppercase tracking-wide text-slate-500">
-            {
-              '\u0411\u044b\u0441\u0442\u0440\u044b\u0435 \u0444\u0438\u043b\u044c\u0442\u0440\u044b'
-            }
-          </span>
-          {quickFilters.map((filter) => (
-            <button
-              key={filter.id}
-              onClick={filter.onClick}
-              className={`rounded-full border px-3 py-1 text-xs transition ${
-                filter.active
-                  ? 'border-teal-400/40 bg-teal-500/15 text-teal-200'
-                  : 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`${fieldBase} w-full py-2 pl-9 pr-3`}
-              placeholder="Поиск по имени, email, Telegram"
-              list="users-search-suggestions"
-              aria-label="Поиск пользователей"
-            />
-          </div>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as 'all' | UserRole)}
-            className={`${fieldBase} w-full px-3 py-2`}
-            aria-label="Фильтр по роли"
-          >
-            <option value="all">Все роли</option>
-            {roleOptions.map((role) => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={accessFilter}
-            onChange={(e) =>
-              setAccessFilter(e.target.value as 'all' | 'active' | 'invited' | 'blocked')
-            }
-            className={`${fieldBase} w-full px-3 py-2`}
-            aria-label="Фильтр по статусу"
-          >
-            <option value="all">Все статусы</option>
-            <option value="active">Активные</option>
-            <option value="invited">Приглашены</option>
-            <option value="blocked">Блокированы</option>
-          </select>
-          <select
-            value={emailFilter}
-            onChange={(e) => setEmailFilter(e.target.value as 'all' | 'has' | 'none')}
-            className={`${fieldBase} w-full px-3 py-2`}
-            aria-label="Фильтр по email"
-          >
-            <option value="all">Все email</option>
-            <option value="has">С email</option>
-            <option value="none">Без email</option>
-          </select>
-          <select
-            value={telegramFilter}
-            onChange={(e) => setTelegramFilter(e.target.value as 'all' | 'has' | 'none')}
-            className={`${fieldBase} w-full px-3 py-2`}
-            aria-label="Фильтр по Telegram"
-          >
-            <option value="all">Все Telegram</option>
-            <option value="has">С Telegram</option>
-            <option value="none">Без Telegram</option>
-          </select>
-        </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-          <span>
-            Показано {filteredUsers.length} из {visibleTotal}
-          </span>
-          <div className="flex items-center gap-3">
-            {hasFilters && (
-              <button
-                onClick={resetFilters}
-                className="text-teal-400 transition hover:text-teal-300"
-              >
-                Сбросить фильтры
-              </button>
-            )}
-            <button
-              onClick={exportUsers}
-              className="inline-flex items-center gap-1 text-slate-400 transition hover:text-white"
-              title="Экспорт в CSV"
-            >
-              <Download className="h-4 w-4" />
-              CSV
-            </button>
-          </div>
-        </div>
-        <datalist id="users-search-suggestions">
-          {searchSuggestions.map((value) => (
-            <option key={value} value={value} />
-          ))}
-        </datalist>
-      </div>
-
+      <UsersFilterBar
+        quickFilters={quickFilters}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        roleFilter={roleFilter}
+        setRoleFilter={setRoleFilter}
+        accessFilter={accessFilter}
+        setAccessFilter={setAccessFilter}
+        emailFilter={emailFilter}
+        setEmailFilter={setEmailFilter}
+        telegramFilter={telegramFilter}
+        setTelegramFilter={setTelegramFilter}
+        roleOptions={roleOptions}
+        hasFilters={
+          searchQuery.length > 0 ||
+          roleFilter !== 'all' ||
+          accessFilter !== 'all' ||
+          emailFilter !== 'all' ||
+          telegramFilter !== 'all'
+        }
+        resetFilters={() => {
+          setSearchQuery('')
+          setRoleFilter('all')
+          setAccessFilter('all')
+          setEmailFilter('all')
+          setTelegramFilter('all')
+        }}
+        exportUsers={exportUsers}
+        searchSuggestions={searchSuggestions}
+        filteredUsersCount={filteredUsers.length}
+        visibleTotal={visibleTotal}
+      />
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
         <div className="panel-soft panel-glass sticky bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)] z-20 mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 shadow-[0_20px_40px_rgba(2,6,23,0.45)] md:bottom-4">
