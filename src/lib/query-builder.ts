@@ -179,6 +179,27 @@ export class LetterQueryBuilder {
   }
 
   /**
+   * SLA Breach - Дедлайн просрочен (исключает терминальные статусы и паузу)
+   */
+  slaBreached(): this {
+    this.where.deadlineDate = { lt: new Date() }
+    this.where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
+    return this
+  }
+
+  /**
+   * SLA At Risk - Дедлайн в течение 2 дней (исключая терминальные и паузу)
+   */
+  slaAtRisk(): this {
+    const now = new Date()
+    const twoDaysLater = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000)
+    // lte: twoDaysLater AND gte: new Date() (то есть еще не просрочено)
+    this.where.deadlineDate = { lte: twoDaysLater, gte: now }
+    this.where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
+    return this
+  }
+
+  /**
    * Исключить удалённые (soft delete)
    */
   notDeleted(): this {

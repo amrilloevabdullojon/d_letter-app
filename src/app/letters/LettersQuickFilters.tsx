@@ -97,6 +97,22 @@ export const QUICK_FILTERS: QuickFilterItem[] = [
     activeColor: 'text-white',
     bgColor: 'bg-orange-500/20',
   },
+  {
+    value: 'sla_breached',
+    label: 'SLA нарушен',
+    icon: AlertTriangle,
+    color: 'text-red-400',
+    activeColor: 'text-white',
+    bgColor: 'bg-red-500/20',
+  },
+  {
+    value: 'sla_at_risk',
+    label: 'SLA риск',
+    icon: Clock,
+    color: 'text-amber-400',
+    activeColor: 'text-white',
+    bgColor: 'bg-amber-500/20',
+  },
 ]
 
 interface LettersQuickFiltersProps {

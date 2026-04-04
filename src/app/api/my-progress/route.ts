@@ -22,33 +22,39 @@ export async function GET(request: NextRequest) {
     // Определяем дату начала периода
     const now = new Date()
     let periodStart: Date
+    let prevPeriodStart: Date
     let periodDays: number
 
     switch (period) {
       case 'month':
         periodDays = 30
         periodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        prevPeriodStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
         break
       case 'quarter':
         periodDays = 90
         periodStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+        prevPeriodStart = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000)
         break
       default: // week
         periodDays = 7
         periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        prevPeriodStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
     }
 
     // Получаем статистику параллельно
     const [
       totalCompleted,
       completedThisPeriod,
+      completedPrevPeriod,
       inProgress,
       overdue,
       completedLetters,
       avgCompletionResult,
       dailyCompletions,
+      byStatusResult,
     ] = await Promise.all([
-      // Всего отработано (где пользователь - исполнитель и статус завершён)
+      // Всего отработано (где пользователь — исполнитель и статус завершён)
       prisma.letter.count({
         where: {
           ownerId: userId,
@@ -56,12 +62,21 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Отработано за период
+      // Отработано за текущий период
       prisma.letter.count({
         where: {
           ownerId: userId,
           status: { in: COMPLETED_STATUSES as any },
           updatedAt: { gte: periodStart },
+        },
+      }),
+
+      // Отработано за предыдущий период (для сравнения)
+      prisma.letter.count({
+        where: {
+          ownerId: userId,
+          status: { in: COMPLETED_STATUSES as any },
+          updatedAt: { gte: prevPeriodStart, lt: periodStart },
         },
       }),
 
@@ -121,11 +136,29 @@ export async function GET(request: NextRequest) {
         GROUP BY DATE("updatedAt")
         ORDER BY date ASC
       `,
+
+      // Разбивка по статусам за период (для визуализации)
+      prisma.letter.groupBy({
+        by: ['status'],
+        where: {
+          ownerId: userId,
+          updatedAt: { gte: periodStart },
+        },
+        _count: { id: true },
+      }),
     ])
 
     // Проверяем, есть ли ещё записи
     const hasMore = completedLetters.length > limit
     const lettersToReturn = hasMore ? completedLetters.slice(0, limit) : completedLetters
+
+    // Вычисляем % изменения по сравнению с прошлым периодом
+    const periodDelta =
+      completedPrevPeriod > 0
+        ? Math.round(((completedThisPeriod - completedPrevPeriod) / completedPrevPeriod) * 100)
+        : completedThisPeriod > 0
+          ? 100
+          : 0
 
     // Формируем массив дней для графика
     const dailyStatsMap = new Map<string, number>()
@@ -157,10 +190,18 @@ export async function GET(request: NextRequest) {
 
     const avgCompletionDays = avgCompletionResult[0]?.avg || null
 
+    // Разбивка по статусам
+    const byStatus = byStatusResult.map((s) => ({
+      status: s.status,
+      count: s._count.id,
+    }))
+
     return NextResponse.json({
       stats: {
         totalCompleted,
         completedThisPeriod,
+        completedPrevPeriod,
+        periodDelta,
         inProgress,
         overdue,
         avgCompletionDays,
@@ -176,13 +217,11 @@ export async function GET(request: NextRequest) {
         type: l.type,
       })),
       dailyStats,
+      byStatus,
       hasMore,
     })
   } catch (error) {
     console.error('Failed to get progress:', error)
-    return NextResponse.json(
-      { error: 'Не удалось загрузить статистику' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Не удалось загрузить статистику' }, { status: 500 })
   }
 }

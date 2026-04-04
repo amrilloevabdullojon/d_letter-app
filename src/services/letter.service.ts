@@ -54,6 +54,10 @@ export class LetterService {
       builder.owner(userId)
     } else if (filters.filter === 'no_processing') {
       builder.noProcessing()
+    } else if (filters.filter === 'sla_breached') {
+      builder.slaBreached()
+    } else if (filters.filter === 'sla_at_risk') {
+      builder.slaAtRisk()
     }
 
     if (filters.owner) {
@@ -98,6 +102,9 @@ export class LetterService {
           content: true,
           processing: true,
           priority: true,
+          createdAt: true,
+          frozenAt: true,
+          closeDate: true,
           owner: {
             select: { id: true, name: true, email: true, image: true },
           },
@@ -444,6 +451,14 @@ export class LetterService {
       where.ownerId = userId
     } else if (filters.filter === 'no_processing') {
       where.processing = null
+      where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
+    } else if (filters.filter === 'sla_breached') {
+      where.deadlineDate = { lt: new Date() }
+      where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
+    } else if (filters.filter === 'sla_at_risk') {
+      const twoDaysLater = new Date()
+      twoDaysLater.setDate(twoDaysLater.getDate() + 2)
+      where.deadlineDate = { lte: twoDaysLater, gte: new Date() }
       where.status = { notIn: ['READY', 'PROCESSED', 'DONE', 'FROZEN', 'REJECTED'] }
     }
 

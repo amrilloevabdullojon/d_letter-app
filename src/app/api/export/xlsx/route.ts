@@ -16,6 +16,8 @@ const exportQuerySchema = z.object({
   owner: z.string().optional(),
   type: z.string().optional(),
   ids: z.string().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
 })
 
 type ExportQuery = z.infer<typeof exportQuerySchema>
@@ -31,6 +33,7 @@ export const GET = withValidation<any, never, ExportQuery>(
         status?: any
         ownerId?: string | null
         type?: string
+        date?: any
         deadlineDate?: any
         favorites?: any
         deletedAt?: null
@@ -71,6 +74,14 @@ export const GET = withValidation<any, never, ExportQuery>(
           where.ownerId = null
         } else if (query.filter === 'mine') {
           where.ownerId = session.user.id
+        }
+
+        // Date range filter
+        if (query.dateFrom || query.dateTo) {
+          where.date = {
+            ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}),
+            ...(query.dateTo ? { lte: new Date(query.dateTo + 'T23:59:59.999Z') } : {}),
+          }
         }
       }
 

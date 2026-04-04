@@ -115,6 +115,9 @@ export async function getLettersListCached(
         ...letter,
         date: new Date(letter.date),
         deadlineDate: new Date(letter.deadlineDate),
+        createdAt: new Date(letter.createdAt),
+        frozenAt: letter.frozenAt ? new Date(letter.frozenAt) : null,
+        closeDate: letter.closeDate ? new Date(letter.closeDate) : null,
       })),
     }
   }

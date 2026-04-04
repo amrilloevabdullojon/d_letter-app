@@ -13,13 +13,13 @@ interface User {
 
 interface LettersBulkActionsProps {
   selectedCount: number
-  bulkAction: 'status' | 'owner' | 'delete' | null
+  bulkAction: 'status' | 'owner' | 'delete' | 'priority' | null
   bulkValue: string
   bulkLoading: boolean
   users: User[]
   userRole: 'SUPERADMIN' | 'ADMIN' | 'MANAGER' | 'AUDITOR' | 'EMPLOYEE' | 'VIEWER'
   statuses: (LetterStatus | 'all')[]
-  onBulkActionChange: (action: 'status' | 'owner' | 'delete' | null) => void
+  onBulkActionChange: (action: 'status' | 'owner' | 'delete' | 'priority' | null) => void
   onBulkValueChange: (value: string) => void
   onExecute: () => void
   onClear: () => void
@@ -65,7 +65,7 @@ export const LettersBulkActions = memo(function LettersBulkActions({
           <select
             value={bulkAction || ''}
             onChange={(e) => {
-              const value = e.target.value as 'status' | 'owner' | 'delete' | ''
+              const value = e.target.value as 'status' | 'owner' | 'delete' | 'priority' | ''
               onBulkActionChange(value || null)
               onBulkValueChange('')
             }}
@@ -75,6 +75,7 @@ export const LettersBulkActions = memo(function LettersBulkActions({
             <option value="">Выберите действие</option>
             <option value="status">Сменить статус</option>
             <option value="owner">Назначить исполнителя</option>
+            <option value="priority">Установить приоритет</option>
             {(userRole === 'ADMIN' || userRole === 'SUPERADMIN') && (
               <option value="delete">Удалить</option>
             )}
@@ -95,6 +96,21 @@ export const LettersBulkActions = memo(function LettersBulkActions({
                     {STATUS_LABELS[status as LetterStatus]}
                   </option>
                 ))}
+            </select>
+          )}
+
+          {bulkAction === 'priority' && (
+            <select
+              value={bulkValue}
+              onChange={(e) => onBulkValueChange(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white sm:w-auto"
+              aria-label="Приоритет"
+            >
+              <option value="">Выберите уровень</option>
+              <option value="90">🔴 Критический (90)</option>
+              <option value="70">🟠 Высокий (70)</option>
+              <option value="50">🟡 Нормальный (50)</option>
+              <option value="20">🟢 Низкий (20)</option>
             </select>
           )}
 

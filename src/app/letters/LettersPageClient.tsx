@@ -105,6 +105,7 @@ import Link from 'next/link'
 import { useToast } from '@/components/Toast'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { usePrefetch } from '@/lib/react-query'
+import { ExportDialog } from '@/components/ExportDialog'
 
 type LettersPageClientProps = {
   initialData?: LettersInitialData
@@ -229,9 +230,12 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [bulkAction, setBulkAction] = useState<'status' | 'owner' | 'delete' | null>(null)
+  const [bulkAction, setBulkAction] = useState<'status' | 'owner' | 'delete' | 'priority' | null>(
+    null
+  )
   const [bulkValue, setBulkValue] = useState('')
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [showExportDialog, setShowExportDialog] = useState(false)
 
   // Selection helpers
   const toggleSelect = useCallback((id: string) => {
@@ -980,6 +984,23 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
       return
     }
 
+    if (bulkAction === 'priority') {
+      const priorityLabels: Record<string, string> = {
+        '90': '🔴 Критический',
+        '70': '🟠 Высокий',
+        '50': '🟡 Нормальный',
+        '20': '🟢 Низкий',
+      }
+      const priorityLabel = priorityLabels[bulkValue] || `Приоритет ${bulkValue}`
+      confirmDialog({
+        title: 'Изменить приоритет?',
+        message: `Установить для ${selectedIds.size} писем: ${priorityLabel}?`,
+        confirmText: 'Применить',
+        onConfirm: runBulkAction,
+      })
+      return
+    }
+
     runBulkAction()
   }, [bulkAction, bulkValue, confirmDialog, runBulkAction, selectedIds, users])
 
@@ -1072,34 +1093,17 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-2 lg:flex-nowrap">
-                <a
-                  href={`/api/export?${new URLSearchParams({
-                    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
-                    ...(quickFilter ? { filter: quickFilter } : {}),
-                    ...(ownerFilter ? { owner: ownerFilter } : {}),
-                    ...(typeFilter ? { type: typeFilter } : {}),
-                    ...(selectedIds.size > 0 ? { ids: Array.from(selectedIds).join(',') } : {}),
-                  }).toString()}`}
-                  className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600/50 bg-slate-700/50 px-4 py-2.5 text-sm font-medium text-slate-200 transition-all hover:border-slate-500 hover:bg-slate-700 hover:text-white"
-                  title="Скачать CSV"
-                >
-                  <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
-                  CSV
-                </a>
-                <a
-                  href={`/api/export/xlsx?${new URLSearchParams({
-                    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
-                    ...(quickFilter ? { filter: quickFilter } : {}),
-                    ...(ownerFilter ? { owner: ownerFilter } : {}),
-                    ...(typeFilter ? { type: typeFilter } : {}),
-                    ...(selectedIds.size > 0 ? { ids: Array.from(selectedIds).join(',') } : {}),
-                  }).toString()}`}
+                <button
+                  type="button"
+                  onClick={() => setShowExportDialog(true)}
                   className="group inline-flex items-center justify-center gap-2 rounded-xl border border-teal-600/40 bg-teal-700/20 px-4 py-2.5 text-sm font-medium text-teal-200 transition-all hover:border-teal-500 hover:bg-teal-700/30 hover:text-white"
-                  title="Скачать Excel"
+                  title={
+                    selectedIds.size > 0 ? `Экспорт ${selectedIds.size} выбранных писем` : 'Экспорт'
+                  }
                 >
                   <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
-                  Excel
-                </a>
+                  {selectedIds.size > 0 ? `Экспорт (${selectedIds.size})` : 'Экспорт'}
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowBulkCreate(true)}
@@ -1160,7 +1164,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   </div>
                   {isInitialLoading ? (
                     <div
-                      className="animate-shimmer h-12 w-full rounded-xl bg-slate-700/30"
+                      className="h-12 w-full animate-shimmer rounded-xl bg-slate-700/30"
                       aria-hidden="true"
                     />
                   ) : (
@@ -1526,7 +1530,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div
                       key={i}
-                      className="animate-shimmer h-96 min-w-[280px] rounded-xl bg-white/5"
+                      className="h-96 min-w-[280px] animate-shimmer rounded-xl bg-white/5"
                     />
                   ))}
                 </div>
@@ -1615,6 +1619,17 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
 
       {KeyboardShortcutsDialog}
       {Dialog}
+
+      {showExportDialog && (
+        <ExportDialog
+          statusFilter={statusFilter}
+          quickFilter={quickFilter ?? undefined}
+          ownerFilter={ownerFilter ?? undefined}
+          typeFilter={typeFilter ?? undefined}
+          selectedIds={selectedIds}
+          onClose={() => setShowExportDialog(false)}
+        />
+      )}
     </div>
   )
 }

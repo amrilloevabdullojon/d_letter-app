@@ -113,6 +113,28 @@ export async function POST(request: NextRequest) {
         })
         break
 
+      case 'priority': {
+        const priorityValue = Number(value)
+        if (Number.isNaN(priorityValue) || priorityValue < 0 || priorityValue > 100) {
+          return NextResponse.json({ error: 'Invalid priority value (0-100)' }, { status: 400 })
+        }
+        const priorityResult = await prisma.letter.updateMany({
+          where: { id: { in: ids } },
+          data: { priority: priorityValue },
+        })
+        updated = priorityResult.count
+
+        await prisma.history.createMany({
+          data: ids.map((id) => ({
+            letterId: id,
+            userId: session.user.id,
+            field: 'priority',
+            newValue: String(priorityValue),
+          })),
+        })
+        break
+      }
+
       case 'delete':
         // Только админ может удалять
         if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {

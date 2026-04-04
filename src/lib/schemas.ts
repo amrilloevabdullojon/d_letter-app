@@ -151,6 +151,8 @@ export const letterFiltersSchema = z.object({
       'unassigned',
       'mine',
       'no_processing',
+      'sla_breached',
+      'sla_at_risk',
     ])
     .optional(),
   sortBy: z.enum(['created', 'deadline', 'date', 'priority', 'status', 'number', 'org']).optional(),

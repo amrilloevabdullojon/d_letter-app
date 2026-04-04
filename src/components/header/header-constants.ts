@@ -36,6 +36,12 @@ export const NAV_ITEMS: NavItem[] = [
     matchPath: '/reports',
   },
   {
+    href: '/my-progress',
+    label: 'Прогресс',
+    icon: TrendingUp,
+    matchPath: '/my-progress',
+  },
+  {
     href: '/help',
     label: 'Справка',
     icon: BookOpen,

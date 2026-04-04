@@ -1,6 +1,6 @@
-﻿'use client'
+'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -14,6 +14,8 @@ import {
   FileText,
   Clock,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 interface HistoryItem {
@@ -97,6 +99,9 @@ const decodeUnicodeEscapes = (value: string) =>
 
 const normalizeHistoryText = (value: string) => decodeUnicodeEscapes(value).replace(/\\n/g, '\n')
 
+// Fields where we want to show expandable diff (long text)
+const TEXT_FIELDS = new Set(['content', 'answer', 'processing', 'comment', 'contacts'])
+
 function formatValue(field: string, value: string | null): string {
   if (!value) return '—'
 
@@ -130,6 +135,19 @@ function formatValue(field: string, value: string | null): string {
   return normalized
 }
 
+function formatValueFull(field: string, value: string | null): string {
+  if (!value) return '—'
+  if (field === 'status') return statusLabels[value] || value
+  if (field === 'deadlineDate' || field === 'date') {
+    try {
+      return new Date(value).toLocaleDateString('ru-RU')
+    } catch {
+      return value
+    }
+  }
+  return normalizeHistoryText(value)
+}
+
 export function ActivityFeed({
   letterId,
   maxItems = 10,
@@ -139,6 +157,17 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAll, setShowAll] = useState(false)
+  const [expandedDiffIds, setExpandedDiffIds] = useState<Set<string>>(new Set())
+
+  const toggleDiff = useCallback((id: string) => {
+    setExpandedDiffIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -184,6 +213,8 @@ export function ActivityFeed({
     )
   }
 
+  const visibleHistory = showAll ? history : history.slice(0, maxItems)
+
   return (
     <div className={compact ? 'space-y-2' : 'space-y-3'}>
       {showTitle && (
@@ -194,9 +225,13 @@ export function ActivityFeed({
       )}
 
       <div className={compact ? 'space-y-2' : 'space-y-2'}>
-        {history.slice(0, maxItems).map((item) => {
+        {visibleHistory.map((item) => {
           const Icon = getIcon(item.field)
           const label = fieldLabels[item.field] || item.field
+          const isLongText =
+            TEXT_FIELDS.has(item.field) &&
+            ((item.oldValue?.length ?? 0) > 80 || (item.newValue?.length ?? 0) > 80)
+          const isDiffExpanded = expandedDiffIds.has(item.id)
 
           return (
             <div
@@ -236,7 +271,7 @@ export function ActivityFeed({
 
                 <div className="mt-1 text-sm text-gray-400">
                   <span className="font-medium text-gray-300">{label}</span>
-                  {item.field !== 'created' && item.oldValue && (
+                  {item.field !== 'created' && item.oldValue && !isLongText && (
                     <>
                       {': '}
                       <span className="text-red-400/70 line-through">
@@ -245,7 +280,7 @@ export function ActivityFeed({
                       {' → '}
                     </>
                   )}
-                  {item.field !== 'created' && (
+                  {item.field !== 'created' && !isLongText && (
                     <span className="text-emerald-400">
                       {formatValue(item.field, item.newValue)}
                     </span>
@@ -257,6 +292,51 @@ export function ActivityFeed({
                     </span>
                   )}
                 </div>
+
+                {/* Expandable diff for long text fields */}
+                {isLongText && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => toggleDiff(item.id)}
+                      className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-400 transition hover:bg-slate-700/50 hover:text-slate-200"
+                    >
+                      {isDiffExpanded ? (
+                        <>
+                          <ChevronUp className="h-3 w-3" />
+                          Скрыть изменение
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3" />
+                          Показать изменение
+                        </>
+                      )}
+                    </button>
+
+                    {isDiffExpanded && (
+                      <div className="mt-2 space-y-2 rounded-xl border border-slate-700/50 p-3">
+                        {item.oldValue && (
+                          <div>
+                            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-red-400/60">
+                              Было
+                            </div>
+                            <p className="whitespace-pre-wrap break-words text-xs text-red-300/80 line-through">
+                              {formatValueFull(item.field, item.oldValue)}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400/60">
+                            Стало
+                          </div>
+                          <p className="whitespace-pre-wrap break-words text-xs text-emerald-300/80">
+                            {formatValueFull(item.field, item.newValue)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )
@@ -264,9 +344,12 @@ export function ActivityFeed({
       </div>
 
       {history.length > maxItems && (
-        <p className="text-center text-xs text-gray-500">
-          И ещё {history.length - maxItems} изменений
-        </p>
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="w-full rounded-xl border border-slate-700/40 bg-slate-800/30 py-2 text-xs text-slate-400 transition hover:bg-slate-800/60 hover:text-slate-200"
+        >
+          {showAll ? 'Скрыть' : `Показать все ${history.length} изменений`}
+        </button>
       )}
     </div>
   )

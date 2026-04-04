@@ -25,6 +25,7 @@ import {
   ClipboardCheck,
 } from 'lucide-react'
 import Link from 'next/link'
+import { LetterSLABadge } from './LetterSLABadge'
 
 interface LetterCardProps {
   letter: {
@@ -39,6 +40,9 @@ interface LetterCardProps {
     processing?: string | null
     priority: number
     isFavorite?: boolean
+    createdAt?: Date | string
+    closeDate?: Date | string | null
+    frozenAt?: Date | string | null
     owner?: {
       name?: string | null
       email?: string | null
@@ -166,7 +170,7 @@ export const LetterCard = memo(function LetterCard({ letter, onToggleFavorite }:
         {/* Header */}
         <div className="mb-4 flex items-start gap-4">
           <div className="min-w-0 flex-1">
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               <span
                 className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-teal-500/20 to-emerald-500/20 px-2.5 py-1
                              font-mono text-sm font-semibold text-teal-300 ring-1 ring-teal-500/30"
@@ -178,6 +182,15 @@ export const LetterCard = memo(function LetterCard({ letter, onToggleFavorite }:
                 <span className="rounded-lg bg-slate-700/50 px-2 py-1 text-xs font-medium text-slate-300 ring-1 ring-slate-600/50">
                   {letter.type}
                 </span>
+              )}
+              {letter.createdAt && (
+                <LetterSLABadge
+                  createdAt={letter.createdAt}
+                  deadlineDate={letter.deadlineDate}
+                  status={letter.status}
+                  frozenAt={letter.frozenAt}
+                  closeDate={letter.closeDate}
+                />
               )}
             </div>
             <h3

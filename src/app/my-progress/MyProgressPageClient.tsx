@@ -9,28 +9,34 @@ import Link from 'next/link'
 import {
   Loader2,
   TrendingUp,
+  TrendingDown,
   CheckCircle2,
   Clock,
   AlertTriangle,
-  Calendar,
   FileText,
   ArrowRight,
   BarChart3,
   Target,
   Flame,
-  ChevronLeft,
-  ChevronRight,
+  Minus,
 } from 'lucide-react'
-import { STATUS_LABELS, formatDate, getWorkingDaysUntilDeadline, pluralizeDays } from '@/lib/utils'
+import { STATUS_LABELS, formatDate, getWorkingDaysUntilDeadline } from '@/lib/utils'
 import type { LetterStatus } from '@/types/prisma'
 
 interface ProgressStats {
   totalCompleted: number
   completedThisPeriod: number
+  completedPrevPeriod: number
+  periodDelta: number
   inProgress: number
   overdue: number
-  avgCompletionDays: number
+  avgCompletionDays: number | null
   streak: number
+}
+
+interface ByStatus {
+  status: string
+  count: number
 }
 
 interface CompletedLetter {
@@ -56,10 +62,52 @@ const PERIOD_LABELS: Record<Period, string> = {
   quarter: 'Квартал',
 }
 
+const PERIOD_PREV_LABELS: Record<Period, string> = {
+  week: 'прошлой неделе',
+  month: 'прошлому месяцу',
+  quarter: 'прошлому кварталу',
+}
+
 const PERIOD_DAYS: Record<Period, number> = {
   week: 7,
   month: 30,
   quarter: 90,
+}
+
+// Status display config
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  NOT_REVIEWED: { label: 'Не рассмотрен', color: 'text-slate-400', bg: 'bg-slate-500/20' },
+  ACCEPTED: { label: 'Принят', color: 'text-blue-400', bg: 'bg-blue-500/20' },
+  IN_PROGRESS: { label: 'В работе', color: 'text-teal-400', bg: 'bg-teal-500/20' },
+  CLARIFICATION: { label: 'Уточнение', color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+  FROZEN: { label: 'Заморожен', color: 'text-cyan-400', bg: 'bg-cyan-500/20' },
+  REJECTED: { label: 'Отклонён', color: 'text-red-400', bg: 'bg-red-500/20' },
+  READY: { label: 'Готово', color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
+  PROCESSED: { label: 'Обработано', color: 'text-purple-400', bg: 'bg-purple-500/20' },
+  DONE: { label: 'Сделано', color: 'text-green-400', bg: 'bg-green-500/20' },
+}
+
+function DeltaBadge({ delta }: { delta: number }) {
+  if (delta === 0) {
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-slate-700/50 px-2 py-0.5 text-xs text-slate-400">
+        <Minus className="h-3 w-3" />
+        Без изменений
+      </span>
+    )
+  }
+  const isPositive = delta > 0
+  return (
+    <span
+      className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+        isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
+      }`}
+    >
+      {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      {isPositive ? '+' : ''}
+      {delta}%
+    </span>
+  )
 }
 
 export function MyProgressPageClient() {
@@ -72,45 +120,49 @@ export function MyProgressPageClient() {
   const [stats, setStats] = useState<ProgressStats | null>(null)
   const [letters, setLetters] = useState<CompletedLetter[]>([])
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([])
+  const [byStatus, setByStatus] = useState<ByStatus[]>([])
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
 
-  const loadProgress = useCallback(async (currentPage = 1) => {
-    if (!session?.user?.id) return
+  const loadProgress = useCallback(
+    async (currentPage = 1) => {
+      if (!session?.user?.id) return
 
-    setLoading(true)
-    try {
-      const res = await fetch(
-        `/api/my-progress?period=${period}&page=${currentPage}&limit=10`
-      )
-      const data = await res.json()
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/my-progress?period=${period}&page=${currentPage}&limit=10`)
+        const data = await res.json()
 
-      if (data.error) throw new Error(data.error)
+        if (data.error) throw new Error(data.error)
 
-      setStats(data.stats)
-      setDailyStats(data.dailyStats || [])
+        setStats(data.stats)
+        setDailyStats(data.dailyStats || [])
+        setByStatus(data.byStatus || [])
 
-      if (currentPage === 1) {
-        setLetters(data.letters || [])
-      } else {
-        setLetters((prev) => [...prev, ...(data.letters || [])])
+        if (currentPage === 1) {
+          setLetters(data.letters || [])
+        } else {
+          setLetters((prev) => [...prev, ...(data.letters || [])])
+        }
+
+        setHasMore(data.hasMore || false)
+        setPage(currentPage)
+      } catch (error) {
+        console.error('Failed to load progress:', error)
+        toast.error('Не удалось загрузить статистику')
+      } finally {
+        setLoading(false)
       }
-
-      setHasMore(data.hasMore || false)
-      setPage(currentPage)
-    } catch (error) {
-      console.error('Failed to load progress:', error)
-      toast.error('Не удалось загрузить статистику')
-    } finally {
-      setLoading(false)
-    }
-  }, [session?.user?.id, period, toast])
+    },
+    [session?.user?.id, period, toast]
+  )
 
   useEffect(() => {
     loadProgress(1)
   }, [loadProgress])
 
   const maxDailyCount = Math.max(...dailyStats.map((d) => d.count), 1)
+  const totalByStatus = byStatus.reduce((sum, s) => sum + s.count, 0)
 
   if (authStatus === 'loading') {
     return (
@@ -133,9 +185,7 @@ export function MyProgressPageClient() {
         <div className="mb-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-white sm:text-3xl">
-                Мой прогресс
-              </h1>
+              <h1 className="text-2xl font-bold text-white sm:text-3xl">Мой прогресс</h1>
               <p className="mt-1 text-sm text-slate-400">
                 Привет, {session.user.name || session.user.email}! Вот твоя статистика
               </p>
@@ -184,36 +234,48 @@ export function MyProgressPageClient() {
                   )}
                 </div>
                 <div className="mt-4">
-                  <div className="text-3xl font-bold text-white">
-                    {stats?.completedThisPeriod || 0}
+                  <div className="flex items-end gap-2">
+                    <div className="text-3xl font-bold text-white">
+                      {stats?.completedThisPeriod || 0}
+                    </div>
+                    {stats && <DeltaBadge delta={stats.periodDelta} />}
                   </div>
                   <div className="mt-1 text-sm text-slate-400">
-                    Отработано за {PERIOD_LABELS[period].toLowerCase()}
+                    За {PERIOD_LABELS[period].toLowerCase()}
                   </div>
+                  {stats && stats.completedPrevPeriod > 0 && (
+                    <div className="mt-1 text-xs text-slate-500">
+                      vs {stats.completedPrevPeriod} по {PERIOD_PREV_LABELS[period]}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Total completed */}
               <div className="rounded-2xl border border-slate-700/50 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-5">
-                <div className="rounded-xl bg-blue-500/20 p-2.5 w-fit">
+                <div className="w-fit rounded-xl bg-blue-500/20 p-2.5">
                   <Target className="h-5 w-5 text-blue-400" />
                 </div>
                 <div className="mt-4">
-                  <div className="text-3xl font-bold text-white">
-                    {stats?.totalCompleted || 0}
-                  </div>
+                  <div className="text-3xl font-bold text-white">{stats?.totalCompleted || 0}</div>
                   <div className="mt-1 text-sm text-slate-400">Всего отработано</div>
                 </div>
               </div>
 
               {/* In progress */}
               <div className="rounded-2xl border border-slate-700/50 bg-gradient-to-br from-amber-500/10 to-amber-600/5 p-5">
-                <div className="rounded-xl bg-amber-500/20 p-2.5 w-fit">
+                <div className="w-fit rounded-xl bg-amber-500/20 p-2.5">
                   <Clock className="h-5 w-5 text-amber-400" />
                 </div>
                 <div className="mt-4">
-                  <div className="text-3xl font-bold text-white">
-                    {stats?.inProgress || 0}
+                  <div className="flex items-end gap-2">
+                    <div className="text-3xl font-bold text-white">{stats?.inProgress || 0}</div>
+                    {stats && stats.overdue > 0 && (
+                      <span className="mb-1 flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-400">
+                        <AlertTriangle className="h-3 w-3" />
+                        {stats.overdue} просроч.
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1 text-sm text-slate-400">В работе сейчас</div>
                 </div>
@@ -221,84 +283,126 @@ export function MyProgressPageClient() {
 
               {/* Avg completion time */}
               <div className="rounded-2xl border border-slate-700/50 bg-gradient-to-br from-purple-500/10 to-purple-600/5 p-5">
-                <div className="rounded-xl bg-purple-500/20 p-2.5 w-fit">
+                <div className="w-fit rounded-xl bg-purple-500/20 p-2.5">
                   <TrendingUp className="h-5 w-5 text-purple-400" />
                 </div>
                 <div className="mt-4">
                   <div className="text-3xl font-bold text-white">
                     {stats?.avgCompletionDays?.toFixed(1) || '—'}
                   </div>
-                  <div className="mt-1 text-sm text-slate-400">
-                    Среднее время (дней)
-                  </div>
+                  <div className="mt-1 text-sm text-slate-400">Среднее время (дней)</div>
                 </div>
               </div>
             </div>
 
-            {/* Chart */}
-            <div className="mb-8 rounded-2xl border border-slate-700/50 bg-slate-800/30 p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
-                  <BarChart3 className="h-5 w-5 text-teal-400" />
-                  Динамика по дням
-                </h2>
-                <div className="text-sm text-slate-400">
-                  Последние {PERIOD_DAYS[period]} дней
+            {/* Chart + By Status */}
+            <div className="mb-8 grid gap-6 lg:grid-cols-3">
+              {/* Activity chart */}
+              <div className="rounded-2xl border border-slate-700/50 bg-slate-800/30 p-6 lg:col-span-2">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+                    <BarChart3 className="h-5 w-5 text-teal-400" />
+                    Динамика по дням
+                  </h2>
+                  <div className="text-sm text-slate-400">Последние {PERIOD_DAYS[period]} дней</div>
                 </div>
-              </div>
 
-              {dailyStats.length > 0 ? (
-                <div className="flex h-40 items-end gap-1">
-                  {dailyStats.map((day, index) => {
-                    const height = (day.count / maxDailyCount) * 100
-                    const date = new Date(day.date)
-                    const isToday =
-                      date.toDateString() === new Date().toDateString()
+                {dailyStats.length > 0 ? (
+                  <div className="flex h-40 items-end gap-1">
+                    {dailyStats.map((day) => {
+                      const height = (day.count / maxDailyCount) * 100
+                      const date = new Date(day.date)
+                      const isToday = date.toDateString() === new Date().toDateString()
 
-                    return (
-                      <div
-                        key={day.date}
-                        className="group relative flex flex-1 flex-col items-center"
-                      >
+                      return (
                         <div
-                          className={`w-full rounded-t transition-all ${
-                            isToday
-                              ? 'bg-teal-500'
-                              : day.count > 0
-                                ? 'bg-teal-500/60 group-hover:bg-teal-500/80'
-                                : 'bg-slate-700/50'
-                          }`}
-                          style={{
-                            height: `${Math.max(height, 4)}%`,
-                            minHeight: '4px',
-                          }}
-                        />
-                        {/* Tooltip */}
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 scale-0 rounded-lg bg-slate-900 px-2 py-1 text-xs text-white shadow-lg transition-transform group-hover:scale-100">
-                          <div className="font-medium">{day.count} писем</div>
-                          <div className="text-slate-400">
-                            {date.toLocaleDateString('ru-RU', {
-                              day: 'numeric',
-                              month: 'short',
-                            })}
+                          key={day.date}
+                          className="group relative flex flex-1 flex-col items-center"
+                        >
+                          <div
+                            className={`w-full rounded-t transition-all ${
+                              isToday
+                                ? 'bg-teal-500'
+                                : day.count > 0
+                                  ? 'bg-teal-500/60 group-hover:bg-teal-500/80'
+                                  : 'bg-slate-700/50'
+                            }`}
+                            style={{
+                              height: `${Math.max(height, 4)}%`,
+                              minHeight: '4px',
+                            }}
+                          />
+                          {/* Tooltip */}
+                          <div className="pointer-events-none absolute -top-12 left-1/2 z-10 -translate-x-1/2 scale-0 rounded-lg bg-slate-900 px-2 py-1.5 text-xs text-white shadow-lg ring-1 ring-white/10 transition-transform group-hover:scale-100">
+                            <div className="font-medium">{day.count} писем</div>
+                            <div className="text-slate-400">
+                              {date.toLocaleDateString('ru-RU', {
+                                day: 'numeric',
+                                month: 'short',
+                              })}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="flex h-40 items-center justify-center text-slate-500">
-                  Нет данных за выбранный период
-                </div>
-              )}
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex h-40 items-center justify-center text-slate-500">
+                    Нет данных за выбранный период
+                  </div>
+                )}
+              </div>
+
+              {/* By status breakdown */}
+              <div className="rounded-2xl border border-slate-700/50 bg-slate-800/30 p-6">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+                  <FileText className="h-5 w-5 text-teal-400" />
+                  По статусам
+                </h2>
+
+                {byStatus.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {byStatus
+                      .sort((a, b) => b.count - a.count)
+                      .map((s) => {
+                        const cfg = STATUS_CONFIG[s.status] || {
+                          label: s.status,
+                          color: 'text-slate-400',
+                          bg: 'bg-slate-500/20',
+                        }
+                        const pct =
+                          totalByStatus > 0 ? Math.round((s.count / totalByStatus) * 100) : 0
+                        return (
+                          <div key={s.status}>
+                            <div className="mb-1 flex items-center justify-between text-xs">
+                              <span className={`font-medium ${cfg.color}`}>{cfg.label}</span>
+                              <span className="text-slate-400">
+                                {s.count} ({pct}%)
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-700/50">
+                              <div
+                                className={`h-full rounded-full transition-all ${cfg.bg.replace('/20', '/60')}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                ) : (
+                  <div className="flex h-32 items-center justify-center text-sm text-slate-500">
+                    Нет активности за период
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Letters List */}
             <div className="rounded-2xl border border-slate-700/50 bg-slate-800/30">
               <div className="border-b border-slate-700/50 p-4 sm:p-6">
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
-                  <FileText className="h-5 w-5 text-teal-400" />
+                  <CheckCircle2 className="h-5 w-5 text-teal-400" />
                   Последние отработанные письма
                 </h2>
               </div>
@@ -355,7 +459,7 @@ export function MyProgressPageClient() {
                               wasOnTime ? 'text-teal-400' : 'text-red-400'
                             }`}
                           >
-                            {wasOnTime ? 'В срок' : 'С опозданием'}
+                            {wasOnTime ? 'В срок ✓' : 'С опозданием'}
                           </div>
                         </div>
 
@@ -369,9 +473,7 @@ export function MyProgressPageClient() {
                   <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-800">
                     <FileText className="h-7 w-7 text-slate-600" />
                   </div>
-                  <div className="text-sm font-medium text-slate-400">
-                    Нет отработанных писем
-                  </div>
+                  <div className="text-sm font-medium text-slate-400">Нет отработанных писем</div>
                   <div className="mt-1 text-xs text-slate-600">
                     Письма появятся здесь после завершения работы
                   </div>
@@ -385,11 +487,7 @@ export function MyProgressPageClient() {
                     disabled={loading}
                     className="inline-flex items-center gap-2 rounded-lg bg-slate-700/50 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
                   >
-                    {loading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      'Загрузить ещё'
-                    )}
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Загрузить ещё'}
                   </button>
                 </div>
               )}

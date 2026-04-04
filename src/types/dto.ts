@@ -49,6 +49,9 @@ export interface LetterSummary {
   content: string | null
   processing: string | null
   priority: number
+  createdAt: Date
+  frozenAt: Date | null
+  closeDate: Date | null
   owner: UserSummary | null
   _count: {
     comments: number
@@ -148,6 +151,8 @@ export interface LetterFilters {
     | 'unassigned'
     | 'mine'
     | 'no_processing'
+    | 'sla_breached'
+    | 'sla_at_risk'
   sortBy?: 'created' | 'deadline' | 'date' | 'priority' | 'status' | 'number' | 'org'
   sortOrder?: 'asc' | 'desc'
 }
