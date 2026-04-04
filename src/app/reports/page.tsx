@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { Header } from '@/components/Header'
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { hasPermission } from '@/lib/permissions'
 import { STATUS_LABELS } from '@/lib/utils'
@@ -415,7 +415,9 @@ export default function ReportsPage() {
   const [expandedReportPeriods, setExpandedReportPeriods] = useState<Record<string, boolean>>({})
   const [advancedReportOpen, setAdvancedReportOpen] = useState(false)
   const [selectedPresetId, setSelectedPresetId] = useState('')
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
   const debouncedReportSearch = useDebounce(reportSearch, 300)
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null)
 
   // KPI Goals (configurable)
   const kpiGoals = {
@@ -598,6 +600,30 @@ export default function ReportsPage() {
     reportSearch,
   ])
 
+  useEffect(() => {
+    if (!actionsMenuOpen) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!actionsMenuRef.current) return
+      if (actionsMenuRef.current.contains(event.target as Node)) return
+      setActionsMenuOpen(false)
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActionsMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [actionsMenuOpen])
+
   const handleRefresh = async () => {
     if (refreshing) return
     setRefreshing(true)
@@ -706,6 +732,7 @@ export default function ReportsPage() {
 
   const handlePresetSelect = (presetId: string) => {
     setSelectedPresetId(presetId)
+    setActionsMenuOpen(false)
     if (!presetId) return
 
     const preset = reportPresets.find((item) => item.id === presetId)
@@ -1155,14 +1182,6 @@ export default function ReportsPage() {
                   <Save className="h-4 w-4" />
                   {selectedPreset ? 'Обновить' : 'Сохранить'}
                 </button>
-                <button
-                  onClick={handleDeletePreset}
-                  disabled={!selectedPresetId}
-                  className="btn-ghost inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" />
-                  Удалить
-                </button>
               </div>
             </div>
 
@@ -1200,37 +1219,57 @@ export default function ReportsPage() {
                   <ChevronDown className="h-4 w-4" />
                 )}
               </button>
-              <details className="group relative">
-                <summary className="btn-ghost inline-flex list-none items-center gap-2 rounded-xl px-4 py-2 text-sm transition marker:content-none">
+              <div className="relative" ref={actionsMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setActionsMenuOpen((prev) => !prev)}
+                  aria-expanded={actionsMenuOpen}
+                  className={`btn-ghost inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition ${
+                    actionsMenuOpen ? 'bg-white/10 text-white' : ''
+                  }`}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                   Еще
-                  <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
-                </summary>
-                <div className="panel panel-solid absolute right-0 z-20 mt-2 flex min-w-[220px] flex-col gap-1 rounded-xl p-2 shadow-2xl">
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
-                  >
-                    <Share2 className="h-4 w-4 text-teal-300" />
-                    Поделиться видом
-                  </button>
-                  <button
-                    onClick={handleResetView}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
-                  >
-                    <RefreshCw className="h-4 w-4 text-slate-300" />
-                    Сбросить вид
-                  </button>
-                  <button
-                    onClick={handleDeletePreset}
-                    disabled={!selectedPresetId}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-200 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <X className="h-4 w-4 text-rose-300" />
-                    Удалить пресет
-                  </button>
-                </div>
-              </details>
+                  <ChevronDown
+                    className={`h-4 w-4 transition ${actionsMenuOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {actionsMenuOpen && (
+                  <div className="panel panel-solid absolute right-0 top-full z-20 mt-2 flex min-w-[240px] flex-col gap-1 rounded-xl p-2 shadow-2xl">
+                    <button
+                      onClick={() => {
+                        setActionsMenuOpen(false)
+                        void handleShare()
+                      }}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
+                    >
+                      <Share2 className="h-4 w-4 text-teal-300" />
+                      Поделиться видом
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActionsMenuOpen(false)
+                        handleResetView()
+                      }}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
+                    >
+                      <RefreshCw className="h-4 w-4 text-slate-300" />
+                      Сбросить вид
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActionsMenuOpen(false)
+                        void handleDeletePreset()
+                      }}
+                      disabled={!selectedPresetId}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-200 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <X className="h-4 w-4 text-rose-300" />
+                      Удалить пресет
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
