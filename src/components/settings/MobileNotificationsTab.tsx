@@ -124,6 +124,49 @@ export const MobileNotificationsTab = memo(function MobileNotificationsTab() {
     updateMatrixItem(event, { priority })
   }
 
+  const pushDescription = !push.isSupported
+    ? 'Push не поддерживаются браузером.'
+    : !push.isConfigured
+      ? 'Push недоступны: на сервере не настроен VAPID-ключ.'
+      : 'Push-уведомления в браузере.'
+
+  const pushToggleDisabled =
+    isSaving || push.isLoading || !push.isSupported || (!push.isConfigured && !push.isSubscribed)
+
+  const handlePushToggle = async (enabled: boolean) => {
+    if (enabled) {
+      if (!push.canSubscribe && !push.isSubscribed) {
+        return
+      }
+
+      if (!push.isSubscribed) {
+        const permitted = await push.requestPermission()
+        if (!permitted) {
+          await updateSettings({ pushNotifications: false })
+          return
+        }
+
+        const subscription = await push.subscribeToPush()
+        if (!subscription) {
+          await updateSettings({ pushNotifications: false })
+          return
+        }
+      }
+
+      await updateSettings({ pushNotifications: true })
+      return
+    }
+
+    if (push.isSubscribed) {
+      const unsubscribed = await push.unsubscribeFromPush()
+      if (!unsubscribed) {
+        return
+      }
+    }
+
+    await updateSettings({ pushNotifications: false })
+  }
+
   // Mobile-optimized accordion items
   const accordionItems = [
     {
@@ -185,29 +228,18 @@ export const MobileNotificationsTab = memo(function MobileNotificationsTab() {
           />
           <SettingsToggle
             label="Push"
-            description={
-              push.isSupported
-                ? 'Push-уведомления в браузере.'
-                : 'Push не поддерживаются браузером.'
-            }
+            description={pushDescription}
             icon={<Bell className="h-4 w-4" />}
             enabled={settings.pushNotifications && push.isSubscribed}
-            onToggle={async (enabled) => {
-              updateSetting('pushNotifications', enabled)
-              if (enabled) {
-                if (!push.isSubscribed) {
-                  const permitted = await push.requestPermission()
-                  if (permitted) {
-                    await push.subscribeToPush()
-                  }
-                }
-              } else {
-                if (push.isSubscribed) {
-                  await push.unsubscribeFromPush()
-                }
-              }
-            }}
+            onToggle={handlePushToggle}
+            disabled={pushToggleDisabled}
           />
+          {!push.isConfigured && (
+            <div className="ml-11 text-xs text-amber-400">
+              Для push нужны `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` и `VAPID_SUBJECT`.
+            </div>
+          )}
+          {push.error && <div className="ml-11 text-xs text-red-400">{push.error}</div>}
         </div>
       ),
     },

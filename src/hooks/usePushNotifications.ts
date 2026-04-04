@@ -20,6 +20,7 @@ const urlBase64ToUint8Array = (base64String: string): BufferSource => {
 }
 
 export const usePushNotifications = () => {
+  const isConfigured = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
   const [state, setState] = useState<PushSubscriptionState>({
     subscription: null,
     isSupported: false,
@@ -40,7 +41,7 @@ export const usePushNotifications = () => {
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!checkSupport()) {
-      setState((prev) => ({ ...prev, error: 'Push notifications not supported' }))
+      setState((prev) => ({ ...prev, error: 'Push-уведомления не поддерживаются браузером' }))
       return false
     }
 
@@ -51,7 +52,7 @@ export const usePushNotifications = () => {
       console.error('Error requesting notification permission:', error)
       setState((prev) => ({
         ...prev,
-        error: 'Failed to request notification permission',
+        error: 'Не удалось запросить разрешение на push-уведомления',
       }))
       return false
     }
@@ -67,7 +68,7 @@ export const usePushNotifications = () => {
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
       if (!vapidPublicKey) {
-        throw new Error('VAPID public key not configured')
+        throw new Error('Push-уведомления недоступны: публичный VAPID-ключ не настроен.')
       }
 
       const subscription = await registration.pushManager.subscribe({
@@ -82,7 +83,7 @@ export const usePushNotifications = () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save subscription on server')
+        throw new Error('Не удалось сохранить push-подписку на сервере')
       }
 
       setState((prev) => ({
@@ -130,7 +131,7 @@ export const usePushNotifications = () => {
       console.error('Error unsubscribing from push:', error)
       setState((prev) => ({
         ...prev,
-        error: 'Failed to unsubscribe',
+        error: 'Не удалось отключить push-уведомления',
         isLoading: false,
       }))
       return false
@@ -167,7 +168,7 @@ export const usePushNotifications = () => {
         isSupported: true,
         isSubscribed: false,
         isLoading: false,
-        error: 'Failed to check subscription status',
+        error: 'Не удалось проверить статус push-подписки',
       })
     }
   }, [checkSupport])
@@ -178,6 +179,8 @@ export const usePushNotifications = () => {
 
   return {
     ...state,
+    isConfigured,
+    canSubscribe: state.isSupported && isConfigured,
     requestPermission,
     subscribeToPush,
     unsubscribeFromPush,
