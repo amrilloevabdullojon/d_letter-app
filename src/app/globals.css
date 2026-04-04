@@ -67,7 +67,21 @@
 .light .bg-slate-800,
 .light .bg-\\[\\#080f18\\],
 .light .bg-\\[\\#0c1420\\],
-.light .bg-\\[\\#182437\\] {
+.light .bg-\\[\\#182437\\],
+.light .bg-slate-950,
+.light .bg-slate-950\\/50,
+.light .bg-slate-900\\/50,
+.light .bg-slate-900\\/70,
+.light .bg-slate-900\\/80,
+.light .bg-slate-900\\/90,
+.light .bg-slate-900\\/95 {
+  background-color: #ffffff !important;
+}
+
+.light .from-slate-900\\/95,
+.light .via-slate-900\\/95,
+.light .to-slate-950\\/95 {
+  background-image: none !important;
   background-color: #ffffff !important;
 }
 
