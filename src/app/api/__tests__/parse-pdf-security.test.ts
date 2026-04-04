@@ -6,7 +6,8 @@ import { NextResponse } from 'next/server'
 import { createMockRequest, mockSession } from './test-utils'
 
 const mockExtractLetterDataFromPdf = jest.fn()
-const mockTranslateToRussian = jest.fn()
+const mockExtractLetterDataWithAI = jest.fn()
+const mockExtractTextFromOfficeDocument = jest.fn()
 const mockCheckRateLimit = jest.fn()
 const mockRequirePermissionAsync = jest.fn()
 
@@ -20,7 +21,7 @@ jest.mock('@/lib/auth', () => ({
 
 jest.mock('@/lib/ai', () => ({
   extractLetterDataFromPdf: (...args: unknown[]) => mockExtractLetterDataFromPdf(...args),
-  translateToRussian: (...args: unknown[]) => mockTranslateToRussian(...args),
+  extractLetterDataWithAI: (...args: unknown[]) => mockExtractLetterDataWithAI(...args),
 }))
 
 jest.mock('@/lib/ai-utils', () => ({
@@ -49,6 +50,29 @@ jest.mock('@/lib/rate-limit', () => ({
 
 jest.mock('@/lib/permission-guard', () => ({
   requirePermissionAsync: (...args: unknown[]) => mockRequirePermissionAsync(...args),
+}))
+
+jest.mock('@/lib/document-text', () => ({
+  extractTextFromOfficeDocument: (...args: unknown[]) => mockExtractTextFromOfficeDocument(...args),
+  getSupportedAiDocumentKind: jest.fn((fileName: string, mimeType?: string) => {
+    const normalizedName = fileName.toLowerCase()
+    const normalizedMime = mimeType?.toLowerCase() || ''
+
+    if (normalizedName.endsWith('.pdf') || normalizedMime === 'application/pdf') {
+      return 'pdf'
+    }
+    if (
+      normalizedName.endsWith('.docx') ||
+      normalizedMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      return 'docx'
+    }
+    if (normalizedName.endsWith('.doc') || normalizedMime === 'application/msword') {
+      return 'doc'
+    }
+
+    return null
+  }),
 }))
 
 import { getServerSession } from 'next-auth'
@@ -108,7 +132,7 @@ describe('POST /api/parse-pdf', () => {
     expect(mockExtractLetterDataFromPdf).not.toHaveBeenCalled()
   })
 
-  it('rejects oversized PDF before calling AI', async () => {
+  it('rejects oversized files before calling AI', async () => {
     const { AI_PARSE_MAX_FILE_SIZE } = await import('@/lib/constants')
     const { POST } = await import('../parse-pdf/route')
     const oversizedBlob = new Blob([Buffer.alloc(AI_PARSE_MAX_FILE_SIZE + 1)], {
@@ -122,13 +146,17 @@ describe('POST /api/parse-pdf', () => {
     expect(mockExtractLetterDataFromPdf).not.toHaveBeenCalled()
   })
 
-  it('rejects invalid MIME types before calling AI', async () => {
+  it('rejects unsupported file types before calling AI', async () => {
     const { POST } = await import('../parse-pdf/route')
-    const request = buildParseRequest(new Blob(['not pdf'], { type: 'application/msword' }))
+    const request = buildParseRequest(
+      new Blob(['not supported'], { type: 'text/plain' }),
+      'letter.txt'
+    )
     const response = await POST(request)
 
     expect(response.status).toBe(400)
     expect(mockExtractLetterDataFromPdf).not.toHaveBeenCalled()
+    expect(mockExtractLetterDataWithAI).not.toHaveBeenCalled()
   })
 
   it('uses extracted AI fields directly without a second translation call', async () => {
@@ -151,7 +179,36 @@ describe('POST /api/parse-pdf', () => {
     expect(payload.data.organization).toBe('Министерство здравоохранения')
     expect(payload.data.region).toBe('Ташкентская область')
     expect(payload.data.district).toBe('Юнусабадский район')
-    expect(mockTranslateToRussian).not.toHaveBeenCalled()
     expect(mockExtractLetterDataFromPdf).toHaveBeenCalledTimes(1)
+    expect(mockExtractLetterDataWithAI).not.toHaveBeenCalled()
+  })
+
+  it('parses DOCX files through local text extraction before calling AI', async () => {
+    mockExtractTextFromOfficeDocument.mockResolvedValue('DOCX content for Gemini')
+    mockExtractLetterDataWithAI.mockResolvedValue({
+      number: 'DOCX-001',
+      date: '2026-04-02',
+      organization: 'DOCX организация',
+      region: 'Ташкент',
+      district: 'Мирабад',
+      contentSummary: 'Извлечено из DOCX',
+      contentRussian: 'Русский текст',
+    })
+
+    const { POST } = await import('../parse-pdf/route')
+    const request = buildParseRequest(
+      new Blob(['docx'], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }),
+      'letter.docx'
+    )
+    const response = await POST(request)
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload.data.number).toBe('DOCX-001')
+    expect(mockExtractTextFromOfficeDocument).toHaveBeenCalledTimes(1)
+    expect(mockExtractLetterDataWithAI).toHaveBeenCalledWith('DOCX content for Gemini')
+    expect(mockExtractLetterDataFromPdf).not.toHaveBeenCalled()
   })
 })

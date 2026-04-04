@@ -65,21 +65,28 @@ export default function NewLetterPage() {
   // Загрузка пользователей для выбора исполнителя
   useEffect(() => {
     if (mode !== 'manual') return
-    fetch('/api/users')
-      .then((r) => r.json())
-      .then((d) =>
+    fetch('/api/letters/owners')
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Не удалось загрузить исполнителей')
+        }
+        return response.json()
+      })
+      .then((payload) =>
         setUsers(
-          (d.users || []).map(
-            (u: {
+          (payload.users || []).map(
+            (user: {
               id: string
               name: string | null
               email: string | null
-              _count?: { letters: number }
+              image?: string | null
+              activeLetters?: number
             }) => ({
-              id: u.id,
-              name: u.name,
-              email: u.email,
-              activeLetters: u._count?.letters ?? 0,
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              activeLetters: user.activeLetters ?? 0,
             })
           )
         )

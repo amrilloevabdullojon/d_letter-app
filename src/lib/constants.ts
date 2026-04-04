@@ -49,8 +49,12 @@ export const MAX_FILE_SIZE_LABEL = '10 MB'
 export const AI_PARSE_MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 export const AI_PARSE_MAX_FILE_SIZE_LABEL = '5 MB'
 
-export const AI_PARSE_ALLOWED_FILE_TYPES = ['application/pdf'] as const
-export const AI_PARSE_ALLOWED_FILE_EXTENSIONS = '.pdf'
+export const AI_PARSE_ALLOWED_FILE_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+] as const
+export const AI_PARSE_ALLOWED_FILE_EXTENSIONS = '.pdf,.doc,.docx'
 
 export const ALLOWED_FILE_TYPES = [
   'application/pdf',

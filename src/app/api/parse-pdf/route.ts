@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { calculateDeadline } from '@/lib/parsePdfLetter'
-import { extractLetterDataFromPdf } from '@/lib/ai'
+import { extractLetterDataFromPdf, extractLetterDataWithAI } from '@/lib/ai'
 import { withTimeout } from '@/lib/ai-utils'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
@@ -16,6 +16,7 @@ import {
 } from '@/lib/constants'
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit'
 import { requirePermissionAsync } from '@/lib/permission-guard'
+import { extractTextFromOfficeDocument, getSupportedAiDocumentKind } from '@/lib/document-text'
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,36 +58,39 @@ export async function POST(request: NextRequest) {
 
     if (file.size > AI_PARSE_MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `PDF слишком большой для AI-анализа. Максимум ${AI_PARSE_MAX_FILE_SIZE_LABEL}.` },
+        {
+          error: `Файл слишком большой для AI-анализа. Максимум ${AI_PARSE_MAX_FILE_SIZE_LABEL}.`,
+        },
         { status: 400 }
       )
     }
 
-    const hasPdfExtension = file.name.toLowerCase().endsWith('.pdf')
+    const documentKind = getSupportedAiDocumentKind(file.name, file.type)
     const hasAllowedMime =
       file.type.length === 0 ||
       AI_PARSE_ALLOWED_FILE_TYPES.includes(
         file.type as (typeof AI_PARSE_ALLOWED_FILE_TYPES)[number]
       )
 
-    if (!hasPdfExtension || !hasAllowedMime) {
+    if (!documentKind || !hasAllowedMime) {
       return NextResponse.json(
         {
-          error: `Для AI-анализа поддерживаются только PDF файлы (${AI_PARSE_ALLOWED_FILE_EXTENSIONS}).`,
+          error: `Для AI-анализа поддерживаются только файлы ${AI_PARSE_ALLOWED_FILE_EXTENSIONS}.`,
         },
         { status: 400 }
       )
     }
 
-    // Читаем файл как base64
     const arrayBuffer = await file.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    const buffer = Buffer.from(arrayBuffer)
 
     // Извлекаем данные из имени файла как fallback
-    const filenameMatch = file.name.match(/^(\d+)[_-].*\.pdf$/i)
+    const filenameMatch = file.name.match(/^(\d+)[_-].*\.(pdf|doc|docx)$/i)
     const filenameNumber = filenameMatch ? filenameMatch[1] : null
 
-    const fullFilenameMatch = file.name.match(/^(\d+)[_-](\d{2})\.(\d{2})\.(\d{4})[_-](.+)\.pdf$/i)
+    const fullFilenameMatch = file.name.match(
+      /^(\d+)[_-](\d{2})\.(\d{2})\.(\d{4})[_-](.+)\.(pdf|doc|docx)$/i
+    )
     let filenameData: { number?: string; date?: Date; description?: string } = {}
 
     if (fullFilenameMatch) {
@@ -106,14 +110,38 @@ export async function POST(request: NextRequest) {
       filenameData.number = filenameNumber
     }
 
-    // ✅ ОПТИМИЗАЦИЯ: Добавлен timeout для предотвращения зависания AI
-    logger.debug('Parse PDF', 'Parsing PDF with AI', { filename: file.name, size: file.size })
-    const aiData = await withTimeout(
-      extractLetterDataFromPdf(base64),
-      90000, // 90 секунд для Vision API
-      'PDF parsing timeout after 90 seconds'
-    )
-    logger.debug('Parse PDF', 'AI parsing completed', { success: !!aiData })
+    let aiData = null
+    let extractedText = false
+
+    logger.debug('Parse document', 'Parsing document with AI', {
+      filename: file.name,
+      size: file.size,
+      kind: documentKind,
+    })
+
+    if (documentKind === 'pdf') {
+      aiData = await withTimeout(
+        extractLetterDataFromPdf(buffer.toString('base64')),
+        90000,
+        'Document parsing timeout after 90 seconds'
+      )
+    } else {
+      const documentText = await extractTextFromOfficeDocument(buffer, documentKind)
+      extractedText = Boolean(documentText)
+      if (documentText) {
+        aiData = await withTimeout(
+          extractLetterDataWithAI(documentText),
+          45000,
+          'Document text parsing timeout after 45 seconds'
+        )
+      }
+    }
+
+    logger.debug('Parse document', 'AI parsing completed', {
+      success: !!aiData,
+      kind: documentKind,
+      extractedText,
+    })
 
     const normalizeNumber = (value: string | null): string | null => {
       if (!value) return null
@@ -158,6 +186,7 @@ export async function POST(request: NextRequest) {
         filename: file.name,
         extractedFrom: {
           ai: !!aiData,
+          pdf: documentKind === 'pdf' && !!aiData,
           filename: !!filenameData.number,
         },
       },
@@ -166,7 +195,7 @@ export async function POST(request: NextRequest) {
     logger.error('POST /api/parse-pdf', error)
     return NextResponse.json(
       {
-        error: 'Ошибка при обработке PDF',
+        error: 'Ошибка при обработке документа',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

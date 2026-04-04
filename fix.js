@@ -1,0 +1,7 @@
+const fs = require('fs')
+let text = fs.readFileSync('src/app/globals.css', 'utf8')
+text = text.split('\\\\/').join('\\/')
+text = text.split('\\\\[').join('\\[')
+text = text.split('\\\\]').join('\\]')
+text = text.split('\\\\#').join('\\#')
+fs.writeFileSync('src/app/globals.css', text)

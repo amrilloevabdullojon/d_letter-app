@@ -26,7 +26,12 @@ import {
   ArrowUpRight,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
-import { DEFAULT_DEADLINE_WORKING_DAYS, LETTER_TYPES } from '@/lib/constants'
+import {
+  AI_PARSE_ALLOWED_FILE_EXTENSIONS,
+  AI_PARSE_ALLOWED_FILE_TYPES,
+  DEFAULT_DEADLINE_WORKING_DAYS,
+  LETTER_TYPES,
+} from '@/lib/constants'
 import { formatDateForInput, calculateDeadline } from '@/lib/parseLetterFilename'
 import { recommendLetterType } from '@/lib/recommendLetterType'
 import { bulkCreateLettersSchema, type BulkCreateLettersInput } from '@/lib/schemas'
@@ -58,6 +63,8 @@ const createEmptyRow = (): LetterRow => ({
   parsing: false,
   parsedByAI: false,
 })
+
+const BULK_AI_EXTENSIONS = ['.pdf', '.doc', '.docx'] as const
 
 interface ParsedPdfData {
   number: string | null
@@ -157,20 +164,24 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
   const bulkDeadlineDate = watch('bulkDeadlineDate')
   const bulkType = watch('bulkType')
 
-  // Парсинг PDF через API
+  // Парсинг документов через API
   const handleFiles = useCallback(
     async (uploadedFiles: FileList | File[]) => {
-      const pdfFiles = Array.from(uploadedFiles).filter(
-        (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
-      )
+      const documents = Array.from(uploadedFiles).filter((file) => {
+        const lowerName = file.name.toLowerCase()
+        return (
+          AI_PARSE_ALLOWED_FILE_TYPES.includes(
+            file.type as (typeof AI_PARSE_ALLOWED_FILE_TYPES)[number]
+          ) || BULK_AI_EXTENSIONS.some((extension) => lowerName.endsWith(extension))
+        )
+      })
 
-      if (pdfFiles.length === 0) {
-        toast.error('Выберите PDF файлы')
+      if (documents.length === 0) {
+        toast.error(`Выберите файлы ${AI_PARSE_ALLOWED_FILE_EXTENSIONS}`)
         return
       }
 
-      // Создаём строки для каждого файла
-      const newRows: LetterRow[] = pdfFiles.map((file) => ({
+      const newRows: LetterRow[] = documents.map((file) => ({
         ...createEmptyRow(),
         file,
         parsing: true,
@@ -196,7 +207,7 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
       })
 
       // Парсим каждый файл параллельно
-      const toastId = toast.loading(`Анализ ${pdfFiles.length} PDF с помощью AI...`)
+      const toastId = toast.loading(`Анализ ${documents.length} документов с помощью AI...`)
 
       const settledResults = await Promise.allSettled(
         newRows.map(async (row): Promise<ParseResult> => {
@@ -268,17 +279,17 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
       const successCount = results.filter((r) => r.data).length
       const errorCount = results.filter((r) => r.error).length
 
-      if (successCount === pdfFiles.length) {
-        toast.success(`Все ${pdfFiles.length} PDF успешно распознаны`, { id: toastId })
+      if (successCount === documents.length) {
+        toast.success(`Все ${documents.length} документов успешно распознаны`, { id: toastId })
       } else if (successCount > 0) {
         const message =
           errorCount > 0
-            ? `Распознано ${successCount} из ${pdfFiles.length} PDF. Ошибок: ${errorCount}`
-            : `Распознано ${successCount} из ${pdfFiles.length} PDF`
+            ? `Распознано ${successCount} из ${documents.length} документов. Ошибок: ${errorCount}`
+            : `Распознано ${successCount} из ${documents.length} документов`
         toast.warning(message, { id: toastId })
       } else {
         const firstError = results.find((r) => r.error)?.error
-        toast.error(`Не удалось распознать PDF файлы${firstError ? `: ${firstError}` : ''}`, {
+        toast.error(`Не удалось распознать документы${firstError ? `: ${firstError}` : ''}`, {
           id: toastId,
         })
       }
@@ -718,7 +729,7 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
           onSubmit={handleSubmit(onSubmit as (data: BulkCreateLettersInput) => Promise<void>)}
           className="space-y-4"
         >
-          {/* Drop zone для PDF */}
+          {/* Drop zone для документов */}
           <div
             className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition ${
               dragOver
@@ -734,7 +745,7 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
               id="bulk-file-input"
               type="file"
               className="hidden"
-              accept=".pdf"
+              accept=".pdf,.doc,.docx"
               multiple
               onChange={handleFileSelect}
             />
@@ -744,10 +755,10 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
                 <Bot className="h-6 w-6 text-purple-400" />
               </div>
               <p className="text-gray-300">
-                Перетащите PDF файлы сюда или <span className="text-purple-400">выберите</span>
+                Перетащите документы сюда или <span className="text-purple-400">выберите</span>
               </p>
               <p className="text-xs text-gray-500">
-                AI автоматически извлечёт данные из каждого PDF
+                AI автоматически извлечёт данные из каждого файла PDF, DOC или DOCX
               </p>
             </div>
           </div>

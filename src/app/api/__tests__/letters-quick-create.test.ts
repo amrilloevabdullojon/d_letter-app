@@ -112,7 +112,7 @@ function buildQuickCreateRequest(formData: FormData) {
   })
 }
 
-function buildQuickCreateFormData() {
+function buildQuickCreateFormData(options?: { ownerId?: string }) {
   const formData = new FormData()
   formData.append('number', 'AI-001')
   formData.append('org', 'Министерство здравоохранения')
@@ -121,6 +121,9 @@ function buildQuickCreateFormData() {
   formData.append('contentRussian', 'Полный перевод письма')
   formData.append('region', 'Ташкентская область')
   formData.append('district', 'Юнусабадский район')
+  if (options?.ownerId) {
+    formData.append('ownerId', options.ownerId)
+  }
   formData.append('file', new Blob(['pdf'], { type: 'application/pdf' }), 'source.pdf')
   return formData
 }
@@ -223,5 +226,40 @@ describe('POST /api/letters quick AI flow', () => {
     expect(mockPrisma.letter.delete).toHaveBeenCalledWith({
       where: { id: 'letter-rollback' },
     })
+  })
+
+  it('uses the selected owner from quick upload instead of auto-assignment', async () => {
+    const ownerId = 'ck1234567890123456789012'
+    const createdLetter = {
+      id: 'letter-owner',
+      number: 'AI-001',
+      org: 'Министерство здравоохранения',
+      date: new Date('2026-04-01T00:00:00.000Z'),
+      deadlineDate: new Date('2026-04-10T00:00:00.000Z'),
+      ownerId,
+      applicantEmail: null,
+      applicantPhone: null,
+      applicantTelegramChatId: null,
+      comment: null,
+    }
+
+    mockPrisma.letter.create.mockResolvedValue(createdLetter)
+    mockSaveLocalUpload.mockResolvedValue({
+      storagePath: 'letters/letter-owner/source.pdf',
+      url: '/uploads/letters/letter-owner/source.pdf',
+    })
+    mockPrisma.file.create.mockResolvedValue({
+      id: 'file-owner',
+      name: 'source.pdf',
+    })
+
+    const { POST } = await import('../letters/route')
+    const response = await POST(buildQuickCreateRequest(buildQuickCreateFormData({ ownerId })))
+
+    expect(response.status).toBe(201)
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled()
+
+    const createData = mockPrisma.letter.create.mock.calls[0][0].data
+    expect(createData.ownerId).toBe(ownerId)
   })
 })

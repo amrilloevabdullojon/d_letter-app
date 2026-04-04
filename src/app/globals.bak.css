@@ -63,24 +63,35 @@
   color: #475569 !important;
 }
 
-.light [class*='bg-slate-9'],
-.light [class*='bg-slate-8'],
-.light [class*='080f18'],
-.light [class*='0c1420'],
-.light [class*='182437'] {
+.light .bg-slate-900,
+.light .bg-slate-800,
+.light .bg-\[\#080f18\],
+.light .bg-\[\#0c1420\],
+.light .bg-\[\#182437\],
+.light .bg-slate-950,
+.light .bg-slate-950\/50,
+.light .bg-slate-900\/50,
+.light .bg-slate-900\/70,
+.light .bg-slate-900\/80,
+.light .bg-slate-900\/90,
+.light .bg-slate-900\/95 {
   background-color: #ffffff !important;
 }
 
-.light [class*='from-slate-9'],
-.light [class*='via-slate-9'],
-.light [class*='to-slate-9'] {
+.light .from-slate-900\/95,
+.light .via-slate-900\/95,
+.light .to-slate-950\/95 {
   background-image: none !important;
   background-color: #ffffff !important;
 }
 
-.light [class*='border-slate-8'],
-.light [class*='border-slate-7'],
-.light [class*='border-slate-6'] {
+.light .border-slate-800\/80,
+.light .border-slate-800\/70,
+.light .border-slate-700\/70,
+.light .border-slate-700\/60,
+.light .border-slate-600\/70,
+.light .border-slate-600\/50,
+.light .border-slate-800 {
   border-color: #e2e8f0 !important;
 }
 
@@ -89,23 +100,23 @@
   color: #64748b !important;
 }
 
-.light [class*='bg-white/5'] {
+.light .bg-white/5 {
   background-color: rgba(0, 0, 0, 0.03) !important;
 }
-.light [class*='bg-white/10'] {
+.light .bg-white/10 {
   background-color: rgba(0, 0, 0, 0.06) !important;
 }
-.light [class*='hover:bg-white/5']:hover {
+.light .hover\\:bg-white/5:hover {
   background-color: rgba(0, 0, 0, 0.05) !important;
 }
-.light [class*='hover:bg-white/10']:hover {
+.light .hover\\:bg-white/10:hover {
   background-color: rgba(0, 0, 0, 0.08) !important;
 }
 
-.light [class*='border-white/10'] {
+.light .border-white/10 {
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
-.light [class*='border-white/20'] {
+.light .border-white/20 {
   border-color: rgba(0, 0, 0, 0.2) !important;
 }
 
@@ -221,14 +232,17 @@
 }
 
 /* Violet theme text color adjustments */
-.violet [class*='border-teal-400/20'],
-.violet [class*='border-teal-400/30'],
-.violet [class*='bg-teal-500/15'],
-.violet [class*='bg-teal-400/15'],
-.violet [class*='shadow-teal-500/25'],
-.violet [class*='from-teal-500'],
-.violet [class*='to-teal-600'],
-.violet [class*='ring-teal-500/30'] {
+.violet .text-teal-300,
+.violet .text-teal-400,
+.violet .text-emerald-300,
+.violet .border-teal-400/20,
+.violet .border-teal-400/30,
+.violet .bg-teal-500/15,
+.violet .bg-teal-400/15,
+.violet .shadow-teal-500/25,
+.violet .from-teal-500,
+.violet .to-teal-600,
+.violet .ring-teal-500/30 {
   --tw-ring-color: rgba(139, 92, 246, 0.4);
 }
 

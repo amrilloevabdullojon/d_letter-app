@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -34,6 +34,7 @@ import { DEFAULT_DEADLINE_WORKING_DAYS, LETTER_TYPES } from '@/lib/constants'
 import { recommendLetterType } from '@/lib/recommendLetterType'
 import { quickLetterUploadSchema, type QuickLetterUploadInput } from '@/lib/schemas'
 import { OrganizationAutocomplete } from '@/components/OrganizationAutocomplete'
+import { OwnerSelector, type OwnerOption } from '@/components/OwnerSelector'
 import { getWorkingDaysUntilDeadline } from '@/lib/utils'
 
 interface ParsedPdfData {
@@ -59,6 +60,8 @@ interface QuickLetterUploadProps {
   onClose?: () => void
 }
 
+const QUICK_UPLOAD_ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx'] as const
+
 export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   const router = useRouter()
   const toast = useToast()
@@ -69,11 +72,66 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   const [parseSource, setParseSource] = useState<'ai' | 'pdf' | 'filename' | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [createdLetterId, setCreatedLetterId] = useState<string | null>(null)
+  const [owners, setOwners] = useState<OwnerOption[]>([])
+  const [ownersLoading, setOwnersLoading] = useState(true)
+  const [ownerLoadError, setOwnerLoadError] = useState<string | null>(null)
+  const [selectedOwner, setSelectedOwner] = useState<OwnerOption | null>(null)
 
   // Дополнительные поля (не в схеме)
   const [contentRussian, setContentRussian] = useState('')
   const [region, setRegion] = useState('')
   const [district, setDistrict] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadOwners = async () => {
+      try {
+        setOwnersLoading(true)
+        setOwnerLoadError(null)
+
+        const response = await fetch('/api/letters/owners')
+        if (!response.ok) {
+          throw new Error('Не удалось загрузить исполнителей')
+        }
+
+        const payload = await response.json()
+        if (cancelled) return
+
+        setOwners(
+          (payload.users || []).map(
+            (user: {
+              id: string
+              name: string | null
+              email: string | null
+              image?: string | null
+              activeLetters?: number
+            }) => ({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              activeLetters: user.activeLetters ?? 0,
+            })
+          )
+        )
+      } catch (error) {
+        if (cancelled) return
+        console.error('Failed to load owners:', error)
+        setOwnerLoadError('Не удалось загрузить исполнителей. Сработает автоназначение.')
+      } finally {
+        if (!cancelled) {
+          setOwnersLoading(false)
+        }
+      }
+    }
+
+    loadOwners()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // React Hook Form
   const {
@@ -102,10 +160,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
 
   const watchDeadline = watch('deadlineDate')
 
-  /**
-   * Парсит PDF через API
-   */
-  const parsePdfContent = useCallback(
+  const parseDocumentContent = useCallback(
     async (
       f: File
     ): Promise<{ data: ParsedPdfData | null; meta: ParseMeta | null; error?: string }> => {
@@ -124,18 +179,19 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
           return {
             data: null,
             meta: null,
-            error: err?.error || 'Не удалось выполнить AI-анализ PDF',
+            error: err?.error || 'Не удалось выполнить AI-анализ документа',
           }
         }
 
         const result = await res.json()
         return { data: result.data, meta: result.meta }
       } catch (error) {
-        console.error('Failed to parse PDF:', error)
+        console.error('Failed to parse document:', error)
         return {
           data: null,
           meta: null,
-          error: error instanceof Error ? error.message : 'Не удалось выполнить AI-анализ PDF',
+          error:
+            error instanceof Error ? error.message : 'Не удалось выполнить AI-анализ документа',
         }
       }
     },
@@ -144,10 +200,13 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
 
   const handleFile = useCallback(
     async (f: File) => {
-      const isPdf = f.name.toLowerCase().endsWith('.pdf')
+      const lowerName = f.name.toLowerCase()
+      const isSupportedDocument = QUICK_UPLOAD_ALLOWED_EXTENSIONS.some((extension) =>
+        lowerName.endsWith(extension)
+      )
 
-      if (!isPdf) {
-        toast.error('Быстрое AI-добавление поддерживает только PDF файлы')
+      if (!isSupportedDocument) {
+        toast.error('Быстрое AI-добавление поддерживает только PDF, DOC и DOCX файлы')
         return
       }
 
@@ -160,10 +219,9 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       setRegion('')
       setDistrict('')
 
-      // Сначала пробуем распарсить содержимое PDF
-      toast.loading('Анализ PDF с помощью AI...', { id: 'parsing' })
+      toast.loading('Анализ документа с помощью AI...', { id: 'parsing' })
 
-      const parseResult = await parsePdfContent(f)
+      const parseResult = await parseDocumentContent(f)
 
       if (parseResult.data && parseResult.meta) {
         const { data, meta } = parseResult
@@ -254,7 +312,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
 
       setParsing(false)
     },
-    [parsePdfContent, toast, setValue]
+    [parseDocumentContent, toast, setValue]
   )
 
   const handleDrop = useCallback(
@@ -309,6 +367,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       if (contentRussian) formData.append('contentRussian', contentRussian)
       if (region) formData.append('region', region)
       if (district) formData.append('district', district)
+      if (selectedOwner?.id) formData.append('ownerId', selectedOwner.id)
       if (file) {
         formData.append('file', file)
       }
@@ -353,6 +412,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     setDistrict('')
     setServerError(null)
     setCreatedLetterId(null)
+    setSelectedOwner(null)
     resetForm()
   }
 
@@ -386,8 +446,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       </div>
 
       <p className="mb-4 text-sm text-gray-400">
-        Перетащите PDF файл письма. Gemini AI извлечёт данные, а исходный PDF будет прикреплён к
-        письму одним серверным запросом.
+        Перетащите PDF, DOC или DOCX файл письма. Gemini AI извлечёт данные, а исходный документ
+        будет прикреплён к письму одним серверным запросом.
       </p>
 
       {!file ? (
@@ -408,14 +468,14 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
             aria-label="Выбрать файл"
             type="file"
             className="hidden"
-            accept=".pdf"
+            accept=".pdf,.doc,.docx"
             onChange={handleFileSelect}
           />
           <Upload className="mx-auto mb-3 h-10 w-10 text-gray-500" />
           <p className="text-gray-300">
             Перетащите файл сюда или <span className="text-emerald-400">выберите</span>
           </p>
-          <p className="mt-2 text-xs text-gray-500">Только PDF</p>
+          <p className="mt-2 text-xs text-gray-500">PDF, DOC или DOCX</p>
         </div>
       ) : createdLetterId ? (
         // Баннер успешного создания
@@ -487,7 +547,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
           {parseSource === 'ai' && (
             <div className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/20 p-3 text-sm text-purple-400">
               <Bot className="h-4 w-4" />
-              Данные извлечены и переведены с помощью AI
+              Данные извлечены и нормализованы с помощью AI
             </div>
           )}
 
@@ -580,6 +640,33 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="mb-1 flex items-center gap-2 text-sm text-gray-400">
+              <Building2 className="h-4 w-4" />
+              Исполнитель
+              {ownersLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" />}
+            </label>
+            <OwnerSelector
+              currentOwner={selectedOwner}
+              users={owners}
+              onSelect={async (userId) => {
+                const nextOwner = userId
+                  ? (owners.find((user) => user.id === userId) ?? null)
+                  : null
+                setSelectedOwner(nextOwner)
+              }}
+              disabled={creating || parsing || ownersLoading}
+              canEdit={true}
+              placeholder="Автоматически назначить исполнителя"
+            />
+            {ownerLoadError && <p className="mt-2 text-xs text-amber-400">{ownerLoadError}</p>}
+            {!ownerLoadError && (
+              <p className="mt-2 text-xs text-gray-500">
+                Если исполнителя не выбрать, система назначит его автоматически.
+              </p>
+            )}
           </div>
 
           {/* Additional fields from PDF */}
