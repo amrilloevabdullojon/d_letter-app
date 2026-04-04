@@ -1146,7 +1146,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Toolbar */}
-        <div className="panel panel-glass mb-6 rounded-2xl p-4">
+        <div className="panel panel-glass mb-6 rounded-2xl p-4" ref={actionsMenuRef}>
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)_auto] xl:items-center">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
@@ -1219,7 +1219,7 @@ export default function ReportsPage() {
                   <ChevronDown className="h-4 w-4" />
                 )}
               </button>
-              <div className="relative" ref={actionsMenuRef}>
+              <div className="relative">
                 <button
                   type="button"
                   onClick={() => setActionsMenuOpen((prev) => !prev)}
@@ -1234,44 +1234,47 @@ export default function ReportsPage() {
                     className={`h-4 w-4 transition ${actionsMenuOpen ? 'rotate-180' : ''}`}
                   />
                 </button>
-                {actionsMenuOpen && (
-                  <div className="panel panel-solid absolute right-0 top-full z-20 mt-2 flex min-w-[240px] flex-col gap-1 rounded-xl p-2 shadow-2xl">
-                    <button
-                      onClick={() => {
-                        setActionsMenuOpen(false)
-                        void handleShare()
-                      }}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
-                    >
-                      <Share2 className="h-4 w-4 text-teal-300" />
-                      Поделиться видом
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActionsMenuOpen(false)
-                        handleResetView()
-                      }}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
-                    >
-                      <RefreshCw className="h-4 w-4 text-slate-300" />
-                      Сбросить вид
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActionsMenuOpen(false)
-                        void handleDeletePreset()
-                      }}
-                      disabled={!selectedPresetId}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-200 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <X className="h-4 w-4 text-rose-300" />
-                      Удалить пресет
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
+
+          {actionsMenuOpen && (
+            <div className="mt-4 flex justify-end">
+              <div className="panel panel-soft flex w-full max-w-[280px] flex-col gap-1 rounded-xl p-2">
+                <button
+                  onClick={() => {
+                    setActionsMenuOpen(false)
+                    void handleShare()
+                  }}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
+                >
+                  <Share2 className="h-4 w-4 text-teal-300" />
+                  Поделиться видом
+                </button>
+                <button
+                  onClick={() => {
+                    setActionsMenuOpen(false)
+                    handleResetView()
+                  }}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
+                >
+                  <RefreshCw className="h-4 w-4 text-slate-300" />
+                  Сбросить вид
+                </button>
+                <button
+                  onClick={() => {
+                    setActionsMenuOpen(false)
+                    void handleDeletePreset()
+                  }}
+                  disabled={!selectedPresetId}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-200 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X className="h-4 w-4 text-rose-300" />
+                  Удалить пресет
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* KPI Cards with Goals */}
