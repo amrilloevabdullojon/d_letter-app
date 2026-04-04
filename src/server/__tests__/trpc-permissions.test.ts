@@ -104,3 +104,5 @@ describe('tRPC permission alignment', () => {
     ).rejects.toMatchObject({ code: 'FORBIDDEN' })
   })
 })
+
+export {}

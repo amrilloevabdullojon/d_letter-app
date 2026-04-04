@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { Header } from '@/components/Header'
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { hasPermission } from '@/lib/permissions'
 import { STATUS_LABELS } from '@/lib/utils'
 import type { LetterStatus } from '@/types/prisma'
 import {
@@ -42,42 +43,65 @@ import {
 } from 'lucide-react'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useToast } from '@/components/Toast'
+import { useUserPreferences } from '@/hooks/useUserPreferences'
+import { useDebounce } from '@/hooks/useDebounce'
 import { ResponsiveChart } from '@/components/mobile/ResponsiveChart'
 import { ScrollIndicator } from '@/components/mobile/ScrollIndicator'
+import {
+  defaultReportExportColumns,
+  defaultReportViewState,
+  type ReportChartView,
+  type ReportExportColumns,
+  type ReportGranularity,
+  type ReportGroupBy,
+  type ReportViewMode,
+  type ReportViewPreset,
+  type ReportViewState,
+  normalizeReportPresets,
+} from '@/lib/report-presets'
 
-interface Stats {
+interface ReportsData {
   summary: {
     total: number
     overdue: number
     urgent: number
     done: number
     inProgress: number
+    notReviewed: number
+    todayDeadlines: number
+    weekDeadlines: number
     monthNew: number
     monthDone: number
     avgDays: number
+    needsProcessing: number
   }
   byStatus: Record<LetterStatus, number>
   byOwner: Array<{ id: string; name: string; count: number }>
   byType: Array<{ type: string; count: number }>
-  byOrgTypePeriod: Array<{
-    periodKey: string
-    periodLabel: string
-    org: string
-    type: string
-    count: number
-  }>
   monthly: Array<{ month: string; created: number; done: number }>
-  report?: {
-    letters: ReportLetter[]
+  generatedAt: string
+  filters: {
+    owners: Array<{ id: string; name: string; count: number }>
+    orgs: string[]
+    types: string[]
   }
-}
-
-interface ReportLetter {
-  createdAt: string
-  org: string
-  type: string
-  status: LetterStatus
-  ownerId: string | null
+  report: {
+    rows: ReportAggregateRow[]
+    periodGroups: ReportPeriodGroup[]
+    heatmap: {
+      periods: Array<{ key: string; label: string; sort: number }>
+      groups: Array<{ key: string; label: string; total: number }>
+      rows: Array<{ groupKey: string; values: Record<string, number> }>
+      max: number
+    }
+    summary: {
+      total: number
+      orgCount: number
+      typeCount: number
+      groupCount: number
+      periodCount: number
+    }
+  }
 }
 
 interface ReportAggregateRow {
@@ -124,6 +148,53 @@ const REPORT_STATUS_OPTIONS: LetterStatus[] = [
   'PROCESSED',
   'DONE',
 ]
+
+const REPORT_PERIOD_VALUES: ReportViewState['periodMonths'][] = [3, 6, 12]
+
+const isReportPeriod = (value: number): value is ReportViewState['periodMonths'] =>
+  REPORT_PERIOD_VALUES.includes(value as ReportViewState['periodMonths'])
+
+const createReportQuery = (state: {
+  periodMonths: number
+  reportGroupBy: ReportGroupBy
+  reportGranularity: ReportGranularity
+  reportStatusFilter: LetterStatus | 'all'
+  reportOwnerFilter: string
+  reportOrgFilter: string
+  reportTypeFilter: string
+  reportSearch: string
+}) => {
+  const params = new URLSearchParams()
+  params.set('periodMonths', String(state.periodMonths))
+  params.set('groupBy', state.reportGroupBy)
+  params.set('granularity', state.reportGranularity)
+  if (state.reportStatusFilter !== 'all') params.set('status', state.reportStatusFilter)
+  if (state.reportOwnerFilter) params.set('ownerId', state.reportOwnerFilter)
+  if (state.reportOrgFilter) params.set('org', state.reportOrgFilter)
+  if (state.reportTypeFilter) params.set('type', state.reportTypeFilter)
+  if (state.reportSearch.trim()) params.set('search', state.reportSearch.trim())
+  return params
+}
+
+const buildLettersDrilldownParams = (input: {
+  status?: LetterStatus | 'all'
+  ownerId?: string
+  org?: string
+  type?: string
+}) => {
+  const params = new URLSearchParams()
+  if (input.status && input.status !== 'all') params.set('status', input.status)
+  if (input.ownerId) {
+    if (input.ownerId === 'unassigned') {
+      params.set('filter', 'unassigned')
+    } else {
+      params.set('owner', input.ownerId)
+    }
+  }
+  if (input.org) params.set('search', input.org)
+  if (input.type) params.set('type', input.type)
+  return params
+}
 
 // Donut Chart Component
 function DonutChart({
@@ -312,15 +383,16 @@ export default function ReportsPage() {
   useAuthRedirect(authStatus)
   const router = useRouter()
   const toast = useToast()
-  const [stats, setStats] = useState<Stats | null>(null)
+  const { preferences, setPreferences, refresh: refreshPreferences } = useUserPreferences()
+  const [stats, setStats] = useState<ReportsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showAllTypes, setShowAllTypes] = useState(false)
-  const [periodMonths, setPeriodMonths] = useState(6)
-  const [chartView, setChartView] = useState<'status' | 'owner' | 'type'>('status')
-  const [ownerSort, setOwnerSort] = useState<'count' | 'name'>('count')
-  const [ownerSortDir, setOwnerSortDir] = useState<'asc' | 'desc'>('desc')
+  const [periodMonths, setPeriodMonths] = useState<ReportViewState['periodMonths']>(6)
+  const [chartView, setChartView] = useState<ReportChartView>('status')
+  const [ownerSort, setOwnerSort] = useState<ReportViewState['ownerSort']>('count')
+  const [ownerSortDir, setOwnerSortDir] = useState<ReportViewState['ownerSortDir']>('desc')
   const [ownerPage, setOwnerPage] = useState(1)
   const [selectedOwner, setSelectedOwner] = useState<{
     id: string
@@ -328,23 +400,21 @@ export default function ReportsPage() {
     count: number
   } | null>(null)
   const [filterOwner, setFilterOwner] = useState<string | null>(null)
-  const [reportView, setReportView] = useState<'cards' | 'table' | 'heatmap'>('cards')
-  const [reportGroupBy, setReportGroupBy] = useState<'orgType' | 'org' | 'type'>('orgType')
-  const [reportGranularity, setReportGranularity] = useState<'month' | 'quarter' | 'week'>('month')
+  const [reportView, setReportView] = useState<ReportViewMode>('cards')
+  const [reportGroupBy, setReportGroupBy] = useState<ReportGroupBy>('orgType')
+  const [reportGranularity, setReportGranularity] = useState<ReportGranularity>('month')
   const [reportStatusFilter, setReportStatusFilter] = useState<LetterStatus | 'all'>('all')
   const [reportOwnerFilter, setReportOwnerFilter] = useState('')
   const [reportOrgFilter, setReportOrgFilter] = useState('')
   const [reportTypeFilter, setReportTypeFilter] = useState('')
   const [reportSearch, setReportSearch] = useState('')
-  const [reportExportColumns, setReportExportColumns] = useState({
-    period: true,
-    org: true,
-    type: true,
-    status: false,
-    owner: false,
-    count: true,
-  })
+  const [reportExportColumns, setReportExportColumns] = useState<ReportExportColumns>(
+    defaultReportExportColumns()
+  )
   const [expandedReportPeriods, setExpandedReportPeriods] = useState<Record<string, boolean>>({})
+  const [advancedReportOpen, setAdvancedReportOpen] = useState(false)
+  const [selectedPresetId, setSelectedPresetId] = useState('')
+  const debouncedReportSearch = useDebounce(reportSearch, 300)
 
   // KPI Goals (configurable)
   const kpiGoals = {
@@ -353,80 +423,129 @@ export default function ReportsPage() {
     overdueMax: 5,
   }
 
-  const applyView = useCallback(
-    (view: {
-      periodMonths?: number
-      chartView?: 'status' | 'owner' | 'type'
-      ownerSort?: 'count' | 'name'
-      ownerSortDir?: 'asc' | 'desc'
-      reportView?: 'cards' | 'table' | 'heatmap'
-      reportGroupBy?: 'orgType' | 'org' | 'type'
-      reportGranularity?: 'month' | 'quarter' | 'week'
-      reportStatusFilter?: LetterStatus | 'all'
-      reportOwnerFilter?: string
-      reportOrgFilter?: string
-      reportTypeFilter?: string
-      reportSearch?: string
-      reportExportColumns?: Partial<typeof reportExportColumns>
-    }) => {
-      if (view.periodMonths && [3, 6, 12].includes(view.periodMonths)) {
-        setPeriodMonths(view.periodMonths)
-      }
-      if (view.chartView) {
-        setChartView(view.chartView)
-      }
-      if (view.ownerSort) {
-        setOwnerSort(view.ownerSort)
-      }
-      if (view.ownerSortDir) {
-        setOwnerSortDir(view.ownerSortDir)
-      }
-      if (view.reportView && ['cards', 'table', 'heatmap'].includes(view.reportView)) {
-        setReportView(view.reportView)
-      }
-      if (view.reportGroupBy && ['orgType', 'org', 'type'].includes(view.reportGroupBy)) {
-        setReportGroupBy(view.reportGroupBy)
-      }
-      if (view.reportGranularity && ['month', 'quarter', 'week'].includes(view.reportGranularity)) {
-        setReportGranularity(view.reportGranularity)
-      }
-      if (view.reportStatusFilter) {
-        setReportStatusFilter(view.reportStatusFilter)
-      }
-      if (typeof view.reportOwnerFilter === 'string') {
-        setReportOwnerFilter(view.reportOwnerFilter)
-      }
-      if (typeof view.reportOrgFilter === 'string') {
-        setReportOrgFilter(view.reportOrgFilter)
-      }
-      if (typeof view.reportTypeFilter === 'string') {
-        setReportTypeFilter(view.reportTypeFilter)
-      }
-      if (typeof view.reportSearch === 'string') {
-        setReportSearch(view.reportSearch)
-      }
-      if (view.reportExportColumns) {
-        setReportExportColumns((prev) => ({ ...prev, ...view.reportExportColumns }))
+  const currentReportView = useMemo<ReportViewState>(
+    () => ({
+      periodMonths,
+      chartView,
+      ownerSort,
+      ownerSortDir,
+      reportView,
+      reportGroupBy,
+      reportGranularity,
+      reportStatusFilter,
+      reportOwnerFilter,
+      reportOrgFilter,
+      reportTypeFilter,
+      reportSearch,
+      reportExportColumns,
+    }),
+    [
+      periodMonths,
+      chartView,
+      ownerSort,
+      ownerSortDir,
+      reportView,
+      reportGroupBy,
+      reportGranularity,
+      reportStatusFilter,
+      reportOwnerFilter,
+      reportOrgFilter,
+      reportTypeFilter,
+      reportSearch,
+      reportExportColumns,
+    ]
+  )
+
+  const reportPresets = useMemo(
+    () => normalizeReportPresets(preferences?.reportPresets),
+    [preferences?.reportPresets]
+  )
+
+  const applyView = useCallback((view: Partial<ReportViewState>) => {
+    const normalized = {
+      ...defaultReportViewState(),
+      ...view,
+      reportExportColumns: {
+        ...defaultReportExportColumns(),
+        ...view.reportExportColumns,
+      },
+    }
+
+    setPeriodMonths(normalized.periodMonths)
+    setChartView(normalized.chartView)
+    setOwnerSort(normalized.ownerSort)
+    setOwnerSortDir(normalized.ownerSortDir)
+    setReportView(normalized.reportView)
+    setReportGroupBy(normalized.reportGroupBy)
+    setReportGranularity(normalized.reportGranularity)
+    setReportStatusFilter(normalized.reportStatusFilter)
+    setReportOwnerFilter(normalized.reportOwnerFilter)
+    setReportOrgFilter(normalized.reportOrgFilter)
+    setReportTypeFilter(normalized.reportTypeFilter)
+    setReportSearch(normalized.reportSearch)
+    setReportExportColumns(normalized.reportExportColumns)
+  }, [])
+
+  const loadStats = useCallback(
+    async (showLoading = true) => {
+      if (!session?.user || !hasPermission(session.user.role, 'VIEW_REPORTS')) return
+      if (showLoading) setLoading(true)
+      try {
+        const params = createReportQuery({
+          periodMonths,
+          reportGroupBy,
+          reportGranularity,
+          reportStatusFilter,
+          reportOwnerFilter,
+          reportOrgFilter,
+          reportTypeFilter,
+          reportSearch: debouncedReportSearch,
+        })
+        const res = await fetch(`/api/reports/letters?${params.toString()}`, { cache: 'no-store' })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = (await res.json()) as ReportsData
+        setStats(data)
+        setLastUpdated(new Date(data.generatedAt))
+      } catch (error) {
+        console.error('Failed to load stats:', error)
+        toast.error('Ошибка загрузки', 'Не удалось получить данные отчётов')
+      } finally {
+        if (showLoading) setLoading(false)
       }
     },
-    []
+    [
+      session?.user,
+      periodMonths,
+      reportGroupBy,
+      reportGranularity,
+      reportStatusFilter,
+      reportOwnerFilter,
+      reportOrgFilter,
+      reportTypeFilter,
+      debouncedReportSearch,
+      toast,
+    ]
   )
 
   useEffect(() => {
-    if (session) {
-      loadStats()
+    if (!session?.user || !hasPermission(session.user.role, 'VIEW_REPORTS')) {
+      return
     }
-  }, [session])
+
+    void loadStats(!stats)
+  }, [session?.user, loadStats])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const urlView = {
       periodMonths: Number(params.get('period') || 0),
-      chartView: params.get('chart') as 'status' | 'owner' | 'type' | null,
-      reportView: params.get('rview') as 'cards' | 'table' | 'heatmap' | null,
-      reportGroupBy: params.get('rgroup') as 'orgType' | 'org' | 'type' | null,
-      reportGranularity: params.get('rgran') as 'month' | 'quarter' | 'week' | null,
+      chartView: params.get('chart') as ReportChartView | null,
+      ownerSort: params.get('osort') as ReportViewState['ownerSort'] | null,
+      ownerSortDir: params.get('osortdir') as ReportViewState['ownerSortDir'] | null,
+      reportView: params.get('rview') as ReportViewMode | null,
+      reportGroupBy: params.get('rgroup') as ReportGroupBy | null,
+      reportGranularity: params.get('rgran') as ReportGranularity | null,
       reportStatusFilter: params.get('rstatus') as LetterStatus | 'all' | null,
       reportOwnerFilter: params.get('rowner'),
       reportOrgFilter: params.get('rorg'),
@@ -435,8 +554,10 @@ export default function ReportsPage() {
     }
 
     if (
-      [3, 6, 12].includes(urlView.periodMonths) ||
+      isReportPeriod(urlView.periodMonths) ||
       urlView.chartView ||
+      urlView.ownerSort ||
+      urlView.ownerSortDir ||
       urlView.reportView ||
       urlView.reportGroupBy ||
       urlView.reportGranularity ||
@@ -447,8 +568,10 @@ export default function ReportsPage() {
       urlView.reportSearch
     ) {
       applyView({
-        periodMonths: [3, 6, 12].includes(urlView.periodMonths) ? urlView.periodMonths : undefined,
+        periodMonths: isReportPeriod(urlView.periodMonths) ? urlView.periodMonths : undefined,
         chartView: urlView.chartView || undefined,
+        ownerSort: urlView.ownerSort || undefined,
+        ownerSortDir: urlView.ownerSortDir || undefined,
         reportView: urlView.reportView || undefined,
         reportGroupBy: urlView.reportGroupBy || undefined,
         reportGranularity: urlView.reportGranularity || undefined,
@@ -458,16 +581,6 @@ export default function ReportsPage() {
         reportTypeFilter: urlView.reportTypeFilter || undefined,
         reportSearch: urlView.reportSearch || undefined,
       })
-      return
-    }
-
-    const saved = window.localStorage.getItem('reportsView')
-    if (saved) {
-      try {
-        applyView(JSON.parse(saved))
-      } catch {
-        window.localStorage.removeItem('reportsView')
-      }
     }
   }, [applyView])
 
@@ -484,84 +597,122 @@ export default function ReportsPage() {
     reportSearch,
   ])
 
-  const loadStats = async (showLoading = true) => {
-    if (showLoading) setLoading(true)
-    try {
-      const res = await fetch('/api/stats?includeReport=1')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      setStats(data)
-      setLastUpdated(new Date())
-    } catch (error) {
-      console.error('Failed to load stats:', error)
-      toast.error('Ошибка загрузки', 'Не удалось получить данные отчётов')
-    } finally {
-      if (showLoading) setLoading(false)
-    }
-  }
-
   const handleRefresh = async () => {
     if (refreshing) return
     setRefreshing(true)
-    await loadStats(false)
-    setRefreshing(false)
+    try {
+      await loadStats(false)
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const handleResetView = () => {
-    setPeriodMonths(6)
-    setChartView('status')
-    setOwnerSort('count')
-    setOwnerSortDir('desc')
+    applyView(defaultReportViewState())
     setOwnerPage(1)
     setShowAllTypes(false)
     setFilterOwner(null)
-    setReportView('cards')
-    setReportGroupBy('orgType')
-    setReportGranularity('month')
-    setReportStatusFilter('all')
-    setReportOwnerFilter('')
-    setReportOrgFilter('')
-    setReportTypeFilter('')
-    setReportSearch('')
-    setReportExportColumns({
-      period: true,
-      org: true,
-      type: true,
-      status: false,
-      owner: false,
-      count: true,
-    })
+    setSelectedPresetId('')
     setExpandedReportPeriods({})
   }
 
   const handleReportReset = () => {
-    setReportStatusFilter('all')
-    setReportOwnerFilter('')
-    setReportOrgFilter('')
-    setReportTypeFilter('')
-    setReportSearch('')
+    const defaults = defaultReportViewState()
+    setReportStatusFilter(defaults.reportStatusFilter)
+    setReportOwnerFilter(defaults.reportOwnerFilter)
+    setReportOrgFilter(defaults.reportOrgFilter)
+    setReportTypeFilter(defaults.reportTypeFilter)
+    setReportSearch(defaults.reportSearch)
     setExpandedReportPeriods({})
   }
 
-  const handleSaveView = () => {
-    if (typeof window === 'undefined') return
-    const payload = {
-      periodMonths,
-      chartView,
-      ownerSort,
-      ownerSortDir,
-      reportView,
-      reportGroupBy,
-      reportGranularity,
-      reportStatusFilter,
-      reportOwnerFilter,
-      reportOrgFilter,
-      reportTypeFilter,
-      reportSearch,
-      reportExportColumns,
+  const persistReportPresets = useCallback(
+    async (presets: ReportViewPreset[]) => {
+      if (!preferences) {
+        throw new Error('Preferences are not ready')
+      }
+
+      const optimistic = { ...preferences, reportPresets: presets }
+      setPreferences(optimistic)
+
+      const response = await fetch('/api/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportPresets: presets }),
+      })
+
+      if (!response.ok) {
+        await refreshPreferences()
+        throw new Error('Failed to save report presets')
+      }
+
+      const updated = await response.json()
+      setPreferences(updated)
+    },
+    [preferences, refreshPreferences, setPreferences]
+  )
+
+  const handleSaveView = async () => {
+    const suggestedName =
+      reportPresets.find((preset) => preset.id === selectedPresetId)?.name || 'Мой отчёт'
+    const name = window.prompt('Название пресета', suggestedName)?.trim()
+    if (!name) return
+
+    try {
+      const existing = reportPresets.find((preset) => preset.id === selectedPresetId)
+      const nextPreset: ReportViewPreset = {
+        id: existing?.id || crypto.randomUUID(),
+        name,
+        createdAt: existing?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        view: currentReportView,
+      }
+
+      const nextPresets = [
+        ...reportPresets.filter((preset) => preset.id !== nextPreset.id),
+        nextPreset,
+      ]
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        .slice(0, 12)
+
+      await persistReportPresets(nextPresets)
+      setSelectedPresetId(nextPreset.id)
+      toast.success(existing ? 'Пресет обновлён' : 'Пресет сохранён')
+    } catch (error) {
+      console.error('Failed to save report preset', error)
+      toast.error('Не удалось сохранить пресет')
     }
-    window.localStorage.setItem('reportsView', JSON.stringify(payload))
-    toast.success('Вид отчётов сохранён')
+  }
+
+  const handleDeletePreset = async () => {
+    if (!selectedPresetId) return
+
+    const preset = reportPresets.find((item) => item.id === selectedPresetId)
+    if (!preset) return
+
+    if (!confirm(`Удалить пресет «${preset.name}»?`)) return
+
+    try {
+      const nextPresets = reportPresets.filter((item) => item.id !== selectedPresetId)
+      await persistReportPresets(nextPresets)
+      setSelectedPresetId('')
+      toast.success('Пресет удалён')
+    } catch (error) {
+      console.error('Failed to delete report preset', error)
+      toast.error('Не удалось удалить пресет')
+    }
+  }
+
+  const handlePresetSelect = (presetId: string) => {
+    setSelectedPresetId(presetId)
+    if (!presetId) return
+
+    const preset = reportPresets.find((item) => item.id === presetId)
+    if (!preset) return
+
+    applyView(preset.view)
+    setOwnerPage(1)
+    setExpandedReportPeriods({})
   }
 
   const handleShare = async () => {
@@ -569,6 +720,8 @@ export default function ReportsPage() {
     const url = new URL(window.location.href)
     url.searchParams.set('period', String(periodMonths))
     url.searchParams.set('chart', chartView)
+    url.searchParams.set('osort', ownerSort)
+    url.searchParams.set('osortdir', ownerSortDir)
     if (reportView !== 'cards') url.searchParams.set('rview', reportView)
     if (reportGroupBy !== 'orgType') url.searchParams.set('rgroup', reportGroupBy)
     if (reportGranularity !== 'month') url.searchParams.set('rgran', reportGranularity)
@@ -586,277 +739,62 @@ export default function ReportsPage() {
     }
   }
 
-  const handleExportPDF = () => {
-    if (!stats) return
-    // Create a printable version of the report
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
-      toast.error('Не удалось открыть окно печати')
-      return
-    }
-
-    const statusRows = (Object.keys(stats.byStatus) as LetterStatus[])
-      .map(
-        (status) =>
-          `<tr><td>${STATUS_LABELS[status]}</td><td style="text-align:right">${stats.byStatus[status]}</td></tr>`
-      )
-      .join('')
-
-    const ownerRows = stats.byOwner
-      .slice(0, 10)
-      .map(
-        (owner) =>
-          `<tr><td>${owner.name || owner.id}</td><td style="text-align:right">${owner.count}</td></tr>`
-      )
-      .join('')
-
-    const monthlyRows = periodMonthly
-      .map(
-        (m) =>
-          `<tr><td>${m.month}</td><td style="text-align:right">${m.created}</td><td style="text-align:right">${m.done}</td></tr>`
-      )
-      .join('')
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Отчёт - ${new Date().toLocaleDateString('ru-RU')}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #1f2937; }
-          h1 { font-size: 24px; margin-bottom: 8px; }
-          h2 { font-size: 18px; margin-top: 32px; margin-bottom: 12px; color: #374151; }
-          .meta { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
-          .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
-          .summary-card { background: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center; }
-          .summary-card .value { font-size: 32px; font-weight: 700; color: #111827; }
-          .summary-card .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-          th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-          th { background: #f9fafb; font-weight: 600; font-size: 12px; text-transform: uppercase; color: #6b7280; }
-          .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; text-align: center; }
-          @media print { body { padding: 20px; } .no-print { display: none; } }
-        </style>
-      </head>
-      <body>
-        <h1>Отчёт по письмам</h1>
-        <p class="meta">Сформирован: ${new Date().toLocaleString('ru-RU')} | Период: ${periodMonths} мес.</p>
-
-        <div class="summary">
-          <div class="summary-card">
-            <div class="value">${stats.summary.total}</div>
-            <div class="label">Всего писем</div>
-          </div>
-          <div class="summary-card">
-            <div class="value" style="color: #ef4444">${stats.summary.overdue}</div>
-            <div class="label">Просроченных</div>
-          </div>
-          <div class="summary-card">
-            <div class="value" style="color: #3b82f6">${stats.summary.inProgress}</div>
-            <div class="label">В работе</div>
-          </div>
-          <div class="summary-card">
-            <div class="value" style="color: #10b981">${stats.summary.done}</div>
-            <div class="label">Выполнено</div>
-          </div>
-        </div>
-
-        <h2>По статусам</h2>
-        <table>
-          <thead><tr><th>Статус</th><th style="text-align:right">Количество</th></tr></thead>
-          <tbody>${statusRows}</tbody>
-        </table>
-
-        <h2>По исполнителям (топ 10)</h2>
-        <table>
-          <thead><tr><th>Исполнитель</th><th style="text-align:right">Писем</th></tr></thead>
-          <tbody>${ownerRows}</tbody>
-        </table>
-
-        <h2>По месяцам</h2>
-        <table>
-          <thead><tr><th>Месяц</th><th style="text-align:right">Создано</th><th style="text-align:right">Закрыто</th></tr></thead>
-          <tbody>${monthlyRows}</tbody>
-        </table>
-
-        <div class="footer">
-          DMED App | Автоматически сгенерированный отчёт
-        </div>
-
-        <script>
-          window.onload = function() { window.print(); }
-        </script>
-      </body>
-      </html>
-    `)
-    printWindow.document.close()
-  }
-
-  const handleExportCSV = () => {
-    if (!stats) return
-    const rows: string[][] = [
-      ['Metric', 'Value'],
-      ['Total', String(stats.summary.total)],
-      ['Overdue', String(stats.summary.overdue)],
-      ['Urgent', String(stats.summary.urgent)],
-      ['Done', String(stats.summary.done)],
-      ['In progress', String(stats.summary.inProgress)],
-      ['Month new', String(stats.summary.monthNew)],
-      ['Month done', String(stats.summary.monthDone)],
-      ['Average days', String(stats.summary.avgDays)],
-      [],
-      ['Month', 'Created', 'Done'],
-      ...periodMonthly.map((m) => [m.month, String(m.created), String(m.done)]),
-      [],
-      ['Owner', 'Count'],
-      ...stats.byOwner.map((o) => [o.name, String(o.count)]),
-      [],
-      ['Type', 'Count'],
-      ...stats.byType.map((t) => [t.type, String(t.count)]),
-      ...(reportExportHeaders.length > 0 ? [[], reportExportHeaders, ...reportExportRows] : []),
-    ]
-
-    const csv = rows.map((row) => row.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `reports-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleExportOrgTypeCSV = () => {
-    if (!stats) return
-    if (reportExportRows.length === 0 || reportExportHeaders.length === 0) {
-      toast.error('No data to export for the selected period')
-      return
-    }
-    const rows: string[][] = [reportExportHeaders, ...reportExportRows]
-    const csv = rows.map((row) => row.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `report-${reportGroupBy}-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleExportOrgTypeXLSX = async () => {
-    if (!stats) return
-    if (reportExportRows.length === 0 || reportExportHeaders.length === 0) {
-      toast.error('Failed to export XLSX')
-      return
-    }
-    try {
-      const excelJSImport = await import('exceljs')
-      const ExcelJS = excelJSImport.default ?? excelJSImport
-      const workbook = new ExcelJS.Workbook()
-      const sheet = workbook.addWorksheet('Report')
-      sheet.addRow(reportExportHeaders)
-      reportExportRows.forEach((row) => sheet.addRow(row))
-      sheet.getRow(1).font = { bold: true }
-      reportExportHeaders.forEach((header, index) => {
-        const column = sheet.getColumn(index + 1)
-        const maxLength = Math.max(
-          header.length,
-          ...reportExportRows.map((row) => (row[index] || '').length)
-        )
-        column.width = Math.min(Math.max(12, maxLength + 4), 60)
-      })
-
-      const buffer = await workbook.xlsx.writeBuffer()
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `report-${reportGroupBy}-${new Date().toISOString().slice(0, 10)}.xlsx`
-      link.click()
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Failed to export XLSX', error)
-      toast.error('Failed to generate XLSX')
-    }
-  }
-
-  const handleExportOrgTypePDF = () => {
-    if (!stats) return
-    if (reportExportRows.length === 0 || reportExportHeaders.length === 0) {
+  const handleExport = async (format: 'csv' | 'xlsx' | 'pdf') => {
+    if (!stats || stats.report.rows.length === 0) {
       toast.error('Нет данных для экспорта за выбранный период')
       return
     }
 
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
-      toast.error('Не удалось открыть окно для печати')
-      return
+    try {
+      const params = createReportQuery({
+        periodMonths,
+        reportGroupBy,
+        reportGranularity,
+        reportStatusFilter,
+        reportOwnerFilter,
+        reportOrgFilter,
+        reportTypeFilter,
+        reportSearch,
+      })
+      params.set('format', format)
+      const columns = Object.entries(reportExportColumns)
+        .filter(([, enabled]) => enabled)
+        .map(([key]) => key)
+      if (columns.length > 0) {
+        params.set('columns', columns.join(','))
+      }
+
+      const exportUrl = `/api/reports/letters/export?${params.toString()}`
+      if (format === 'pdf') {
+        window.open(exportUrl, '_blank', 'noopener,noreferrer')
+        return
+      }
+
+      const response = await fetch(exportUrl)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `report-${reportGroupBy}-${new Date().toISOString().slice(0, 10)}.${format}`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error(`Failed to export report as ${format}`, error)
+      toast.error('Не удалось сформировать экспорт')
     }
-
-    const headerRow = reportExportHeaders.map((header) => `<th>${header}</th>`).join('')
-    const bodyRows = reportExportRows
-      .map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`)
-      .join('')
-
-    const filters = [
-      `Период: ${periodMonths} мес.`,
-      `Группировка: ${reportGroupBy === 'orgType' ? 'Учреждение + Тип' : reportGroupBy === 'org' ? 'Учреждение' : 'Тип'}`,
-      `Детализация: ${reportGranularity === 'month' ? 'Месяц' : reportGranularity === 'quarter' ? 'Квартал' : 'Неделя'}`,
-      reportStatusFilter !== 'all' ? `Статус: ${reportStatusLabel}` : null,
-      reportOwnerFilter ? `Ответственный: ${reportOwnerLabel}` : null,
-      reportOrgFilter ? `Учреждение: ${reportOrgFilter}` : null,
-      reportTypeFilter ? `Тип: ${reportTypeFilter}` : null,
-      reportSearch ? `Поиск: ${reportSearch}` : null,
-    ]
-      .filter(Boolean)
-      .join(' | ')
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Отчет по учреждениям - ${new Date().toLocaleDateString('ru-RU')}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 32px; color: #111827; }
-          h1 { font-size: 22px; margin-bottom: 6px; }
-          .meta { color: #6b7280; font-size: 13px; margin-bottom: 24px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-          th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-          th { background: #f9fafb; font-weight: 600; font-size: 12px; text-transform: uppercase; color: #6b7280; }
-          .footer { margin-top: 28px; font-size: 12px; color: #9ca3af; text-align: center; }
-        </style>
-      </head>
-      <body>
-        <h1>Отчет по учреждениям и типам писем</h1>
-        <div class="meta">${filters}</div>
-        <table>
-          <thead><tr>${headerRow}</tr></thead>
-          <tbody>${bodyRows}</tbody>
-        </table>
-        <div class="footer">DMED App</div>
-        <script>window.onload = function() { window.print(); }</script>
-      </body>
-      </html>
-    `)
-    printWindow.document.close()
   }
 
   const handleReportDrilldown = (row: ReportAggregateRow) => {
-    const params = new URLSearchParams()
-    if (reportStatusFilter !== 'all') params.set('status', reportStatusFilter)
-    if (reportOwnerFilter) {
-      if (reportOwnerFilter === 'unassigned') {
-        params.set('filter', 'unassigned')
-      } else {
-        params.set('owner', reportOwnerFilter)
-      }
-    }
-    const orgValue = row.org || reportOrgFilter
-    if (orgValue) params.set('search', orgValue)
-    const typeValue = row.type || reportTypeFilter
-    if (typeValue) params.set('type', typeValue)
+    const params = buildLettersDrilldownParams({
+      status: reportStatusFilter,
+      ownerId: reportOwnerFilter,
+      org: row.org || reportOrgFilter,
+      type: row.type || reportTypeFilter,
+    })
     router.push(`/letters?${params.toString()}`)
   }
 
@@ -897,7 +835,7 @@ export default function ReportsPage() {
     }))
   }
 
-  const periodOptions = [3, 6, 12]
+  const periodOptions = REPORT_PERIOD_VALUES
 
   const periodMonthly = useMemo(() => {
     if (!stats) return []
@@ -909,27 +847,23 @@ export default function ReportsPage() {
     return stats.monthly.slice(-(periodMonths * 2), -periodMonths)
   }, [stats, periodMonths])
 
-  const reportLetters = useMemo(() => {
-    if (!stats?.report?.letters) return []
-    return stats.report.letters.map((letter) => ({
-      ...letter,
-      createdAt: new Date(letter.createdAt),
-    }))
-  }, [stats])
-
-  const reportOrgOptions = useMemo(() => {
-    const unique = new Set<string>()
-    reportLetters.forEach((letter) => unique.add(letter.org))
-    return Array.from(unique).sort((a, b) => a.localeCompare(b, 'ru-RU'))
-  }, [reportLetters])
-
-  const reportTypeOptions = useMemo(() => {
-    const unique = new Set<string>()
-    reportLetters.forEach((letter) => unique.add(letter.type))
-    return Array.from(unique).sort((a, b) => a.localeCompare(b, 'ru-RU'))
-  }, [reportLetters])
-
-  const reportOwnerOptions = useMemo(() => stats?.byOwner ?? [], [stats])
+  const reportAggregates = stats?.report.rows ?? []
+  const reportPeriodGroups = stats?.report.periodGroups ?? []
+  const reportHeatmap = stats?.report.heatmap ?? { periods: [], groups: [], rows: [], max: 0 }
+  const reportSummary = stats?.report.summary ?? {
+    total: 0,
+    orgCount: 0,
+    typeCount: 0,
+    groupCount: 0,
+    periodCount: 0,
+  }
+  const reportOrgOptions = stats?.filters.orgs ?? []
+  const reportTypeOptions = stats?.filters.types ?? []
+  const reportOwnerOptions = stats?.filters.owners ?? []
+  const reportHeatmapMatrix = useMemo(
+    () => new Map(reportHeatmap.rows.map((row) => [row.groupKey, row.values])),
+    [reportHeatmap.rows]
+  )
 
   const reportOwnerLabel = useMemo(() => {
     if (!reportOwnerFilter) return 'Все ответственные'
@@ -941,273 +875,12 @@ export default function ReportsPage() {
   const reportStatusLabel =
     reportStatusFilter === 'all' ? 'Все статусы' : STATUS_LABELS[reportStatusFilter]
 
-  const reportPeriodStart = useMemo(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth() - (periodMonths - 1), 1)
-  }, [periodMonths])
-
-  const reportSearchValue = reportSearch.trim().toLowerCase()
-
-  const reportFilteredLetters = useMemo(() => {
-    if (reportLetters.length === 0) return []
-    return reportLetters.filter((letter) => {
-      if (letter.createdAt < reportPeriodStart) return false
-      if (reportStatusFilter !== 'all' && letter.status !== reportStatusFilter) return false
-      if (reportOwnerFilter) {
-        if (reportOwnerFilter === 'unassigned') {
-          if (letter.ownerId) return false
-        } else if (letter.ownerId !== reportOwnerFilter) {
-          return false
-        }
-      }
-      if (reportOrgFilter && letter.org !== reportOrgFilter) return false
-      if (reportTypeFilter && letter.type !== reportTypeFilter) return false
-      if (reportSearchValue) {
-        const haystack = `${letter.org} ${letter.type}`.toLowerCase()
-        if (!haystack.includes(reportSearchValue)) return false
-      }
-      return true
-    })
-  }, [
-    reportLetters,
-    reportPeriodStart,
-    reportStatusFilter,
-    reportOwnerFilter,
-    reportOrgFilter,
-    reportTypeFilter,
-    reportSearchValue,
-  ])
-
-  const reportAggregates = useMemo<ReportAggregateRow[]>(() => {
-    if (reportFilteredLetters.length === 0) return []
-    const rows = new Map<string, ReportAggregateRow>()
-    const secondaryMap = new Map<string, Map<string, number>>()
-
-    const getBucket = (date: Date) => {
-      if (reportGranularity === 'week') {
-        const start = new Date(date)
-        const day = (start.getDay() + 6) % 7
-        start.setDate(start.getDate() - day)
-        start.setHours(0, 0, 0, 0)
-        const end = new Date(start)
-        end.setDate(start.getDate() + 6)
-        const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(
-          start.getDate()
-        ).padStart(2, '0')}`
-        const label = `${start.toLocaleDateString('ru-RU', {
-          day: '2-digit',
-          month: 'short',
-        })} – ${end.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })} ${start.getFullYear()}`
-        return { key, label, sortValue: start.getTime() }
-      }
-      if (reportGranularity === 'quarter') {
-        const year = date.getFullYear()
-        const quarter = Math.floor(date.getMonth() / 3) + 1
-        const key = `${year}-Q${quarter}`
-        return {
-          key,
-          label: `${quarter} ??. ${year}`,
-          sortValue: new Date(year, (quarter - 1) * 3, 1).getTime(),
-        }
-      }
-      const year = date.getFullYear()
-      const month = date.getMonth()
-      const key = `${year}-${String(month + 1).padStart(2, '0')}`
-      return {
-        key,
-        label: date.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' }),
-        sortValue: new Date(year, month, 1).getTime(),
-      }
-    }
-
-    reportFilteredLetters.forEach((letter) => {
-      const bucket = getBucket(letter.createdAt)
-      const org = letter.org
-      const type = letter.type
-      let groupKey = ''
-      let groupLabel = ''
-      let orgValue: string | undefined
-      let typeValue: string | undefined
-
-      if (reportGroupBy === 'orgType') {
-        groupKey = `${org}||${type}`
-        groupLabel = org
-        orgValue = org
-        typeValue = type
-      } else if (reportGroupBy === 'org') {
-        groupKey = org
-        groupLabel = org
-        orgValue = org
-      } else {
-        groupKey = type
-        groupLabel = type
-        typeValue = type
-      }
-
-      const rowKey = `${bucket.key}||${groupKey}`
-      const existing = rows.get(rowKey)
-      if (existing) {
-        existing.count += 1
-      } else {
-        rows.set(rowKey, {
-          periodKey: bucket.key,
-          periodLabel: bucket.label,
-          periodSort: bucket.sortValue,
-          groupKey,
-          groupLabel,
-          org: orgValue,
-          type: typeValue,
-          count: 1,
-        })
-      }
-
-      if (reportGroupBy !== 'orgType') {
-        const secondaryKey = `${bucket.key}||${groupKey}`
-        const bucketMap = secondaryMap.get(secondaryKey) || new Map<string, number>()
-        const secondaryLabel = reportGroupBy === 'org' ? type : org
-        bucketMap.set(secondaryLabel, (bucketMap.get(secondaryLabel) || 0) + 1)
-        secondaryMap.set(secondaryKey, bucketMap)
-      }
-    })
-
-    if (reportGroupBy !== 'orgType') {
-      rows.forEach((row) => {
-        const secondaryKey = `${row.periodKey}||${row.groupKey}`
-        const candidates = secondaryMap.get(secondaryKey)
-        if (!candidates || candidates.size === 0) return
-        const top = Array.from(candidates.entries()).sort((a, b) => b[1] - a[1])[0]
-        row.secondaryLabel = top?.[0]
-      })
-    }
-
-    return Array.from(rows.values()).sort((a, b) => {
-      if (a.periodSort !== b.periodSort) return b.periodSort - a.periodSort
-      if (a.count !== b.count) return b.count - a.count
-      return a.groupLabel.localeCompare(b.groupLabel, 'ru-RU')
-    })
-  }, [reportFilteredLetters, reportGroupBy, reportGranularity])
-
-  const reportSummary = useMemo(() => {
-    const orgs = new Set<string>()
-    const types = new Set<string>()
-    const periods = new Set<string>()
-    const groups = new Set<string>()
-    reportFilteredLetters.forEach((letter) => {
-      orgs.add(letter.org)
-      types.add(letter.type)
-    })
-    reportAggregates.forEach((row) => {
-      periods.add(row.periodKey)
-      groups.add(row.groupKey)
-    })
-    return {
-      total: reportFilteredLetters.length,
-      orgCount: orgs.size,
-      typeCount: types.size,
-      groupCount: groups.size,
-      periodCount: periods.size,
-    }
-  }, [reportFilteredLetters, reportAggregates])
-
-  const reportPeriodGroups = useMemo<ReportPeriodGroup[]>(() => {
-    const groups = new Map<string, ReportPeriodGroup>()
-    reportAggregates.forEach((row) => {
-      const existing = groups.get(row.periodKey)
-      if (existing) {
-        existing.totalCount += row.count
-        existing.maxCount = Math.max(existing.maxCount, row.count)
-        existing.rows.push(row)
-      } else {
-        groups.set(row.periodKey, {
-          periodKey: row.periodKey,
-          periodLabel: row.periodLabel,
-          periodSort: row.periodSort,
-          totalCount: row.count,
-          maxCount: row.count,
-          rows: [row],
-        })
-      }
-    })
-    return Array.from(groups.values())
-      .map((group) => ({
-        ...group,
-        rows: [...group.rows].sort((a, b) => {
-          if (a.count !== b.count) return b.count - a.count
-          return a.groupLabel.localeCompare(b.groupLabel, 'ru-RU')
-        }),
-      }))
-      .sort((a, b) => b.periodSort - a.periodSort)
-  }, [reportAggregates])
-
-  const reportHeatmap = useMemo(() => {
-    if (reportAggregates.length === 0) {
-      return { periods: [], groups: [], matrix: new Map<string, Map<string, number>>(), max: 0 }
-    }
-    const periodMap = new Map<string, { label: string; sort: number }>()
-    const groupTotals = new Map<string, { label: string; total: number }>()
-    const matrix = new Map<string, Map<string, number>>()
-    let max = 0
-
-    reportAggregates.forEach((row) => {
-      periodMap.set(row.periodKey, { label: row.periodLabel, sort: row.periodSort })
-      groupTotals.set(row.groupKey, {
-        label: row.groupLabel,
-        total: (groupTotals.get(row.groupKey)?.total || 0) + row.count,
-      })
-      const rowMap = matrix.get(row.groupKey) || new Map<string, number>()
-      rowMap.set(row.periodKey, (rowMap.get(row.periodKey) || 0) + row.count)
-      matrix.set(row.groupKey, rowMap)
-      max = Math.max(max, row.count)
-    })
-
-    const periods = Array.from(periodMap.entries())
-      .map(([key, value]) => ({ key, label: value.label, sort: value.sort }))
-      .sort((a, b) => b.sort - a.sort)
-
-    const groups = Array.from(groupTotals.entries())
-      .map(([key, value]) => ({ key, label: value.label, total: value.total }))
-      .sort((a, b) => b.total - a.total)
-
-    return { periods, groups, matrix, max }
-  }, [reportAggregates])
-
   const reportHasFilters =
     reportStatusFilter !== 'all' ||
     reportOwnerFilter ||
     reportOrgFilter ||
     reportTypeFilter ||
-    reportSearch
-
-  const reportExportHeaders = useMemo(() => {
-    const headers: string[] = []
-    if (reportExportColumns.period) headers.push('Период')
-    if (reportExportColumns.org) headers.push('Учреждение')
-    if (reportExportColumns.type) headers.push('Тип письма')
-    if (reportExportColumns.status) headers.push('Статус')
-    if (reportExportColumns.owner) headers.push('Ответственный')
-    if (reportExportColumns.count) headers.push('Количество')
-    return headers
-  }, [reportExportColumns])
-
-  const reportExportRows = useMemo(() => {
-    return reportAggregates.map((row) => {
-      const values: string[] = []
-      if (reportExportColumns.period) values.push(row.periodLabel)
-      if (reportExportColumns.org) values.push(row.org || reportOrgFilter || '')
-      if (reportExportColumns.type) values.push(row.type || reportTypeFilter || '')
-      if (reportExportColumns.status) values.push(reportStatusLabel)
-      if (reportExportColumns.owner) values.push(reportOwnerLabel)
-      if (reportExportColumns.count) values.push(String(row.count))
-      return values
-    })
-  }, [
-    reportAggregates,
-    reportExportColumns,
-    reportOrgFilter,
-    reportTypeFilter,
-    reportOwnerLabel,
-    reportStatusLabel,
-  ])
+    reportSearch.trim() !== ''
 
   const sumBy = (items: Array<{ created: number; done: number }>, key: 'created' | 'done') =>
     items.reduce((acc, item) => acc + item[key], 0)
@@ -1301,6 +974,30 @@ export default function ReportsPage() {
     )
   }
 
+  if (!hasPermission(session.user.role, 'VIEW_REPORTS')) {
+    return (
+      <div className="app-shell min-h-screen">
+        <Header />
+        <main className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-4 px-4 py-24 text-center sm:px-6 lg:px-8">
+          <BarChart3 className="h-12 w-12 text-slate-500" />
+          <div>
+            <h1 className="text-2xl font-semibold text-white">Отчёты недоступны</h1>
+            <p className="mt-2 text-sm text-slate-400">
+              Для просмотра аналитики нужна роль или разрешение `VIEW_REPORTS`.
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/letters')}
+            className="btn-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm"
+          >
+            <FileText className="h-4 w-4" />
+            Перейти к письмам
+          </button>
+        </main>
+      </div>
+    )
+  }
+
   const isInitialLoading = loading && !stats
   if (isInitialLoading) {
     return (
@@ -1334,6 +1031,7 @@ export default function ReportsPage() {
   const typesLimit = 12
   const orgTypePreviewLimit = 6
   const reportHeatmapLimit = 10
+  const selectedPreset = reportPresets.find((preset) => preset.id === selectedPresetId) || null
   const typesToShow = showAllTypes ? stats.byType : stats.byType.slice(0, typesLimit)
   const maxOwnerCount = ownersByCount[0]?.count || 1
   const maxTypeCount = typesChart[0]?.count || 1
@@ -1381,7 +1079,49 @@ export default function ReportsPage() {
 
         {/* Toolbar */}
         <div className="panel panel-glass mb-6 rounded-2xl p-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto] xl:items-center">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Сохраненные виды
+                </span>
+                {selectedPreset && (
+                  <span className="truncate text-xs text-emerald-300">
+                    Активный пресет: {selectedPreset.name}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={selectedPresetId}
+                  onChange={(event) => handlePresetSelect(event.target.value)}
+                  className="h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
+                >
+                  <option value="">Без пресета</option>
+                  {reportPresets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleSaveView}
+                  className="btn-secondary inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition"
+                >
+                  <Save className="h-4 w-4" />
+                  {selectedPreset ? 'Обновить' : 'Сохранить'}
+                </button>
+                <button
+                  onClick={handleDeletePreset}
+                  disabled={!selectedPresetId}
+                  className="btn-ghost inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                  Удалить
+                </button>
+              </div>
+            </div>
+
             <ScrollIndicator
               className="no-scrollbar flex items-center gap-2 sm:flex-wrap"
               showArrows={true}
@@ -1401,42 +1141,34 @@ export default function ReportsPage() {
                   {months} мес
                 </button>
               ))}
-              <button
-                onClick={handleResetView}
-                className="btn-ghost inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm transition"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Сбросить
-              </button>
-              <button
-                onClick={handleSaveView}
-                className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm transition"
-              >
-                <Save className="h-4 w-4" />
-                Сохранить вид
-              </button>
             </ScrollIndicator>
-            <div className="flex flex-wrap items-center gap-2">
+
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
               <button
-                onClick={handleExportCSV}
-                className="btn-secondary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition sm:w-auto"
+                onClick={() => setAdvancedReportOpen((prev) => !prev)}
+                className="btn-secondary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition"
               >
-                <Download className="h-4 w-4" />
-                CSV
-              </button>
-              <button
-                onClick={handleExportPDF}
-                className="btn-secondary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition sm:w-auto"
-              >
-                <Printer className="h-4 w-4" />
-                PDF
+                <Filter className="h-4 w-4" />
+                Фильтры отчёта
+                {advancedReportOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </button>
               <button
                 onClick={handleShare}
-                className="btn-primary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition sm:w-auto"
+                className="btn-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition"
               >
                 <Share2 className="h-4 w-4" />
                 Поделиться
+              </button>
+              <button
+                onClick={handleResetView}
+                className="btn-ghost inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Сбросить
               </button>
             </div>
           </div>
@@ -1485,7 +1217,7 @@ export default function ReportsPage() {
           </button>
 
           <button
-            onClick={() => handleStatusClick('NOT_REVIEWED')}
+            onClick={() => router.push('/letters?filter=overdue')}
             className="panel panel-soft group rounded-xl p-4 text-left transition hover:bg-white/10"
           >
             <div className="mb-2 flex items-center justify-between">
@@ -1499,7 +1231,7 @@ export default function ReportsPage() {
           </button>
 
           <button
-            onClick={() => handleStatusClick('IN_PROGRESS')}
+            onClick={() => router.push('/letters?filter=urgent')}
             className="panel panel-soft group rounded-xl p-4 text-left transition hover:bg-white/10"
           >
             <div className="mb-2 flex items-center justify-between">
@@ -2006,38 +1738,48 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* Institutions & Types by Period */}
+        {/* Server Report */}
         <div className="panel panel-solid mb-8 rounded-2xl p-6">
-          <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white">
-                Учреждения и типы писем по периодам
-              </h3>
+              <h3 className="text-lg font-semibold text-white">Отчёт по письмам</h3>
               <p className="text-sm text-slate-400">
-                Письма, сгруппированные по учреждениям и типам писем в разрезе периода.
+                Агрегация строится на сервере и учитывает текущие фильтры, группировку и период.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={handleExportOrgTypeCSV}
-                disabled={reportExportRows.length === 0 || reportExportHeaders.length === 0}
-                className="btn-secondary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition disabled:opacity-50 sm:w-auto"
+                onClick={() => setAdvancedReportOpen((prev) => !prev)}
+                className="btn-secondary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition"
+              >
+                <Filter className="h-4 w-4" />
+                {advancedReportOpen ? 'Скрыть настройки' : 'Настроить отчёт'}
+                {advancedReportOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                onClick={() => handleExport('csv')}
+                disabled={reportAggregates.length === 0}
+                className="btn-secondary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
                 CSV
               </button>
               <button
-                onClick={handleExportOrgTypeXLSX}
-                disabled={reportExportRows.length === 0 || reportExportHeaders.length === 0}
-                className="btn-secondary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition disabled:opacity-50 sm:w-auto"
+                onClick={() => handleExport('xlsx')}
+                disabled={reportAggregates.length === 0}
+                className="btn-secondary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 XLSX
               </button>
               <button
-                onClick={handleExportOrgTypePDF}
-                disabled={reportExportRows.length === 0 || reportExportHeaders.length === 0}
-                className="btn-secondary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition disabled:opacity-50 sm:w-auto"
+                onClick={() => handleExport('pdf')}
+                disabled={reportAggregates.length === 0}
+                className="btn-secondary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
               >
                 <Printer className="h-4 w-4" />
                 PDF
@@ -2045,239 +1787,238 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="panel panel-soft mb-6 rounded-xl p-4">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr,1fr,1fr]">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input
-                  value={reportSearch}
-                  onChange={(event) => setReportSearch(event.target.value)}
-                  placeholder="Поиск по учреждениям или типу"
-                  className="h-10 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 text-white placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-slate-400" />
-                <select
-                  value={reportStatusFilter}
-                  onChange={(event) =>
-                    setReportStatusFilter(event.target.value as LetterStatus | 'all')
-                  }
-                  className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
-                >
-                  <option value="all">Все статусы</option>
-                  {REPORT_STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>
-                      {STATUS_LABELS[status]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-slate-400" />
-                <select
-                  value={reportOwnerFilter}
-                  onChange={(event) => setReportOwnerFilter(event.target.value)}
-                  className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
-                >
-                  <option value="">Все исполнители</option>
-                  <option value="unassigned">Без исполнителя</option>
-                  {reportOwnerOptions
-                    .filter((owner) => owner.id)
-                    .map((owner) => (
+          {reportHasFilters && (
+            <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              {reportStatusFilter !== 'all' && (
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                  Статус: {reportStatusLabel}
+                </span>
+              )}
+              {reportOwnerFilter && (
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                  Исполнитель: {reportOwnerLabel}
+                </span>
+              )}
+              {reportOrgFilter && (
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                  Учреждение: {reportOrgFilter}
+                </span>
+              )}
+              {reportTypeFilter && (
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                  Тип: {reportTypeFilter}
+                </span>
+              )}
+              {reportSearch.trim() && (
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                  Поиск: {reportSearch.trim()}
+                </span>
+              )}
+              <button
+                onClick={handleReportReset}
+                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-rose-300 transition hover:bg-white/10"
+              >
+                <X className="h-3 w-3" />
+                Сбросить фильтры
+              </button>
+            </div>
+          )}
+
+          {advancedReportOpen && (
+            <div className="panel panel-soft mb-6 rounded-xl p-4">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr,1fr,1fr]">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    value={reportSearch}
+                    onChange={(event) => setReportSearch(event.target.value)}
+                    placeholder="Поиск по учреждениям и типам"
+                    className="h-10 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 text-white placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-slate-400" />
+                  <select
+                    value={reportStatusFilter}
+                    onChange={(event) =>
+                      setReportStatusFilter(event.target.value as LetterStatus | 'all')
+                    }
+                    className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
+                  >
+                    <option value="all">Все статусы</option>
+                    {REPORT_STATUS_OPTIONS.map((status) => (
+                      <option key={status} value={status}>
+                        {STATUS_LABELS[status]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-slate-400" />
+                  <select
+                    value={reportOwnerFilter}
+                    onChange={(event) => setReportOwnerFilter(event.target.value)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
+                  >
+                    <option value="">Все исполнители</option>
+                    {reportOwnerOptions.map((owner) => (
                       <option key={owner.id || 'unknown'} value={owner.id || ''}>
                         {owner.name || owner.id}
                       </option>
                     ))}
-                </select>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[1fr,1fr]">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-slate-400" />
-                <select
-                  value={reportOrgFilter}
-                  onChange={(event) => setReportOrgFilter(event.target.value)}
-                  className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
-                >
-                  <option value="">Все учреждения</option>
-                  {reportOrgOptions.map((org) => (
-                    <option key={org} value={org}>
-                      {org}
-                    </option>
-                  ))}
-                </select>
+              <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[1fr,1fr]">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-slate-400" />
+                  <select
+                    value={reportOrgFilter}
+                    onChange={(event) => setReportOrgFilter(event.target.value)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
+                  >
+                    <option value="">Все учреждения</option>
+                    {reportOrgOptions.map((org) => (
+                      <option key={org} value={org}>
+                        {org}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-slate-400" />
+                  <select
+                    value={reportTypeFilter}
+                    onChange={(event) => setReportTypeFilter(event.target.value)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
+                  >
+                    <option value="">Все типы</option>
+                    {reportTypeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-slate-400" />
-                <select
-                  value={reportTypeFilter}
-                  onChange={(event) => setReportTypeFilter(event.target.value)}
-                  className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50"
-                >
-                  <option value="">Все типы</option>
-                  {reportTypeOptions.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs uppercase tracking-wide text-gray-400">Группировка</span>
-              <button
-                onClick={() => setReportGroupBy('orgType')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportGroupBy === 'orgType' ? 'app-chip-active' : ''
-                }`}
-              >
-                Учреждение + тип
-              </button>
-              <button
-                onClick={() => setReportGroupBy('org')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportGroupBy === 'org' ? 'app-chip-active' : ''
-                }`}
-              >
-                Учреждение
-              </button>
-              <button
-                onClick={() => setReportGroupBy('type')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportGroupBy === 'type' ? 'app-chip-active' : ''
-                }`}
-              >
-                Тип
-              </button>
-              <span className="ml-2 text-xs uppercase tracking-wide text-gray-400">Период</span>
-              <button
-                onClick={() => setReportGranularity('month')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportGranularity === 'month' ? 'app-chip-active' : ''
-                }`}
-              >
-                Месяц
-              </button>
-              <button
-                onClick={() => setReportGranularity('quarter')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportGranularity === 'quarter' ? 'app-chip-active' : ''
-                }`}
-              >
-                Квартал
-              </button>
-              <button
-                onClick={() => setReportGranularity('week')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportGranularity === 'week' ? 'app-chip-active' : ''
-                }`}
-              >
-                Неделя
-              </button>
-              <span className="ml-2 text-xs uppercase tracking-wide text-gray-400">Вид</span>
-              <button
-                onClick={() => setReportView('cards')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportView === 'cards' ? 'app-chip-active' : ''
-                }`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-                Карточки
-              </button>
-              <button
-                onClick={() => setReportView('table')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportView === 'table' ? 'app-chip-active' : ''
-                }`}
-              >
-                <Table className="h-4 w-4" />
-                Таблица
-              </button>
-              <button
-                onClick={() => setReportView('heatmap')}
-                className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
-                  reportView === 'heatmap' ? 'app-chip-active' : ''
-                }`}
-              >
-                <BarChart3 className="h-4 w-4" />
-                Теплокарта
-              </button>
-              {reportHasFilters && (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="text-xs uppercase tracking-wide text-gray-400">Группировка</span>
                 <button
-                  onClick={handleReportReset}
-                  className="btn-ghost inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition"
+                  onClick={() => setReportGroupBy('orgType')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportGroupBy === 'orgType' ? 'app-chip-active' : ''
+                  }`}
                 >
-                  <X className="h-4 w-4" />
-                  Сбросить фильтры
+                  Учреждение + тип
                 </button>
-              )}
-            </div>
-
-            {reportHasFilters && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                {reportStatusFilter !== 'all' && (
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                    Статус: {reportStatusLabel}
-                  </span>
-                )}
-                {reportOwnerFilter && (
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                    Исполнитель: {reportOwnerLabel}
-                  </span>
-                )}
-                {reportOrgFilter && (
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                    Учреждение: {reportOrgFilter}
-                  </span>
-                )}
-                {reportTypeFilter && (
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                    Тип: {reportTypeFilter}
-                  </span>
-                )}
-                {reportSearch && (
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                    Поиск: {reportSearch}
-                  </span>
-                )}
-              </div>
-            )}
-
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-              <span className="uppercase tracking-wide">Экспорт</span>
-              {(
-                [
-                  { key: 'period', label: 'Период' },
-                  { key: 'org', label: 'Учреждение' },
-                  { key: 'type', label: 'Тип письма' },
-                  { key: 'status', label: 'Статус' },
-                  { key: 'owner', label: 'Исполнитель' },
-                  { key: 'count', label: 'Количество' },
-                ] as const
-              ).map((column) => (
-                <label
-                  key={column.key}
-                  className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1"
+                <button
+                  onClick={() => setReportGroupBy('org')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportGroupBy === 'org' ? 'app-chip-active' : ''
+                  }`}
                 >
-                  <input
-                    type="checkbox"
-                    className="h-3.5 w-3.5 accent-emerald-500"
-                    checked={reportExportColumns[column.key]}
-                    onChange={(event) =>
-                      setReportExportColumns((prev) => ({
-                        ...prev,
-                        [column.key]: event.target.checked,
-                      }))
-                    }
-                  />
-                  {column.label}
-                </label>
-              ))}
+                  Учреждение
+                </button>
+                <button
+                  onClick={() => setReportGroupBy('type')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportGroupBy === 'type' ? 'app-chip-active' : ''
+                  }`}
+                >
+                  Тип
+                </button>
+
+                <span className="ml-2 text-xs uppercase tracking-wide text-gray-400">Период</span>
+                <button
+                  onClick={() => setReportGranularity('month')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportGranularity === 'month' ? 'app-chip-active' : ''
+                  }`}
+                >
+                  Месяц
+                </button>
+                <button
+                  onClick={() => setReportGranularity('quarter')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportGranularity === 'quarter' ? 'app-chip-active' : ''
+                  }`}
+                >
+                  Квартал
+                </button>
+                <button
+                  onClick={() => setReportGranularity('week')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportGranularity === 'week' ? 'app-chip-active' : ''
+                  }`}
+                >
+                  Неделя
+                </button>
+
+                <span className="ml-2 text-xs uppercase tracking-wide text-gray-400">Вид</span>
+                <button
+                  onClick={() => setReportView('cards')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportView === 'cards' ? 'app-chip-active' : ''
+                  }`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Карточки
+                </button>
+                <button
+                  onClick={() => setReportView('table')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportView === 'table' ? 'app-chip-active' : ''
+                  }`}
+                >
+                  <Table className="h-4 w-4" />
+                  Таблица
+                </button>
+                <button
+                  onClick={() => setReportView('heatmap')}
+                  className={`app-chip inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition ${
+                    reportView === 'heatmap' ? 'app-chip-active' : ''
+                  }`}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Теплокарта
+                </button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span className="uppercase tracking-wide">Колонки экспорта</span>
+                {(
+                  [
+                    { key: 'period', label: 'Период' },
+                    { key: 'org', label: 'Учреждение' },
+                    { key: 'type', label: 'Тип письма' },
+                    { key: 'status', label: 'Статус' },
+                    { key: 'owner', label: 'Исполнитель' },
+                    { key: 'count', label: 'Количество' },
+                  ] as const
+                ).map((column) => (
+                  <label
+                    key={column.key}
+                    className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 accent-emerald-500"
+                      checked={reportExportColumns[column.key]}
+                      onChange={(event) =>
+                        setReportExportColumns((prev) => ({
+                          ...prev,
+                          [column.key]: event.target.checked,
+                        }))
+                      }
+                    />
+                    {column.label}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {reportAggregates.length > 0 ? (
             <>
@@ -2510,8 +2251,7 @@ export default function ReportsPage() {
                                 {group.label}
                               </div>
                               {reportHeatmap.periods.map((period) => {
-                                const count =
-                                  reportHeatmap.matrix.get(group.key)?.get(period.key) || 0
+                                const count = reportHeatmapMatrix.get(group.key)?.[period.key] || 0
                                 const intensity =
                                   reportHeatmap.max > 0 ? count / reportHeatmap.max : 0
                                 const background =

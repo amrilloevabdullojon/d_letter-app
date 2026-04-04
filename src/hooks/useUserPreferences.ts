@@ -19,6 +19,7 @@ interface UserPreferences {
   particles: boolean
   soundNotifications: boolean
   desktopNotifications: boolean
+  reportPresets?: unknown
   createdAt: string
   updatedAt: string
 }

@@ -113,7 +113,39 @@ export async function parseResponse<T>(response: Response): Promise<T> {
 /**
  * Mock Prisma client
  */
-export const mockPrisma = {
+type MockPrisma = {
+  letter: {
+    findMany: jest.Mock
+    findUnique: jest.Mock
+    findFirst: jest.Mock
+    create: jest.Mock
+    update: jest.Mock
+    delete: jest.Mock
+    count: jest.Mock
+  }
+  user: {
+    findMany: jest.Mock
+    findUnique: jest.Mock
+    findFirst: jest.Mock
+    create: jest.Mock
+    update: jest.Mock
+  }
+  request: {
+    findMany: jest.Mock
+    findUnique: jest.Mock
+    findFirst: jest.Mock
+    create: jest.Mock
+    update: jest.Mock
+  }
+  notification: {
+    create: jest.Mock
+    findMany: jest.Mock
+    updateMany: jest.Mock
+  }
+  $transaction: jest.Mock
+}
+
+export const mockPrisma: MockPrisma = {
   letter: {
     findMany: jest.fn(),
     findUnique: jest.fn(),
@@ -142,8 +174,12 @@ export const mockPrisma = {
     findMany: jest.fn(),
     updateMany: jest.fn(),
   },
-  $transaction: jest.fn((fn) => fn(mockPrisma)),
+  $transaction: jest.fn(),
 }
+
+mockPrisma.$transaction.mockImplementation(async (fn: (tx: MockPrisma) => unknown) =>
+  fn(mockPrisma)
+)
 
 /**
  * Sample test data

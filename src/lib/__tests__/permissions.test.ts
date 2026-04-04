@@ -61,3 +61,5 @@ describe('permissions runtime', () => {
     expect(await permissions.hasPermissionAsync('MANAGER', 'MANAGE_REQUESTS')).toBe(true)
   })
 })
+
+export {}

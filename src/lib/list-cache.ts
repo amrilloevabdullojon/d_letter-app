@@ -258,6 +258,7 @@ export async function getRequestsListCached(
 export async function invalidateLettersCache(): Promise<void> {
   await cache.invalidatePrefix('letters:')
   await cache.invalidatePrefix('dashboard:')
+  await cache.invalidatePrefix('reports:')
   await cache.invalidate(CACHE_KEYS.STATS)
   await cache.invalidate(CACHE_KEYS.STATS_REPORT)
 }

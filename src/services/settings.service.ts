@@ -15,8 +15,8 @@ import {
   type NotificationMatrixItem,
   type NotificationSubscription,
 } from '@/lib/notification-settings'
+import { Prisma } from '@prisma/client'
 import type {
-  Prisma,
   DigestFrequency,
   Role,
   UserProfile,
@@ -200,6 +200,7 @@ export type PreferencesUpdateInput = Partial<{
   particles: boolean
   soundNotifications: boolean
   desktopNotifications: boolean
+  reportPresets: Prisma.InputJsonValue | null
 }>
 
 // ==================== NOTIFICATION SETTINGS TYPES ====================
@@ -303,7 +304,9 @@ type PreferencesUpdateData = Partial<
     | 'soundNotifications'
     | 'desktopNotifications'
   >
->
+> & {
+  reportPresets?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput
+}
 
 const normalizeThemeMode = (theme: PreferencesUpdateInput['theme']): ThemeMode | undefined => {
   if (!theme) return undefined
@@ -338,6 +341,9 @@ const normalizePreferencesUpdates = (updates: PreferencesUpdateInput): Preferenc
   }
   if (typeof updates.desktopNotifications === 'boolean') {
     data.desktopNotifications = updates.desktopNotifications
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'reportPresets')) {
+    data.reportPresets = updates.reportPresets === null ? Prisma.JsonNull : updates.reportPresets
   }
   return data
 }
@@ -829,6 +835,7 @@ export class SettingsService {
             particles: false,
             soundNotifications: true,
             desktopNotifications: true,
+            reportPresets: [],
           },
         })
       }
@@ -920,6 +927,7 @@ export class SettingsService {
           particles: false,
           soundNotifications: true,
           desktopNotifications: true,
+          reportPresets: [],
         },
         create: {
           userId,
@@ -939,6 +947,7 @@ export class SettingsService {
           particles: false,
           soundNotifications: true,
           desktopNotifications: true,
+          reportPresets: [],
         },
       })
 

@@ -137,6 +137,7 @@ export const CACHE_TTL = {
   LETTER_DETAIL: 60 * 1000, // 60 сек — детали письма
   USERS: 10 * 60 * 1000, // 10 мин — пользователи меняются редко
   DASHBOARD: 60 * 1000, // 60 сек — дашборд обновляется при мутациях
+  REPORTS: 2 * 60 * 1000, // 120 сек — отчеты считаются тяжелее списков, но должны быть свежими
 }
 
 export const CACHE_KEYS = {
@@ -147,4 +148,5 @@ export const CACHE_KEYS = {
   USERS: 'users',
   REQUESTS: (params: string) => `requests:${params}`,
   DASHBOARD: (role: string) => `dashboard:${role}`,
+  REPORTS: (params: string) => `reports:${params}`,
 }

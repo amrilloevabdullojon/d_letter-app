@@ -164,6 +164,7 @@ model UserPreferences {
   // Уведомления
   soundNotifications  Boolean @default(true)
   desktopNotifications Boolean @default(true)
+  reportPresets      Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

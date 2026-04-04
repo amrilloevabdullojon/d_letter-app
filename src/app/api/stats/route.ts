@@ -6,6 +6,7 @@ import { cache, CACHE_TTL, CACHE_KEYS } from '@/lib/cache'
 import type { LetterStatus } from '@prisma/client'
 import { URGENT_DAYS, MONTHS_TO_SHOW } from '@/lib/constants'
 import { logger } from '@/lib/logger.server'
+import { requirePermission } from '@/lib/permission-guard'
 import { normalizeLetterType, normalizeOrganization } from '@/lib/reporting'
 
 export const dynamic = 'force-dynamic'
@@ -57,6 +58,12 @@ export async function GET(request: NextRequest) {
 
     // Проверяем кэш
     const includeReport = request.nextUrl.searchParams.get('includeReport') === '1'
+    if (includeReport) {
+      const permissionError = requirePermission(session.user.role, 'VIEW_REPORTS')
+      if (permissionError) {
+        return permissionError
+      }
+    }
     const cacheKey = includeReport ? CACHE_KEYS.STATS_REPORT : CACHE_KEYS.STATS
     const cacheTtlMs = includeReport ? CACHE_TTL.STATS_REPORT : CACHE_TTL.STATS
     const cacheSeconds = Math.max(1, Math.floor(cacheTtlMs / 1000))
