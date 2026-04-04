@@ -1,7 +1,7 @@
 'use client'
 
 import { toast as sonnerToast } from 'sonner'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useMemo } from 'react'
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'loading'
 
@@ -157,18 +157,21 @@ export function useToast(): ToastContextValue {
     return sonnerToast.loading(title, buildSonnerOptions({ options }))
   }, [])
 
-  return {
-    toasts,
-    addToast,
-    removeToast,
-    clearToasts,
-    success,
-    error,
-    warning,
-    info,
-    message: messageFn,
-    loading,
-  }
+  return useMemo(
+    () => ({
+      toasts,
+      addToast,
+      removeToast,
+      clearToasts,
+      success,
+      error,
+      warning,
+      info,
+      message: messageFn,
+      loading,
+    }),
+    [toasts, addToast, removeToast, clearToasts, success, error, warning, info, messageFn, loading]
+  )
 }
 
 // Deprecated legacy exports mapping to dummy to prevent build errors
