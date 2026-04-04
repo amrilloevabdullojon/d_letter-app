@@ -121,6 +121,11 @@ export function UsersTab({ session, isSuperAdmin, onSuccess, onError }: UsersTab
 
   const [viewMode, setViewMode] = useLocalStorage<'cards' | 'table'>('users-view-mode', 'cards')
 
+  // Load users on mount
+  useEffect(() => {
+    loadUsers()
+  }, [loadUsers])
+
   // Create handle approval done to refresh users tab data
   const handleApprovalDone = useCallback(() => {
     loadUsers()
