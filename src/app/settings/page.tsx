@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useCallback } from 'react'
 import Link from 'next/link'
 import { Header } from '@/components/Header'
 import {
@@ -150,13 +151,19 @@ export default function SettingsPage() {
     router.replace(`/settings?${params.toString()}`, { scroll: false })
   }
 
-  const handleSuccess = (message: string) => {
-    toast.success(message)
-  }
+  const handleSuccess = useCallback(
+    (message: string) => {
+      toast.success(message)
+    },
+    [toast]
+  )
 
-  const handleError = (message: string) => {
-    toast.error(message)
-  }
+  const handleError = useCallback(
+    (message: string) => {
+      toast.error(message)
+    },
+    [toast]
+  )
 
   const handleNewYearVibeToggle = (enabled: boolean) => {
     setNewYearVibe(enabled)
