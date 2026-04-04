@@ -29,6 +29,7 @@ import {
   FileSpreadsheet,
   Share2,
   Save,
+  MoreHorizontal,
   Target,
   Zap,
   ExternalLink,
@@ -1028,14 +1029,54 @@ export default function ReportsPage() {
   const maxMonthly = Math.max(...periodMonthly.flatMap((m) => [m.created, m.done]), 1)
 
   const totalStatusCount = Object.values(stats.byStatus).reduce((a, b) => a + b, 0)
-  const typesLimit = 12
-  const orgTypePreviewLimit = 6
+  const typesLimit = 8
+  const orgTypePreviewLimit = 4
   const reportHeatmapLimit = 10
   const selectedPreset = reportPresets.find((preset) => preset.id === selectedPresetId) || null
   const typesToShow = showAllTypes ? stats.byType : stats.byType.slice(0, typesLimit)
   const maxOwnerCount = ownersByCount[0]?.count || 1
   const maxTypeCount = typesChart[0]?.count || 1
   const totalOwnerCount = ownersByCount.reduce((acc, owner) => acc + owner.count, 0)
+  const compactStats = [
+    {
+      key: 'in-progress',
+      label: 'В работе',
+      value: stats.summary.inProgress,
+      accent: 'text-sky-300',
+      meta: 'активных писем',
+    },
+    {
+      key: 'created-period',
+      label: `Создано за ${periodMonths} мес`,
+      value: periodCreated,
+      accent: 'text-violet-300',
+      meta: prevCreated !== null ? `было ${prevCreated}` : createdTrend.label,
+      trend: createdTrend,
+    },
+    {
+      key: 'done-period',
+      label: `Закрыто за ${periodMonths} мес`,
+      value: periodDone,
+      accent: 'text-emerald-300',
+      meta: prevDone !== null ? `было ${prevDone}` : doneTrend.label,
+      trend: doneTrend,
+    },
+    {
+      key: 'avg-month',
+      label: 'Среднее в месяц',
+      value: avgPerMonth,
+      accent: 'text-blue-300',
+      meta: prevAvgPerMonth !== null ? `было ${prevAvgPerMonth}` : avgTrend.label,
+      trend: avgTrend,
+    },
+    {
+      key: 'avg-days',
+      label: 'Время до закрытия',
+      value: stats.summary.avgDays,
+      accent: 'text-orange-300',
+      meta: 'дней в среднем',
+    },
+  ]
 
   const SortIcon = ownerSortDir === 'asc' ? ArrowUpRight : ArrowDownRight
 
@@ -1079,15 +1120,18 @@ export default function ReportsPage() {
 
         {/* Toolbar */}
         <div className="panel panel-glass mb-6 rounded-2xl p-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto] xl:items-center">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)_auto] xl:items-center">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs uppercase tracking-wide text-slate-400">
-                  Сохраненные виды
-                </span>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-slate-400">Быстрый вид</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    Сохрани отчёт как пресет и переключайся между сценариями в один клик.
+                  </div>
+                </div>
                 {selectedPreset && (
-                  <span className="truncate text-xs text-emerald-300">
-                    Активный пресет: {selectedPreset.name}
+                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
+                    {selectedPreset.name}
                   </span>
                 )}
               </div>
@@ -1156,20 +1200,37 @@ export default function ReportsPage() {
                   <ChevronDown className="h-4 w-4" />
                 )}
               </button>
-              <button
-                onClick={handleShare}
-                className="btn-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition"
-              >
-                <Share2 className="h-4 w-4" />
-                Поделиться
-              </button>
-              <button
-                onClick={handleResetView}
-                className="btn-ghost inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Сбросить
-              </button>
+              <details className="group relative">
+                <summary className="btn-ghost inline-flex list-none items-center gap-2 rounded-xl px-4 py-2 text-sm transition marker:content-none">
+                  <MoreHorizontal className="h-4 w-4" />
+                  Еще
+                  <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+                </summary>
+                <div className="panel panel-solid absolute right-0 z-20 mt-2 flex min-w-[220px] flex-col gap-1 rounded-xl p-2 shadow-2xl">
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
+                  >
+                    <Share2 className="h-4 w-4 text-teal-300" />
+                    Поделиться видом
+                  </button>
+                  <button
+                    onClick={handleResetView}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-white/5"
+                  >
+                    <RefreshCw className="h-4 w-4 text-slate-300" />
+                    Сбросить вид
+                  </button>
+                  <button
+                    onClick={handleDeletePreset}
+                    disabled={!selectedPresetId}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-200 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4 text-rose-300" />
+                    Удалить пресет
+                  </button>
+                </div>
+              </details>
             </div>
           </div>
         </div>
@@ -1201,7 +1262,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
+        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <button
             onClick={() => router.push('/letters')}
             className="panel panel-soft group rounded-xl p-4 text-left transition hover:bg-white/10"
@@ -1245,20 +1306,6 @@ export default function ReportsPage() {
           </button>
 
           <button
-            onClick={() => handleStatusClick('IN_PROGRESS')}
-            className="panel panel-soft group rounded-xl p-4 text-left transition hover:bg-white/10"
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-400" />
-                <span className="text-sm text-gray-400">В работе</span>
-              </div>
-              <ExternalLink className="h-4 w-4 text-slate-600 transition group-hover:text-slate-400" />
-            </div>
-            <div className="text-3xl font-bold text-blue-400">{stats.summary.inProgress}</div>
-          </button>
-
-          <button
             onClick={() => handleStatusClick('DONE')}
             className="panel panel-soft group rounded-xl p-4 text-left transition hover:bg-white/10"
           >
@@ -1273,93 +1320,45 @@ export default function ReportsPage() {
           </button>
         </div>
 
-        {/* Period Comparison */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <div className="panel panel-soft rounded-xl p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-purple-400" />
-                <span className="text-sm text-gray-400">Создано за {periodMonths} мес</span>
-              </div>
-              <span
-                className={`inline-flex items-center gap-1 text-xs ${
-                  createdTrend.direction === 'up'
-                    ? 'text-emerald-400'
-                    : createdTrend.direction === 'down'
-                      ? 'text-red-400'
-                      : 'text-slate-400'
-                }`}
-              >
-                {createdTrend.direction === 'up' && <ArrowUpRight className="h-3 w-3" />}
-                {createdTrend.direction === 'down' && <ArrowDownRight className="h-3 w-3" />}
-                {createdTrend.label}
-              </span>
+        {/* Secondary Stats */}
+        <div className="panel panel-soft mb-8 rounded-2xl p-4">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-white">Дополнительные показатели</h3>
+              <p className="text-xs text-slate-400">
+                Тихая сводка по периоду без перегрузки основного экрана.
+              </p>
             </div>
-            <div className="text-3xl font-bold text-purple-400">{periodCreated}</div>
-            {prevCreated !== null && (
-              <div className="mt-1 text-xs text-gray-500">Прошлый период: {prevCreated}</div>
-            )}
+            <span className="text-xs text-slate-500">Период анализа: {periodMonths} мес</span>
           </div>
-
-          <div className="panel panel-soft rounded-xl p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-emerald-400" />
-                <span className="text-sm text-gray-400">Закрыто за {periodMonths} мес</span>
-              </div>
-              <span
-                className={`inline-flex items-center gap-1 text-xs ${
-                  doneTrend.direction === 'up'
-                    ? 'text-emerald-400'
-                    : doneTrend.direction === 'down'
-                      ? 'text-red-400'
-                      : 'text-slate-400'
-                }`}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {compactStats.map((item) => (
+              <div
+                key={item.key}
+                className="border-white/8 rounded-xl border bg-black/10 px-4 py-3"
               >
-                {doneTrend.direction === 'up' && <ArrowUpRight className="h-3 w-3" />}
-                {doneTrend.direction === 'down' && <ArrowDownRight className="h-3 w-3" />}
-                {doneTrend.label}
-              </span>
-            </div>
-            <div className="text-3xl font-bold text-emerald-400">{periodDone}</div>
-            {prevDone !== null && (
-              <div className="mt-1 text-xs text-gray-500">Прошлый период: {prevDone}</div>
-            )}
-          </div>
-
-          <div className="panel panel-soft rounded-xl p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-blue-400" />
-                <span className="text-sm text-gray-400">Среднее в месяц</span>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs text-slate-400">{item.label}</span>
+                  {item.trend && (
+                    <span
+                      className={`inline-flex items-center gap-1 text-[11px] ${
+                        item.trend.direction === 'up'
+                          ? 'text-emerald-400'
+                          : item.trend.direction === 'down'
+                            ? 'text-red-400'
+                            : 'text-slate-500'
+                      }`}
+                    >
+                      {item.trend.direction === 'up' && <ArrowUpRight className="h-3 w-3" />}
+                      {item.trend.direction === 'down' && <ArrowDownRight className="h-3 w-3" />}
+                      {item.trend.label}
+                    </span>
+                  )}
+                </div>
+                <div className={`mt-3 text-2xl font-semibold ${item.accent}`}>{item.value}</div>
+                <div className="mt-1 text-xs text-slate-500">{item.meta}</div>
               </div>
-              <span
-                className={`inline-flex items-center gap-1 text-xs ${
-                  avgTrend.direction === 'up'
-                    ? 'text-emerald-400'
-                    : avgTrend.direction === 'down'
-                      ? 'text-red-400'
-                      : 'text-slate-400'
-                }`}
-              >
-                {avgTrend.direction === 'up' && <ArrowUpRight className="h-3 w-3" />}
-                {avgTrend.direction === 'down' && <ArrowDownRight className="h-3 w-3" />}
-                {avgTrend.label}
-              </span>
-            </div>
-            <div className="text-3xl font-bold text-blue-400">{avgPerMonth}</div>
-            {prevAvgPerMonth !== null && (
-              <div className="mt-1 text-xs text-gray-500">Прошлый период: {prevAvgPerMonth}</div>
-            )}
-          </div>
-
-          <div className="panel panel-soft rounded-xl p-4">
-            <div className="mb-2 flex items-center gap-3">
-              <Timer className="h-5 w-5 text-orange-400" />
-              <span className="text-sm text-gray-400">Время до закрытия</span>
-            </div>
-            <div className="text-3xl font-bold text-orange-400">{stats.summary.avgDays}</div>
-            <div className="mt-1 text-xs text-gray-500">дней в среднем</div>
+            ))}
           </div>
         </div>
 
@@ -1687,7 +1686,7 @@ export default function ReportsPage() {
 
           {periodMonthly.length > 0 ? (
             <div className="overflow-x-auto">
-              <div className="flex h-64 min-w-[520px] items-end gap-3">
+              <div className="flex h-48 min-w-[520px] items-end gap-3">
                 {periodMonthly.map((month, index) => {
                   const label = `${month.month}: ${month.created} / ${month.done}`
                   return (
@@ -1748,18 +1747,6 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setAdvancedReportOpen((prev) => !prev)}
-                className="btn-secondary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition"
-              >
-                <Filter className="h-4 w-4" />
-                {advancedReportOpen ? 'Скрыть настройки' : 'Настроить отчёт'}
-                {advancedReportOpen ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </button>
               <button
                 onClick={() => handleExport('csv')}
                 disabled={reportAggregates.length === 0}
@@ -2022,49 +2009,47 @@ export default function ReportsPage() {
 
           {reportAggregates.length > 0 ? (
             <>
-              <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                <div className="panel panel-soft rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+              <div className="mb-6 grid grid-cols-2 gap-2 lg:grid-cols-5">
+                <div className="border-white/8 rounded-xl border bg-white/[0.03] px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
                     <FileText className="h-4 w-4 text-emerald-400" />
                     Всего писем
                   </div>
-                  <div className="mt-2 text-2xl font-semibold text-white">
-                    {reportSummary.total}
-                  </div>
+                  <div className="mt-2 text-xl font-semibold text-white">{reportSummary.total}</div>
                 </div>
-                <div className="panel panel-soft rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                <div className="border-white/8 rounded-xl border bg-white/[0.03] px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
                     <Filter className="h-4 w-4 text-sky-400" />
                     Группы
                   </div>
-                  <div className="mt-2 text-2xl font-semibold text-white">
+                  <div className="mt-2 text-xl font-semibold text-white">
                     {reportSummary.groupCount}
                   </div>
                 </div>
-                <div className="panel panel-soft rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                <div className="border-white/8 rounded-xl border bg-white/[0.03] px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
                     <Building2 className="h-4 w-4 text-amber-400" />
                     Учреждения
                   </div>
-                  <div className="mt-2 text-2xl font-semibold text-white">
+                  <div className="mt-2 text-xl font-semibold text-white">
                     {reportSummary.orgCount}
                   </div>
                 </div>
-                <div className="panel panel-soft rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                <div className="border-white/8 rounded-xl border bg-white/[0.03] px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
                     <Layers className="h-4 w-4 text-purple-400" />
                     Типы
                   </div>
-                  <div className="mt-2 text-2xl font-semibold text-white">
+                  <div className="mt-2 text-xl font-semibold text-white">
                     {reportSummary.typeCount}
                   </div>
                 </div>
-                <div className="panel panel-soft rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                <div className="border-white/8 rounded-xl border bg-white/[0.03] px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
                     <Calendar className="h-4 w-4 text-emerald-400" />
                     Периоды
                   </div>
-                  <div className="mt-2 text-2xl font-semibold text-white">
+                  <div className="mt-2 text-xl font-semibold text-white">
                     {reportSummary.periodCount}
                   </div>
                 </div>
@@ -2299,11 +2284,26 @@ export default function ReportsPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            <div className="space-y-3">
               {typesToShow.map((item) => (
-                <div key={item.type} className="panel panel-soft rounded-lg p-4 text-center">
-                  <div className="mb-1 text-2xl font-bold text-white">{item.count}</div>
-                  <div className="truncate text-sm text-slate-400">{item.type}</div>
+                <div
+                  key={item.type}
+                  className="panel panel-soft flex items-center gap-3 rounded-xl px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm text-white">{item.type}</div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-sky-500"
+                        style={{
+                          width: `${maxTypeCount > 0 ? (item.count / maxTypeCount) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="w-12 text-right text-lg font-semibold text-white">
+                    {item.count}
+                  </div>
                 </div>
               ))}
             </div>
