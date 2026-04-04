@@ -34,21 +34,25 @@ export function ApprovalsPanel({
   const [approvalsLoading, setApprovalsLoading] = useState(false)
   const [approvalActionId, setApprovalActionId] = useState<string | null>(null)
 
-  const loadApprovals = useCallback(async () => {
-    if (!isSuperAdmin) return
-    setApprovalsLoading(true)
-    try {
-      const res = await fetch('/api/approvals?status=PENDING')
-      if (res.ok) {
-        const data = await res.json()
-        setApprovals(data.approvals || [])
+  const loadApprovals = useCallback(
+    async (forceRefresh = false) => {
+      if (!isSuperAdmin) return
+      setApprovalsLoading(true)
+      try {
+        const ts = forceRefresh ? `&t=${Date.now()}` : ''
+        const res = await fetch(`/api/approvals?status=PENDING${ts}`)
+        if (res.ok) {
+          const data = await res.json()
+          setApprovals(data.approvals || [])
+        }
+      } catch (error) {
+        console.error('Failed to load approvals:', error)
+      } finally {
+        setApprovalsLoading(false)
       }
-    } catch (error) {
-      console.error('Failed to load approvals:', error)
-    } finally {
-      setApprovalsLoading(false)
-    }
-  }, [isSuperAdmin])
+    },
+    [isSuperAdmin]
+  )
 
   useEffect(() => {
     loadApprovals()
@@ -65,7 +69,7 @@ export function ApprovalsPanel({
         })
         if (res.ok) {
           onSuccess(action === 'approve' ? 'Запрос подтверждён' : 'Запрос отклонён')
-          loadApprovals()
+          loadApprovals(true)
           onApprovalDone()
         } else {
           const data = await res.json().catch(() => ({}))
@@ -91,7 +95,7 @@ export function ApprovalsPanel({
           Запросы на подтверждение
         </div>
         <button
-          onClick={loadApprovals}
+          onClick={() => loadApprovals(true)}
           aria-label="Обновить запросы"
           className="p-2 text-slate-400 transition hover:text-white"
           title="Обновить"

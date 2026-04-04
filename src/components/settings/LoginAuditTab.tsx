@@ -61,7 +61,7 @@ export function LoginAuditTab({ onError }: LoginAuditTabProps) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadLoginAudits = useCallback(
-    async (mode: 'replace' | 'more' = 'replace') => {
+    async (mode: 'replace' | 'more' = 'replace', forceRefresh = false) => {
       setLoginAuditLoading(true)
       try {
         const params = new URLSearchParams()
@@ -74,6 +74,9 @@ export function LoginAuditTab({ onError }: LoginAuditTabProps) {
         }
         if (loginAuditQuery.trim()) {
           params.set('q', loginAuditQuery.trim())
+        }
+        if (forceRefresh) {
+          params.set('t', Date.now().toString())
         }
 
         const res = await fetch(`/api/security/logins?${params.toString()}`)
@@ -131,7 +134,7 @@ export function LoginAuditTab({ onError }: LoginAuditTabProps) {
           </span>
         </div>
         <button
-          onClick={() => loadLoginAudits('replace')}
+          onClick={() => loadLoginAudits('replace', true)}
           disabled={loginAuditLoading}
           aria-label="Обновить журнал"
           className="p-2 text-gray-400 transition hover:text-white disabled:opacity-50"

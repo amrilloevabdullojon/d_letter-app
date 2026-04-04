@@ -71,12 +71,16 @@ export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUser
 
   // Load users with pagination and filters
   const loadUsers = useCallback(
-    async (resetPage = false) => {
+    async (resetPage = false, forceRefresh = false) => {
       setState((prev) => ({ ...prev, loading: true }))
       try {
         const params = new URLSearchParams()
-        params.set('page', resetPage ? '1' : String(state.page))
-        params.set('limit', String(state.limit))
+        params.set('page', resetPage ? '1' : state.page.toString())
+        params.set('limit', state.limit.toString())
+
+        if (forceRefresh) {
+          params.set('t', Date.now().toString())
+        }
 
         if (state.searchQuery) {
           const roleTokenMatch = state.searchQuery.match(/role:[a-z]+/i)
@@ -306,7 +310,7 @@ export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUser
 
         onSuccess?.('Пользователь обновлён')
         cancelEdit()
-        loadUsers()
+        loadUsers(false, true)
       } catch (error) {
         console.error('Failed to save user:', error)
         onError?.('Ошибка сохранения')
@@ -333,7 +337,7 @@ export function useUsers({ onSuccess, onError, hideSuperAdmin = false }: UseUser
         }
 
         onSuccess?.('Пользователь удалён')
-        loadUsers()
+        loadUsers(false, true)
       } catch (error) {
         console.error('Failed to delete user:', error)
         onError?.('Ошибка удаления')

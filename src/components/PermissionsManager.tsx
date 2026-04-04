@@ -38,24 +38,28 @@ export function PermissionsManager() {
   const [data, setData] = useState<PermissionsData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const loadPermissions = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await fetch('/api/permissions')
-      if (!response.ok) {
-        throw new Error('Failed to load permissions')
+  const loadPermissions = useCallback(
+    async (forceRefresh = false) => {
+      try {
+        setLoading(true)
+        setError(null)
+        const ts = forceRefresh ? `?t=${Date.now()}` : ''
+        const response = await fetch(`/api/permissions${ts}`)
+        if (!response.ok) {
+          throw new Error('Failed to load permissions')
+        }
+        const result = await response.json()
+        setData(result)
+      } catch (err) {
+        console.error('Error loading permissions:', err)
+        setError('Не удалось загрузить настройки разрешений')
+        toast.error('Не удалось загрузить настройки разрешений')
+      } finally {
+        setLoading(false)
       }
-      const result = await response.json()
-      setData(result)
-    } catch (err) {
-      console.error('Error loading permissions:', err)
-      setError('Не удалось загрузить настройки разрешений')
-      toast.error('Не удалось загрузить настройки разрешений')
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
+    },
+    [toast]
+  )
 
   useEffect(() => {
     loadPermissions()
@@ -139,7 +143,7 @@ export function PermissionsManager() {
       }
 
       toast.success(`Разрешения роли "${ROLE_LABELS[role]}" сброшены`)
-      loadPermissions()
+      loadPermissions(true)
     } catch (err) {
       console.error('Error resetting permissions:', err)
       toast.error('Не удалось сбросить разрешения')
@@ -162,7 +166,7 @@ export function PermissionsManager() {
         <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-red-400" />
         <p className="text-red-300">{error || 'Данные недоступны'}</p>
         <button
-          onClick={loadPermissions}
+          onClick={() => loadPermissions(true)}
           className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-white transition hover:bg-white/20"
         >
           Попробовать снова
@@ -181,7 +185,7 @@ export function PermissionsManager() {
           <h2 className="text-xl font-semibold text-white">Управление разрешениями</h2>
         </div>
         <button
-          onClick={loadPermissions}
+          onClick={() => loadPermissions(true)}
           className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
           title="Обновить"
         >
@@ -285,5 +289,3 @@ export function PermissionsManager() {
     </div>
   )
 }
-
-
