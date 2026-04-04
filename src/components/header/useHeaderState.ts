@@ -10,7 +10,6 @@ interface HeaderState {
   mobileMenuOpen: boolean
   quickCreateOpen: boolean
   recentMenuOpen: boolean
-  syncMenuOpen: boolean
   compactHeader: boolean
   routeTransitioning: boolean
 }
@@ -21,7 +20,6 @@ interface HeaderActions {
   toggleMobileMenu: () => void
   toggleQuickCreate: () => void
   toggleRecentMenu: () => void
-  toggleSyncMenu: () => void
   closeAllMenus: () => void
 }
 
@@ -38,7 +36,6 @@ export function useHeaderState(): UseHeaderStateReturn {
     mobileMenuOpen: false,
     quickCreateOpen: false,
     recentMenuOpen: false,
-    syncMenuOpen: false,
     compactHeader: false,
     routeTransitioning: false,
   })
@@ -62,7 +59,6 @@ export function useHeaderState(): UseHeaderStateReturn {
       mobileMenuOpen: false,
       quickCreateOpen: false,
       recentMenuOpen: false,
-      syncMenuOpen: false,
     }))
   }, [pathname])
 
@@ -139,7 +135,6 @@ export function useHeaderState(): UseHeaderStateReturn {
       ...prev,
       quickCreateOpen: false,
       recentMenuOpen: false,
-      syncMenuOpen: false,
     }))
   }, [])
 
@@ -165,7 +160,6 @@ export function useHeaderState(): UseHeaderStateReturn {
       ...prev,
       quickCreateOpen: !prev.quickCreateOpen,
       recentMenuOpen: false,
-      syncMenuOpen: false,
     }))
   }, [])
 
@@ -175,17 +169,6 @@ export function useHeaderState(): UseHeaderStateReturn {
       ...prev,
       recentMenuOpen: !prev.recentMenuOpen,
       quickCreateOpen: false,
-      syncMenuOpen: false,
-    }))
-  }, [])
-
-  const toggleSyncMenu = useCallback(() => {
-    hapticLight()
-    setState((prev) => ({
-      ...prev,
-      syncMenuOpen: !prev.syncMenuOpen,
-      quickCreateOpen: false,
-      recentMenuOpen: false,
     }))
   }, [])
 
@@ -196,7 +179,6 @@ export function useHeaderState(): UseHeaderStateReturn {
     toggleMobileMenu,
     toggleQuickCreate,
     toggleRecentMenu,
-    toggleSyncMenu,
     closeAllMenus,
     recentItems,
     setRecentItems,

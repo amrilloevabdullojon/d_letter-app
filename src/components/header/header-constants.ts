@@ -49,6 +49,11 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ]
 
+const PRIMARY_NAV_HREFS = new Set(['/letters', '/requests', '/reports'])
+
+export const PRIMARY_NAV_ITEMS = NAV_ITEMS.filter((item) => PRIMARY_NAV_HREFS.has(item.href))
+export const SECONDARY_NAV_ITEMS = NAV_ITEMS.filter((item) => !PRIMARY_NAV_HREFS.has(item.href))
+
 export const QUICK_CREATE_ITEMS: QuickCreateItem[] = [
   {
     href: '/letters/new',

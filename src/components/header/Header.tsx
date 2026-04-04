@@ -27,14 +27,12 @@ export function Header() {
     mobileMenuOpen,
     quickCreateOpen,
     recentMenuOpen,
-    syncMenuOpen,
     compactHeader,
     routeTransitioning,
     closeMobileMenu,
     toggleMobileMenu,
     toggleQuickCreate,
     toggleRecentMenu,
-    toggleSyncMenu,
     closeAllMenus,
     recentItems,
     setRecentItems,
@@ -152,20 +150,19 @@ export function Header() {
             <HeaderNav
               isAdmin={isAdmin}
               syncing={syncing}
-              syncMenuOpen={syncMenuOpen}
-              onToggleSyncMenu={toggleSyncMenu}
               onCloseMenus={closeAllMenus}
               onSync={handleSync}
             />
 
             {/* Desktop Right Section */}
             <div className="hidden shrink-0 items-center gap-1 md:flex">
-              {/* Quick Create */}
-              <HeaderQuickCreate
-                isOpen={quickCreateOpen}
-                onToggle={toggleQuickCreate}
-                onClose={closeAllMenus}
-              />
+              {!primaryAction && (
+                <HeaderQuickCreate
+                  isOpen={quickCreateOpen}
+                  onToggle={toggleQuickCreate}
+                  onClose={closeAllMenus}
+                />
+              )}
 
               {/* Recent Items */}
               <HeaderRecentItems
