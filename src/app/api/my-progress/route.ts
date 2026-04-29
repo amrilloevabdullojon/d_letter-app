@@ -13,11 +13,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    const userId = session.user.id
     const searchParams = request.nextUrl.searchParams
     const period = searchParams.get('period') || 'week'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
+    const queryUserId = searchParams.get('userId')
+
+    let targetUserId = session.user.id
+    let targetUserInfo = null
+
+    if (queryUserId && queryUserId !== session.user.id) {
+      if (session.user.role !== 'SUPERADMIN') {
+        return NextResponse.json(
+          { error: 'Нет доступа к статистике другого пользователя' },
+          { status: 403 }
+        )
+      }
+      targetUserId = queryUserId
+
+      // Fetch target user info to display name
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { name: true, email: true },
+      })
+      if (targetUser) {
+        targetUserInfo = targetUser
+      }
+    }
 
     // Определяем дату начала периода
     const now = new Date()
@@ -57,7 +79,7 @@ export async function GET(request: NextRequest) {
       // Всего отработано (где пользователь — исполнитель и статус завершён)
       prisma.letter.count({
         where: {
-          ownerId: userId,
+          ownerId: targetUserId,
           status: { in: COMPLETED_STATUSES as any },
         },
       }),
@@ -65,7 +87,7 @@ export async function GET(request: NextRequest) {
       // Отработано за текущий период
       prisma.letter.count({
         where: {
-          ownerId: userId,
+          ownerId: targetUserId,
           status: { in: COMPLETED_STATUSES as any },
           updatedAt: { gte: periodStart },
         },
@@ -74,7 +96,7 @@ export async function GET(request: NextRequest) {
       // Отработано за предыдущий период (для сравнения)
       prisma.letter.count({
         where: {
-          ownerId: userId,
+          ownerId: targetUserId,
           status: { in: COMPLETED_STATUSES as any },
           updatedAt: { gte: prevPeriodStart, lt: periodStart },
         },
@@ -83,7 +105,7 @@ export async function GET(request: NextRequest) {
       // В работе сейчас
       prisma.letter.count({
         where: {
-          ownerId: userId,
+          ownerId: targetUserId,
           status: { in: IN_PROGRESS_STATUSES as any },
         },
       }),
@@ -91,7 +113,7 @@ export async function GET(request: NextRequest) {
       // Просроченные
       prisma.letter.count({
         where: {
-          ownerId: userId,
+          ownerId: targetUserId,
           status: { in: IN_PROGRESS_STATUSES as any },
           deadlineDate: { lt: now },
         },
@@ -100,7 +122,7 @@ export async function GET(request: NextRequest) {
       // Последние отработанные письма с пагинацией
       prisma.letter.findMany({
         where: {
-          ownerId: userId,
+          ownerId: targetUserId,
           status: { in: COMPLETED_STATUSES as any },
         },
         select: {
@@ -121,7 +143,7 @@ export async function GET(request: NextRequest) {
       prisma.$queryRaw<{ avg: number }[]>`
         SELECT AVG(EXTRACT(EPOCH FROM ("updatedAt" - "createdAt")) / 86400)::float as avg
         FROM "Letter"
-        WHERE "ownerId" = ${userId}
+        WHERE "ownerId" = ${targetUserId}
         AND "status" IN ('READY', 'DONE')
         AND "updatedAt" > "createdAt"
       `,
@@ -130,7 +152,7 @@ export async function GET(request: NextRequest) {
       prisma.$queryRaw<{ date: string; count: bigint }[]>`
         SELECT DATE("updatedAt") as date, COUNT(*)::bigint as count
         FROM "Letter"
-        WHERE "ownerId" = ${userId}
+        WHERE "ownerId" = ${targetUserId}
         AND "status" IN ('READY', 'DONE')
         AND "updatedAt" >= ${periodStart}
         GROUP BY DATE("updatedAt")
@@ -141,7 +163,7 @@ export async function GET(request: NextRequest) {
       prisma.letter.groupBy({
         by: ['status'],
         where: {
-          ownerId: userId,
+          ownerId: targetUserId,
           updatedAt: { gte: periodStart },
         },
         _count: { id: true },
@@ -197,6 +219,7 @@ export async function GET(request: NextRequest) {
     }))
 
     return NextResponse.json({
+      targetUser: targetUserInfo,
       stats: {
         totalCompleted,
         completedThisPeriod,

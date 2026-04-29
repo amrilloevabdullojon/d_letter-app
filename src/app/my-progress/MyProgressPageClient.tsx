@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { STATUS_LABELS, formatDate, getWorkingDaysUntilDeadline } from '@/lib/utils'
 import type { LetterStatus } from '@/types/prisma'
+import { OwnerSelector, OwnerOption } from '@/components/OwnerSelector'
 
 interface ProgressStats {
   totalCompleted: number
@@ -123,6 +124,32 @@ export function MyProgressPageClient() {
   const [byStatus, setByStatus] = useState<ByStatus[]>([])
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
+  const [targetUserId, setTargetUserId] = useState<string | null>(null)
+  const [targetUserInfo, setTargetUserInfo] = useState<{
+    name: string | null
+    email: string | null
+  } | null>(null)
+  const [usersList, setUsersList] = useState<OwnerOption[]>([])
+
+  // Load users if SUPERADMIN
+  useEffect(() => {
+    if (session?.user?.role === 'SUPERADMIN') {
+      fetch('/api/users')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setUsersList(
+              data.map((u: any) => ({
+                id: u.id,
+                name: u.name,
+                email: u.email,
+              }))
+            )
+          }
+        })
+        .catch((err) => console.error('Failed to load users:', err))
+    }
+  }, [session])
 
   const loadProgress = useCallback(
     async (currentPage = 1) => {
@@ -130,7 +157,15 @@ export function MyProgressPageClient() {
 
       setLoading(true)
       try {
-        const res = await fetch(`/api/my-progress?period=${period}&page=${currentPage}&limit=10`)
+        const url = new URL(`/api/my-progress`, window.location.origin)
+        url.searchParams.set('period', period)
+        url.searchParams.set('page', currentPage.toString())
+        url.searchParams.set('limit', '10')
+        if (targetUserId) {
+          url.searchParams.set('userId', targetUserId)
+        }
+
+        const res = await fetch(url.toString())
         const data = await res.json()
 
         if (data.error) throw new Error(data.error)
@@ -138,6 +173,7 @@ export function MyProgressPageClient() {
         setStats(data.stats)
         setDailyStats(data.dailyStats || [])
         setByStatus(data.byStatus || [])
+        setTargetUserInfo(data.targetUser || null)
 
         if (currentPage === 1) {
           setLetters(data.letters || [])
@@ -154,7 +190,7 @@ export function MyProgressPageClient() {
         setLoading(false)
       }
     },
-    [session?.user?.id, period, toast]
+    [session?.user?.id, period, targetUserId, toast]
   )
 
   useEffect(() => {
@@ -184,12 +220,32 @@ export function MyProgressPageClient() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-bold text-white sm:text-3xl">Мой прогресс</h1>
-              <p className="mt-1 text-sm text-slate-400">
-                Привет, {session.user.name || session.user.email}! Вот твоя статистика
-              </p>
+              {targetUserId && targetUserInfo ? (
+                <p className="mt-1 text-sm text-slate-400">
+                  Статистика пользователя: {targetUserInfo.name || targetUserInfo.email}
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-slate-400">
+                  Привет, {session.user.name || session.user.email}! Вот твоя статистика
+                </p>
+              )}
             </div>
+
+            {/* User selector for SUPERADMIN */}
+            {session.user.role === 'SUPERADMIN' && (
+              <div className="w-full sm:max-w-xs">
+                <OwnerSelector
+                  currentOwner={
+                    targetUserId ? usersList.find((u) => u.id === targetUserId) || null : null
+                  }
+                  users={usersList}
+                  onSelect={async (id) => setTargetUserId(id)}
+                  placeholder="Выбрать сотрудника"
+                />
+              </div>
+            )}
 
             {/* Period selector */}
             <div className="flex items-center gap-1 rounded-xl bg-slate-800/50 p-1">
