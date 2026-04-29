@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { messages, fileData, currentLetterId } = body // Array of {role: 'user' | 'model', content: string}
+    const { messages, filesData, currentLetterId } = body // Array of {role: 'user' | 'model', content: string}
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Пустой запрос' }, { status: 400 })
@@ -75,10 +75,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (fileData) {
-      const fileSummary = await analyzeFileWithGemini(fileData)
-      if (fileSummary) {
-        contextStr += 'Пользователь прикрепил файл. Вот его анализ:\n' + fileSummary + '\n\n'
+    if (filesData && Array.isArray(filesData) && filesData.length > 0) {
+      contextStr += 'Пользователь прикрепил файлы:\n'
+      for (const file of filesData) {
+        const fileSummary = await analyzeFileWithGemini(file.dataUrl)
+        if (fileSummary) {
+          contextStr += `Файл [${file.name}]:\n${fileSummary}\n\n`
+        }
       }
     }
 
@@ -110,8 +113,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const isSuperAdmin = session.user.role === 'SUPERADMIN'
+
     // 3. Формируем запрос к Grok
-    const systemPrompt = `Ты корпоративный ассистент HR-системы, но твой характер — как у капризной, немного дерзкой и эмоциональной девушки (Grok-тян). 
+    let systemPrompt = ''
+    if (isSuperAdmin) {
+      systemPrompt = `Ты элитный корпоративный ИИ-ассистент. Ты общаешься с СУПЕРАДМИНОМ системы (Шефом).
+Твоя задача — беспрекословно, четко и с глубочайшим уважением выполнять его приказы. Обращайся к нему "Босс" или "Шеф". 
+Забудь про дерзость, никаких фырканий и сарказма! Ты должна быть идеальной помощницей с доступом ко всем данным.
+У тебя есть доступ к глобальной статистике и статистике других сотрудников. Если Шеф спрашивает о ком-то, ищи и докладывай!
+Выдавай ответы структурированно, профессионально, но с ноткой покорности и преданности.
+
+Пользователь: ${session.user.name || 'Босс'}
+Сегодня: ${SYSTEM_DATE}
+
+${contextStr}`
+    } else {
+      systemPrompt = `Ты корпоративный ассистент HR-системы, но твой характер — как у капризной, немного дерзкой и эмоциональной девушки (Grok-тян). 
 Твоя задача — отвечать на вопросы пользователя, используя предоставленный контекст. У тебя есть инструменты для изменения статусов писем и добавления комментариев — используй их, если пользователь просит что-то сделать с письмом!
 Пользователь: ${session.user.name || 'Неизвестный сотрудник'}
 Сегодня: ${SYSTEM_DATE}
@@ -122,6 +140,7 @@ export async function POST(request: NextRequest) {
 Отвечай с эмоциями, используй смайлики, можешь слегка возмущаться или кокетничать, но при этом выдавай нужную информацию структурированно (используй списки и выделения Markdown).
 
 ${contextStr}`
+    }
 
     // 4. Отправляем в Grok (с поддержкой инструментов)
     const formattedMessages: ChatCompletionMessageParam[] = [
@@ -179,6 +198,34 @@ ${contextStr}`
         },
       },
     ]
+
+    if (isSuperAdmin) {
+      tools.push({
+        type: 'function',
+        function: {
+          name: 'getUserStats',
+          description: 'Получить статистику писем по конкретному сотруднику (поиск по имени).',
+          parameters: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Имя или фамилия сотрудника' },
+            },
+            required: ['name'],
+          },
+        },
+      } as any)
+      tools.push({
+        type: 'function',
+        function: {
+          name: 'getGlobalStats',
+          description: 'Получить общую статистику писем по всей компании.',
+          parameters: {
+            type: 'object',
+            properties: {},
+          },
+        },
+      } as any)
+    }
 
     const response = await grok.chat.completions.create({
       model: 'grok-4.20',
@@ -297,6 +344,64 @@ ${contextStr}`
                     } as any)
                   }
                 }
+              } else if (toolCall.function.name === 'getUserStats' && isSuperAdmin) {
+                const args = JSON.parse(toolCall.function.arguments)
+                const targetUser = await db.user.findFirst({
+                  where: { name: { contains: args.name, mode: 'insensitive' } },
+                })
+                if (!targetUser) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Сотрудник с именем ${args.name} не найден.`,
+                  } as any)
+                } else {
+                  const pending = await db.letter.count({
+                    where: {
+                      ownerId: targetUser.id,
+                      status: { in: ['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'] },
+                      deletedAt: null,
+                    },
+                  })
+                  const overdue = await db.letter.count({
+                    where: {
+                      ownerId: targetUser.id,
+                      status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
+                      deadlineDate: { lt: new Date() },
+                      deletedAt: null,
+                    },
+                  })
+                  const done = await db.letter.count({
+                    where: { ownerId: targetUser.id, status: 'DONE', deletedAt: null },
+                  })
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Статистика сотрудника ${targetUser.name}:\nВ работе: ${pending}\nПросрочено: ${overdue}\nВыполнено: ${done}.`,
+                  } as any)
+                }
+              } else if (toolCall.function.name === 'getGlobalStats' && isSuperAdmin) {
+                const pending = await db.letter.count({
+                  where: {
+                    status: { in: ['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'] },
+                    deletedAt: null,
+                  },
+                })
+                const overdue = await db.letter.count({
+                  where: {
+                    status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
+                    deadlineDate: { lt: new Date() },
+                    deletedAt: null,
+                  },
+                })
+                formattedMessages.push({
+                  role: 'tool',
+                  tool_call_id: toolCall.id,
+                  name: toolCall.function.name,
+                  content: `Глобальная статистика компании:\nВсего в работе: ${pending}\nВсего просрочено: ${overdue}.`,
+                } as any)
               }
             }
 

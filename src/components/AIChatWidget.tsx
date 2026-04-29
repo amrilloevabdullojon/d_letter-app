@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
 import { getPublicAiSettings } from '@/app/actions/settings'
 import { checkOverdueLetters } from '@/app/actions/chat'
+import { saveDraftLetter } from '@/app/actions/drafts'
 import { usePathname } from 'next/navigation'
 
 type Message = {
@@ -30,7 +31,7 @@ export function AIChatWidget() {
   ])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<{ name: string; dataUrl: string } | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<{ name: string; dataUrl: string }[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pathname = usePathname()
 
@@ -103,33 +104,40 @@ export function AIChatWidget() {
 
   if (!session) return null // Hide if not authenticated
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      setSelectedFile({
-        name: file.name,
-        dataUrl: event.target?.result as string,
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    const newSelectedFiles = await Promise.all(
+      files.map((file) => {
+        return new Promise<{ name: string; dataUrl: string }>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = (event) => {
+            resolve({ name: file.name, dataUrl: event.target?.result as string })
+          }
+          reader.readAsDataURL(file)
+        })
       })
-    }
-    reader.readAsDataURL(file)
+    )
+
+    setSelectedFiles((prev) => [...prev, ...newSelectedFiles])
   }
 
   const handleSend = async () => {
-    if ((!input.trim() && !selectedFile) || isLoading) return
+    if ((!input.trim() && selectedFiles.length === 0) || isLoading) return
     hapticLight()
 
     let userMessage = input.trim()
-    if (selectedFile) {
+    if (selectedFiles.length > 0) {
+      const fileNames = selectedFiles.map((f) => f.name).join(', ')
       userMessage = userMessage
-        ? `${userMessage}\n\n[Прикреплен файл: ${selectedFile.name}]`
-        : `[Прикреплен файл: ${selectedFile.name}]`
+        ? `${userMessage}\n\n[Прикреплены файлы: ${fileNames}]`
+        : `[Прикреплены файлы: ${fileNames}]`
     }
 
     setInput('')
-    const filePayload = selectedFile?.dataUrl
-    setSelectedFile(null)
+    const filesPayload = [...selectedFiles]
+    setSelectedFiles([])
     if (fileInputRef.current) fileInputRef.current.value = ''
 
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }])
@@ -147,7 +155,7 @@ export function AIChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, { role: 'user', content: userMessage }],
-          fileData: filePayload,
+          filesData: filesPayload,
           currentLetterId,
         }),
       })
@@ -312,6 +320,64 @@ export function AIChatWidget() {
                                 className="rounded bg-teal-500/5 px-1 font-semibold text-teal-200"
                               />
                             ),
+                            // @ts-expect-error: custom react-markdown component
+                            draftcard: ({ children }: any) => {
+                              try {
+                                const text = String(children).trim()
+                                const data = JSON.parse(text)
+                                return (
+                                  <div className="my-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 shadow-[0_0_20px_-5px_rgba(99,102,241,0.15)]">
+                                    <div className="mb-2 flex items-center gap-2">
+                                      <Sparkles className="h-4 w-4 text-indigo-400" />
+                                      <span className="text-sm font-semibold text-indigo-300">
+                                        Черновик письма (AI)
+                                      </span>
+                                    </div>
+                                    <div className="space-y-1 text-xs text-slate-300">
+                                      <div>
+                                        <span className="text-slate-500">Номер:</span>{' '}
+                                        {data.number || 'Б/Н'}
+                                      </div>
+                                      <div>
+                                        <span className="text-slate-500">От:</span> {data.org}
+                                      </div>
+                                      <div>
+                                        <span className="text-slate-500">Дата:</span> {data.date}
+                                      </div>
+                                      <div>
+                                        <span className="text-slate-500">Суть:</span>{' '}
+                                        <span className="text-white">{data.summary}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-slate-500">Дедлайн:</span>{' '}
+                                        <span className="text-amber-400">{data.deadlineDate}</span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={async (e) => {
+                                        const btn = e.currentTarget
+                                        btn.disabled = true
+                                        btn.innerText = 'Сохраняю...'
+                                        hapticLight()
+                                        const res = await saveDraftLetter(data)
+                                        if (res.success) {
+                                          btn.innerText = '✅ Сохранено'
+                                          btn.className =
+                                            'mt-3 w-full rounded-lg bg-emerald-500/20 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/30 transition-colors'
+                                        } else {
+                                          btn.innerText = 'Ошибка'
+                                        }
+                                      }}
+                                      className="mt-3 w-full rounded-lg bg-indigo-500 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-indigo-400"
+                                    >
+                                      Сохранить в базу
+                                    </button>
+                                  </div>
+                                )
+                              } catch (e) {
+                                return <div>{children}</div>
+                              }
+                            },
                           }}
                         >
                           {m.content}
@@ -374,31 +440,39 @@ export function AIChatWidget() {
             {/* Input Area */}
             <div className="flex flex-col gap-2 border-t border-white/5 bg-slate-900/50 p-3 backdrop-blur-md">
               <AnimatePresence>
-                {selectedFile && (
+                {selectedFiles.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="flex items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-2 shadow-[0_0_15px_-3px_rgba(20,184,166,0.15)]"
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-2 shadow-[0_0_15px_-3px_rgba(20,184,166,0.15)]"
                   >
-                    <span className="max-w-[250px] truncate text-xs font-medium text-teal-300">
-                      📎 {selectedFile.name}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setSelectedFile(null)
-                        if (fileInputRef.current) fileInputRef.current.value = ''
-                      }}
-                      className="rounded-full bg-teal-500/10 p-1 text-teal-500 transition-colors hover:bg-teal-500/20 hover:text-teal-300"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                    {selectedFiles.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-1 rounded bg-teal-500/20 px-2 py-1"
+                      >
+                        <span className="max-w-[150px] truncate text-xs font-medium text-teal-300">
+                          📎 {file.name}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))
+                            if (fileInputRef.current) fileInputRef.current.value = ''
+                          }}
+                          className="rounded-full bg-teal-500/10 p-0.5 text-teal-500 transition-colors hover:bg-teal-500/30 hover:text-teal-300"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </motion.div>
                 )}
               </AnimatePresence>
               <div className="relative flex items-center gap-2">
                 <input
                   type="file"
+                  multiple
                   ref={fileInputRef}
                   onChange={handleFileChange}
                   accept="image/*,application/pdf"
@@ -422,7 +496,7 @@ export function AIChatWidget() {
                   />
                   <button
                     onClick={handleSend}
-                    disabled={(!input.trim() && !selectedFile) || isLoading}
+                    disabled={(!input.trim() && selectedFiles.length === 0) || isLoading}
                     className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-white shadow-md transition-all hover:bg-teal-400 hover:shadow-teal-500/25 disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none"
                   >
                     <Send className="h-4 w-4 translate-x-[1px]" />
