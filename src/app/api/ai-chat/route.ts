@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { messages, fileData } = body // Array of {role: 'user' | 'model', content: string}
+    const { messages, fileData, currentLetterId } = body // Array of {role: 'user' | 'model', content: string}
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Пустой запрос' }, { status: 400 })
@@ -67,6 +67,13 @@ export async function POST(request: NextRequest) {
     })
 
     let contextStr = ''
+
+    if (currentLetterId) {
+      const currentLetter = await db.letter.findUnique({ where: { id: currentLetterId } })
+      if (currentLetter) {
+        contextStr += `🚨 ВАЖНЫЙ КОНТЕКСТ ЭКРАНА: Пользователь в данный момент просматривает страницу письма №${currentLetter.number} от ${currentLetter.org}. Если он просит выполнить действие (изменить статус, создать задачу в Jira, добавить комментарий) без указания номера, ПРИМЕНЯЙ ЭТО ДЕЙСТВИЕ К ПИСЬМУ №${currentLetter.number}!\n\n`
+      }
+    }
 
     if (fileData) {
       const fileSummary = await analyzeFileWithGemini(fileData)

@@ -8,6 +8,8 @@ import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
 import { getPublicAiSettings } from '@/app/actions/settings'
+import { checkOverdueLetters } from '@/app/actions/chat'
+import { usePathname } from 'next/navigation'
 
 type Message = {
   role: 'user' | 'model'
@@ -30,11 +32,30 @@ export function AIChatWidget() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<{ name: string; dataUrl: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pathname = usePathname()
 
   useEffect(() => {
     getPublicAiSettings().then((res) => {
       setIsEnabled(res.aiEnabled && res.aiChatEnabled)
       setMounted(true)
+
+      // Proactive checks
+      if (res.aiEnabled && res.aiChatEnabled) {
+        checkOverdueLetters().then((res) => {
+          if (res.count > 0) {
+            setTimeout(() => {
+              setIsOpen(true)
+              setMessages([
+                {
+                  role: 'model',
+                  content: `Эй! 🚨 У тебя **${res.count}** ${res.count === 1 ? 'письмо висит' : 'писем висят'} с просроченным SLA! Иди работай, пока я не пожаловалась начальству! 💅`,
+                },
+              ])
+              hapticMedium()
+            }, 3000)
+          }
+        })
+      }
     })
   }, [])
 
@@ -115,12 +136,19 @@ export function AIChatWidget() {
     setIsLoading(true)
 
     try {
+      let currentLetterId: string | undefined = undefined
+      if (pathname && pathname.startsWith('/letters/')) {
+        const id = pathname.split('/letters/')[1]
+        if (id) currentLetterId = id
+      }
+
       const res = await fetch('/api/ai-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, { role: 'user', content: userMessage }],
           fileData: filePayload,
+          currentLetterId,
         }),
       })
 
