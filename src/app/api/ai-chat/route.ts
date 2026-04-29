@@ -6,6 +6,7 @@ import { getEmbedding } from '@/lib/embeddings'
 import { logger } from '@/lib/logger.server'
 import { requirePermission } from '@/lib/permission-guard'
 import OpenAI from 'openai'
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 
 const grok = new OpenAI({
   apiKey: process.env.XAI_API_KEY || 'missing-key',
@@ -74,8 +75,6 @@ export async function POST(request: NextRequest) {
 Если используешь информацию из писем, упоминай их, но в своём стиле (например, "Ну вот в бумажке номер 123 от Ромашка написано, что...").
 
 ${contextStr}`
-
-    import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 
     // 4. Отправляем в Grok
     // Используем messages для сохранения истории
