@@ -28,6 +28,16 @@ export async function POST(request: NextRequest) {
     for (const letter of letters) {
       const textToEmbed = `Письмо №${letter.number}. Организация: ${letter.org}. Содержание: ${letter.content || ''}`
       const embedding = await getEmbedding(textToEmbed)
+      if (!embedding && processed === 0 && failed === 0) {
+        return NextResponse.json(
+          {
+            error:
+              'Ошибка эмбеддингов. Проверьте логи или API ключ Gemini. Ключ: ' +
+              !!process.env.GEMINI_API_KEY,
+          },
+          { status: 500 }
+        )
+      }
 
       if (embedding) {
         const embeddingStr = `[${embedding.join(',')}]`

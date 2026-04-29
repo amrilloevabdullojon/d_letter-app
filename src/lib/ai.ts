@@ -258,7 +258,7 @@ export async function extractLetterDataWithAI(
           { role: 'system', content: EXTRACTION_PROMPT },
           { role: 'user', content: 'Текст письма:\n' + pdfText.substring(0, 4000) },
         ],
-        response_format: { type: 'json_object' },
+        // response_format: { type: 'json_object' }, // Removed because some Grok models don't support it natively
       })
     )
 
