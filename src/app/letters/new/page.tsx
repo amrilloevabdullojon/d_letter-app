@@ -35,6 +35,7 @@ import { calculateDeadline, formatDateForInput } from '@/lib/parseLetterFilename
 import { DEFAULT_DEADLINE_WORKING_DAYS } from '@/lib/constants'
 import { getWorkingDaysUntilDeadline } from '@/lib/utils'
 import { recommendLetterType } from '@/lib/recommendLetterType'
+import { useLetterTypes } from '@/hooks/useLetterTypes'
 
 // Extend schema for this form with additional fields
 type CreateLetterFormValues = QuickLetterUploadInput & {
@@ -53,6 +54,7 @@ export default function NewLetterPage() {
   const [users, setUsers] = useState<OwnerOption[]>([])
   const [selectedOwner, setSelectedOwner] = useState<OwnerOption | null>(null)
   const [priority, setPriority] = useState(50)
+  const { types: letterTypes } = useLetterTypes()
 
   const [mode, setMode] = useState<'quick' | 'manual'>('quick')
   const [attachment, setAttachment] = useState<File | null>(null)
@@ -93,6 +95,13 @@ export default function NewLetterPage() {
       )
       .catch(() => {})
   }, [mode])
+
+  useEffect(() => {
+    if (!selectedOwner && session?.user?.id && users.length > 0) {
+      const me = users.find((u) => u.id === session.user.id)
+      if (me) setSelectedOwner(me)
+    }
+  }, [session, users, selectedOwner])
 
   const {
     register,
@@ -545,15 +554,16 @@ export default function NewLetterPage() {
                 <label className="mb-2 block text-sm font-medium text-slate-300">Тип запроса</label>
                 <select
                   {...register('type')}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-teal-400/50 focus:outline-none"
+                  className={`w-full rounded-lg border ${errors.type ? 'border-red-500' : 'border-white/10'} bg-white/5 px-4 py-2 text-white focus:border-teal-400/50 focus:outline-none`}
                 >
                   <option value="">Выберите тип</option>
-                  {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
+                  {letterTypes.map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.label}
                     </option>
                   ))}
                 </select>
+                {errors.type && <p className="mt-1 text-xs text-red-400">{errors.type.message}</p>}
               </div>
 
               <div>

@@ -35,6 +35,7 @@ import {
 import { formatDateForInput, calculateDeadline } from '@/lib/parseLetterFilename'
 import { recommendLetterType } from '@/lib/recommendLetterType'
 import { bulkCreateLettersSchema, type BulkCreateLettersInput } from '@/lib/schemas'
+import { useLetterTypes } from '@/hooks/useLetterTypes'
 
 interface LetterRow {
   id: string
@@ -128,6 +129,7 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
   const [createdLetters, setCreatedLetters] = useState<CreatedLetter[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [uploadingFiles, setUploadingFiles] = useState(false)
+  const { types: letterTypes } = useLetterTypes()
 
   // File state (отдельно от формы, т.к. File объекты не валидируются Zod)
   const [files, setFiles] = useState<Map<string, File>>(new Map())
@@ -801,7 +803,7 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
                   className="w-full rounded border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-white focus:border-emerald-500 focus:outline-none"
                 >
                   <option value="">Без типа</option>
-                  {LETTER_TYPES.filter((t) => t.value !== 'all').map((t) => (
+                  {letterTypes.map((t) => (
                     <option key={t.value} value={t.value}>
                       {t.label}
                     </option>
@@ -965,7 +967,7 @@ export function BulkCreateLetters({ onClose, onSuccess, pageHref }: BulkCreateLe
                           className="w-full rounded border border-gray-600 bg-gray-700 px-2 py-1.5 text-sm text-white focus:border-emerald-500 focus:outline-none disabled:opacity-50"
                         >
                           <option value="">—</option>
-                          {LETTER_TYPES.filter((t) => t.value !== 'all').map((t) => (
+                          {letterTypes.map((t) => (
                             <option key={t.value} value={t.value}>
                               {t.label}
                             </option>

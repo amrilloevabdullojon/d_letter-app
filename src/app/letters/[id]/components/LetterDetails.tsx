@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { EditableField } from '@/components/EditableField'
-import { LETTER_TYPES } from '@/lib/constants'
+import { useLetterTypes } from '@/hooks/useLetterTypes'
 import type { Letter } from '../types'
 
 const TemplateSelector = dynamic(
@@ -53,9 +53,9 @@ export const LetterDetails = memo(function LetterDetails({
   onSave,
   onUpdate,
 }: LetterDetailsProps) {
-  const letterTypeOptions = LETTER_TYPES.filter((type) => type.value !== 'all')
+  const { types: letterTypes } = useLetterTypes()
   const typeValue = letter.type || ''
-  const hasCustomType = !!typeValue && !letterTypeOptions.some((opt) => opt.value === typeValue)
+  const hasCustomType = !!typeValue && !letterTypes.some((opt) => opt.value === typeValue)
   const [showCustomType, setShowCustomType] = useState(false)
   const [customType, setCustomType] = useState('')
   const toast = useToast()
@@ -180,7 +180,7 @@ export const LetterDetails = memo(function LetterDetails({
                 >
                   <option value="">Не указан</option>
                   {hasCustomType && <option value={typeValue}>{typeValue}</option>}
-                  {letterTypeOptions.map((option) => (
+                  {letterTypes.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>

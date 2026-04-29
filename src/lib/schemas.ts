@@ -44,7 +44,7 @@ export const createLetterSchema = z.object({
     .optional()
     .refine((val) => !val || parseDateValue(val), { message: 'Invalid deadline date' })
     .transform((val) => (val ? (parseDateValue(val) as Date) : null)),
-  type: z.string().max(100).optional(),
+  type: z.string().min(1, 'Укажите тип запроса').max(100),
   content: z.string().max(10000).optional(),
   comment: z.string().max(5000).optional(),
   contacts: z.string().max(500).optional(),
@@ -69,7 +69,7 @@ export const quickLetterUploadSchema = z.object({
   org: z.string().min(1, 'Организация обязательна').max(500, 'Название слишком длинное'),
   date: z.string().min(1, 'Дата обязательна'),
   deadlineDate: z.string().optional(),
-  type: z.string().max(100).optional(),
+  type: z.string().min(1, 'Укажите тип запроса').max(100),
   content: z.string().max(10000).optional(),
   applicantName: z.string().max(200).optional(),
   applicantEmail: z.string().email('Некорректный email').optional().or(z.literal('')),

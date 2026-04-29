@@ -37,6 +37,8 @@ import { quickLetterUploadSchema, type QuickLetterUploadInput } from '@/lib/sche
 import { OrganizationAutocomplete } from '@/components/OrganizationAutocomplete'
 import { OwnerSelector, type OwnerOption } from '@/components/OwnerSelector'
 import { getWorkingDaysUntilDeadline } from '@/lib/utils'
+import { useSession } from 'next-auth/react'
+import { useLetterTypes } from '@/hooks/useLetterTypes'
 
 interface ParsedPdfData {
   number: string | null
@@ -89,6 +91,8 @@ export const QuickLetterUpload = memo(function QuickLetterUpload({
   const [ownersLoading, setOwnersLoading] = useState(true)
   const [ownerLoadError, setOwnerLoadError] = useState<string | null>(null)
   const [selectedOwner, setSelectedOwner] = useState<OwnerOption | null>(null)
+  const { data: session } = useSession()
+  const { types: letterTypes } = useLetterTypes()
 
   // Дополнительные поля (не в схеме)
   const [contentRussian, setContentRussian] = useState('')
@@ -148,6 +152,14 @@ export const QuickLetterUpload = memo(function QuickLetterUpload({
     }
   }, [])
 
+  // Установка исполнителя по умолчанию
+  useEffect(() => {
+    if (!selectedOwner && session?.user?.id && owners.length > 0) {
+      const me = owners.find((o) => o.id === session.user.id)
+      if (me) setSelectedOwner(me)
+    }
+  }, [session, owners, selectedOwner])
+
   // React Hook Form
   const {
     register,
@@ -174,6 +186,32 @@ export const QuickLetterUpload = memo(function QuickLetterUpload({
   })
 
   const watchDeadline = watch('deadlineDate')
+  const watchNumber = watch('number')
+
+  // Проверка на дубликаты
+  useEffect(() => {
+    if (!watchNumber) return
+    const checkDuplicate = async () => {
+      try {
+        const res = await fetch(
+          `/api/letters/check-duplicate?number=${encodeURIComponent(watchNumber)}`
+        )
+        if (res.ok) {
+          const data = await res.json()
+          if (data.exists) {
+            toast.warning(
+              `Внимание: письмо с номером ${watchNumber} уже зарегистрировано в базе!`,
+              { id: 'duplicate-warning', duration: 8000 }
+            )
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+    const timer = setTimeout(checkDuplicate, 800)
+    return () => clearTimeout(timer)
+  }, [watchNumber, toast])
 
   const parseDocumentContent = useCallback(
     async (
@@ -688,7 +726,7 @@ export const QuickLetterUpload = memo(function QuickLetterUpload({
               className="w-full rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
             >
               <option value="">Выберите тип</option>
-              {LETTER_TYPES.filter((item) => item.value !== 'all').map((item) => (
+              {letterTypes.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
