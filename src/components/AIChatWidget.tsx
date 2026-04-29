@@ -40,6 +40,28 @@ export function AIChatWidget() {
   }
 
   useEffect(() => {
+    const handleNewLetter = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { number, org } = customEvent.detail || {}
+
+      const snarkyMessages = [
+        `Уф, опять новая бумажка? 🙄 Письмо${number ? ` №${number}` : ''} от ${org || 'кого-то там'} загружено. Ладно, добавила в базу. Иди работай!`,
+        `Ну вот, притащили ещё одно письмо... 😒 Опять мне всё это читать и запоминать? Окей, всё сделала. 💅`,
+        `Ой, всё, твоё письмо загружено! ✨ Постарайся не потерять его, ладно? А то опять меня будешь дёргать.`,
+      ]
+
+      const randomMsg = snarkyMessages[Math.floor(Math.random() * snarkyMessages.length)]
+
+      setIsOpen(true)
+      setMessages((prev) => [...prev, { role: 'model', content: randomMsg }])
+      hapticMedium()
+    }
+
+    window.addEventListener('ai_chat_new_letter', handleNewLetter)
+    return () => window.removeEventListener('ai_chat_new_letter', handleNewLetter)
+  }, [])
+
+  useEffect(() => {
     if (isOpen) {
       scrollToBottom()
     }

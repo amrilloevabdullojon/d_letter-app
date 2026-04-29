@@ -439,6 +439,13 @@ export const QuickLetterUpload = memo(function QuickLetterUpload({
 
       toast.success('Письмо создано!', { id: toastId })
       setCreatedLetterId(letterId)
+
+      // Оповещаем виджет AI-чата о новом письме
+      window.dispatchEvent(
+        new CustomEvent('ai_chat_new_letter', {
+          detail: { number: data.number, org: data.org },
+        })
+      )
     } catch (error) {
       console.error('Create error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Ошибка создания'
