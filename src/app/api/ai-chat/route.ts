@@ -629,11 +629,14 @@ ${contextStr}`
                     deletedAt: null,
                   },
                 })
+                const total = await db.letter.count({
+                  where: { deletedAt: null },
+                })
                 formattedMessages.push({
                   role: 'tool',
                   tool_call_id: toolCall.id,
                   name: toolCall.function.name,
-                  content: `Глобальная статистика компании:\nВсего в работе: ${pending}\nВсего просрочено: ${overdue}.`,
+                  content: `Глобальная статистика компании:\nВсего писем в базе: ${total}\nВсего в работе: ${pending}\nВсего просрочено: ${overdue}.`,
                 } as any)
               }
             }
