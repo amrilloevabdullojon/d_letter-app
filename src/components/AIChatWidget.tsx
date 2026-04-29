@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import Image from 'next/image'
 import { Bot, X, Send, Loader2, Sparkles, MessageSquareText, Search } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { useSession } from 'next-auth/react'
@@ -14,6 +16,7 @@ type Message = {
 
 export function AIChatWidget() {
   const { data: session } = useSession()
+  const [mounted, setMounted] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -67,7 +70,11 @@ export function AIChatWidget() {
     }
   }, [messages, isLoading, isOpen])
 
-  if (!session) return null // Hide if not authenticated
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || !session) return null // Hide if not authenticated or not mounted for Portal
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
@@ -131,10 +138,12 @@ export function AIChatWidget() {
               hapticMedium()
               setIsOpen(true)
             }}
-            className="fixed bottom-24 right-4 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-teal-600 to-emerald-400 text-white shadow-xl shadow-teal-500/30 ring-4 ring-slate-900 transition-shadow hover:shadow-teal-500/50 md:bottom-6 md:right-6"
+            className="fixed bottom-24 right-4 z-[99999] flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-teal-600 to-emerald-400 text-white shadow-xl shadow-teal-500/30 ring-4 ring-slate-900 transition-all hover:shadow-teal-500/50 hover:ring-slate-800 md:bottom-6 md:right-6"
           >
-            <Sparkles className="h-6 w-6" />
-            <span className="absolute right-0 top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 ring-2 ring-slate-900" />
+            <div className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-white/20 bg-slate-900">
+              <Image src="/grok_avatar.png" alt="Grok Chan" fill className="object-cover" />
+            </div>
+            <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 shadow-sm ring-2 ring-slate-900" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -151,13 +160,13 @@ export function AIChatWidget() {
             {/* Header */}
             <div className="relative flex items-center justify-between border-b border-white/5 bg-gradient-to-r from-teal-500/10 to-emerald-500/5 p-4">
               <div className="flex items-center gap-3">
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-white shadow-inner">
-                  <Bot className="h-5 w-5" />
+                <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-slate-800 shadow-inner">
+                  <Image src="/grok_avatar.png" alt="Grok Chan" fill className="object-cover" />
                   <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-slate-900 bg-emerald-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold tracking-tight text-white">AI Ассистент</h3>
-                  <p className="text-[11px] font-medium text-teal-400">Grok-2 RAG Engine</p>
+                  <h3 className="font-semibold tracking-tight text-white">Grok-тян 🌸</h3>
+                  <p className="text-[11px] font-medium text-teal-400">Настроение: вредное 💅</p>
                 </div>
               </div>
               <button
@@ -240,4 +249,6 @@ export function AIChatWidget() {
       </AnimatePresence>
     </>
   )
+
+  return createPortal(widgetContent, document.body)
 }

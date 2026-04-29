@@ -119,22 +119,28 @@ export async function POST(request: NextRequest) {
       kind: documentKind,
     })
 
+    let documentText: string | null = null
+
     if (documentKind === 'pdf') {
-      aiData = await withTimeout(
-        extractLetterDataFromPdf(buffer.toString('base64')),
-        90000,
-        'Document parsing timeout after 90 seconds'
-      )
-    } else {
-      const documentText = await extractTextFromOfficeDocument(buffer, documentKind)
-      extractedText = Boolean(documentText)
-      if (documentText) {
-        aiData = await withTimeout(
-          extractLetterDataWithAI(documentText),
-          45000,
-          'Document text parsing timeout after 45 seconds'
-        )
+      try {
+        const pdfParse = require('pdf-parse')
+        const data = await pdfParse(buffer)
+        documentText = data.text
+      } catch (error) {
+        logger.error('Parse document', 'Failed to parse PDF text locally', { error })
       }
+    } else {
+      documentText = await extractTextFromOfficeDocument(buffer, documentKind)
+    }
+
+    extractedText = Boolean(documentText && documentText.trim())
+
+    if (documentText && documentText.trim()) {
+      aiData = await withTimeout(
+        extractLetterDataWithAI(documentText),
+        45000,
+        'Document text parsing timeout after 45 seconds'
+      )
     }
 
     logger.debug('Parse document', 'AI parsing completed', {
