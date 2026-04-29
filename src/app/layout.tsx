@@ -12,6 +12,7 @@ import { PWAProvider } from '@/components/PWAProvider'
 import { ClientEffects } from '@/components/ClientEffects'
 import { BackgroundEffects } from '@/components/BackgroundEffects'
 import { AIChatWidget } from '@/components/AIChatWidget'
+import { prisma } from '@/lib/prisma'
 
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
@@ -63,7 +64,12 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const settings = await prisma.systemSettings
+    .findUnique({ where: { id: 'global' } })
+    .catch(() => null)
+  const showChat = (settings?.aiEnabled ?? true) && (settings?.aiChatEnabled ?? true)
+
   return (
     <html lang="ru" className="dark">
       <body
@@ -76,7 +82,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <AuthGuard>
                 <PageTransition>{children}</PageTransition>
                 <ClientEffects />
-                <AIChatWidget />
+                {showChat && <AIChatWidget />}
               </AuthGuard>
             </ThemeProvider>
           </PWAProvider>

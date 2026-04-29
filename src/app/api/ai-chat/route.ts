@@ -13,6 +13,8 @@ const grok = new OpenAI({
   baseURL: 'https://api.x.ai/v1',
 })
 
+import { prisma } from '@/lib/prisma'
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

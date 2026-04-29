@@ -8,6 +8,10 @@ const genai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 })
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || 'missing-key',
+})
+
 const grok = new OpenAI({
   apiKey: process.env.XAI_API_KEY || 'missing-key',
   baseURL: 'https://api.x.ai/v1',
@@ -194,55 +198,6 @@ const withRetry = async <T>(label: string, action: () => Promise<T>): Promise<T>
 
 /**
  * Извлекает данные из PDF напрямую с помощью Gemini Vision
- */
-export async function extractLetterDataFromPdf(
-  pdfBase64: string
-): Promise<ExtractedLetterData | null> {
-  if (!process.env.GEMINI_API_KEY) {
-    logger.error('AI', new Error('GEMINI_API_KEY not configured'), {
-      action: 'extractLetterDataFromPdf',
-    })
-    return null
-  }
-
-  try {
-    const response = await withRetry('extractLetterDataFromPdf', () =>
-      genai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  mimeType: 'application/pdf',
-                  data: pdfBase64,
-                },
-              },
-              {
-                text: EXTRACTION_PROMPT,
-              },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: EXTRACTION_RESPONSE_SCHEMA,
-        },
-      })
-    )
-
-    const content = response.text
-    if (!content) return null
-    return parseExtractedLetterData(content)
-  } catch (error) {
-    logger.error('AI', error, { action: 'extractLetterDataFromPdf' })
-    return null
-  }
-}
-
-/**
- * Извлекает данные из текста письма с помощью Grok AI
  */
 export async function extractLetterDataWithAI(
   pdfText: string

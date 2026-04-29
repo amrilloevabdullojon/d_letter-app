@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { calculateDeadline } from '@/lib/parsePdfLetter'
-import { extractLetterDataFromPdf, extractLetterDataWithAI } from '@/lib/ai'
+import { extractLetterDataWithAI } from '@/lib/ai'
 import { withTimeout } from '@/lib/ai-utils'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
@@ -17,6 +17,8 @@ import {
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit'
 import { requirePermissionAsync } from '@/lib/permission-guard'
 import { extractTextFromOfficeDocument, getSupportedAiDocumentKind } from '@/lib/document-text'
+
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,6 +50,11 @@ export async function POST(request: NextRequest) {
     if (permissionError) {
       return permissionError
     }
+
+    const settings = await prisma.systemSettings
+      .findUnique({ where: { id: 'global' } })
+      .catch(() => null)
+    const isParsingEnabled = (settings?.aiEnabled ?? true) && (settings?.aiParsingEnabled ?? true)
 
     const formData = await request.formData()
     const file = formData.get('file') as File | null
@@ -122,25 +129,25 @@ export async function POST(request: NextRequest) {
     let documentText: string | null = null
 
     if (documentKind === 'pdf') {
-      // PDF handles Gemini vision directly
-      const base64 = buffer.toString('base64')
-      aiData = await withTimeout(
-        extractLetterDataFromPdf(base64),
-        45000,
-        'PDF parsing timeout after 45 seconds'
-      )
-      extractedText = true // assume vision extracted something
+      try {
+        const pdfParse = require('pdf-parse')
+        const data = await pdfParse(buffer)
+        documentText = data.text
+      } catch (error) {
+        logger.error('Parse document', 'Failed to parse PDF text locally', { error })
+      }
     } else {
       documentText = await extractTextFromOfficeDocument(buffer, documentKind)
-      extractedText = Boolean(documentText && documentText.trim())
+    }
 
-      if (documentText && documentText.trim()) {
-        aiData = await withTimeout(
-          extractLetterDataWithAI(documentText),
-          45000,
-          'Document text parsing timeout after 45 seconds'
-        )
-      }
+    extractedText = Boolean(documentText && documentText.trim())
+
+    if (isParsingEnabled && documentText && documentText.trim()) {
+      aiData = await withTimeout(
+        extractLetterDataWithAI(documentText),
+        45000,
+        'Document text parsing timeout after 45 seconds'
+      )
     }
 
     logger.debug('Parse document', 'AI parsing completed', {

@@ -17,6 +17,7 @@ import {
   Tags,
   ArrowLeft,
   Database,
+  BrainCircuit,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { hasPermission } from '@/lib/permissions'
@@ -108,6 +109,14 @@ const JiraTab = dynamic(
   { loading: () => <TabSkeleton /> }
 )
 
+const AiSettingsTab = dynamic(
+  () =>
+    import('@/components/settings/AiSettingsTab').then((mod) => ({ default: mod.AiSettingsTab })),
+  {
+    loading: () => <TabSkeleton />,
+  }
+)
+
 type TabType =
   | 'permissions'
   | 'users'
@@ -118,6 +127,7 @@ type TabType =
   | 'workflow'
   | 'statuses'
   | 'jira'
+  | 'ai'
 
 const TAB_INFO: Record<TabType, string> = {
   permissions: 'Роли и права доступа',
@@ -129,6 +139,7 @@ const TAB_INFO: Record<TabType, string> = {
   workflow: 'Параметры рабочего процесса',
   statuses: 'Конфигурация статусов писем',
   jira: 'Интеграция с Jira',
+  ai: 'ИИ и Нейросети',
 }
 
 export default function SettingsPage() {
@@ -240,6 +251,11 @@ export default function SettingsPage() {
             value: 'jira' as TabType,
             label: 'Jira',
             icon: <Database className="h-5 w-5" />,
+          },
+          {
+            value: 'ai' as TabType,
+            label: 'ИИ',
+            icon: <BrainCircuit className="h-5 w-5" />,
           },
         ]
       : []),
@@ -432,6 +448,23 @@ export default function SettingsPage() {
                   Jira API
                 </button>
               )}
+              {isSuperAdmin && (
+                <button
+                  onClick={() => handleTabChange('ai')}
+                  className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+                    activeTab === 'ai'
+                      ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <div
+                    className={`rounded-lg p-1.5 ${activeTab === 'ai' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                  >
+                    <BrainCircuit className="h-4 w-4" />
+                  </div>
+                  ИИ и Нейросети
+                </button>
+              )}
             </ScrollIndicator>
           </div>
         )}
@@ -485,6 +518,12 @@ export default function SettingsPage() {
             {activeTab === 'jira' && isSuperAdmin && (
               <div className="panel panel-glass rounded-2xl p-6">
                 <JiraTab />
+              </div>
+            )}
+
+            {activeTab === 'ai' && isSuperAdmin && (
+              <div className="panel panel-glass rounded-2xl p-6">
+                <AiSettingsTab />
               </div>
             )}
           </motion.div>

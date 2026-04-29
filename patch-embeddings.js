@@ -1,4 +1,7 @@
-import 'server-only'
+const fs = require('fs')
+const path = './src/lib/embeddings.ts'
+
+const content = `import 'server-only'
 import OpenAI from 'openai'
 import { logger } from '@/lib/logger.server'
 
@@ -22,3 +25,6 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     throw error // Let the route catch it and show the error directly to user
   }
 }
+`
+
+fs.writeFileSync(path, content)

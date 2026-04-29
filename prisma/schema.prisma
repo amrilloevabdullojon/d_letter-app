@@ -953,5 +953,11 @@ model SystemSettings {
   jiraEmail      String?
   jiraToken      String?  @db.Text
   jiraProjectKey String   @default("MAIL")
+  
+  // AI Settings
+  aiEnabled        Boolean  @default(true) // Глобальный рубильник
+  aiChatEnabled    Boolean  @default(true) // Отключение только RAG-чата
+  aiParsingEnabled Boolean  @default(true) // Отключение только умного парсинга PDF
+
   updatedAt      DateTime @updatedAt
 }
