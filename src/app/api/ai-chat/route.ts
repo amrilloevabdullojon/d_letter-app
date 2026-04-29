@@ -5,6 +5,7 @@ import { prisma as db } from '@/lib/prisma'
 import { getEmbedding } from '@/lib/embeddings'
 import { logger } from '@/lib/logger.server'
 import { requirePermission } from '@/lib/permission-guard'
+import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit'
 import OpenAI from 'openai'
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 
@@ -17,15 +18,29 @@ import { prisma } from '@/lib/prisma'
 import { JiraService } from '@/services/jira.service'
 import { analyzeFileWithGemini } from '@/lib/ai'
 
-const SYSTEM_DATE = new Date().toLocaleDateString('ru-RU', {
-  weekday: 'long',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-})
-
 export async function POST(request: NextRequest) {
+  // БАГ #2 ФИКС: дата вычисляется при каждом запросе, а не при старте сервера
+  const SYSTEM_DATE = new Date().toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
   try {
+    // БАГ #6 ФИКС: rate-limiting на чат (30 запросов/минуту на пользователя)
+    const clientId = getClientIdentifier(request.headers)
+    const rateLimitResult = await checkRateLimit(
+      `${clientId}:/api/ai-chat:POST`,
+      RATE_LIMITS.search.limit,
+      RATE_LIMITS.search.windowMs
+    )
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Слишком много запросов к AI. Подождите минуту.' },
+        { status: 429 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
@@ -88,7 +103,8 @@ export async function POST(request: NextRequest) {
     if (embedding) {
       const embeddingStr = `[${embedding.join(',')}]`
 
-      // 2. Искать топ 5 релевантных писем
+      // БАГ #1 ФИКС: порог 0.35 — берем только реально похожие письма
+      // Без порога Grok получала 5 случайных писем всегда, даже на «Привет»
       const similarLetters = await db.$queryRawUnsafe<
         { id: string; number: string; org: string; date: Date; content: string; status: string }[]
       >(
@@ -96,14 +112,15 @@ export async function POST(request: NextRequest) {
          FROM "Letter" 
          WHERE "deletedAt" IS NULL 
            AND embedding IS NOT NULL 
+           AND embedding <=> $1::vector < 0.35
          ORDER BY embedding <=> $1::vector 
-         LIMIT 5`,
+         LIMIT 8`,
         embeddingStr
       )
 
       if (similarLetters.length > 0) {
         contextStr +=
-          'Контекст из базы писем:\n\n' +
+          'Контекст из базы писем (релевантные документы):\n\n' +
           similarLetters
             .map(
               (l, i) =>
@@ -244,6 +261,52 @@ ${contextStr}`
             },
           },
           required: ['number', 'instructions'],
+        },
+      },
+    } as any)
+
+    // НОВЫЙ ИНСТРУМЕНТ: точный поиск писем по реквизитам
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'searchLetters',
+        description:
+          'Точный поиск писем по номеру, организации, статусу или диапазону дат. Используй этот инструмент когда пользователь ищет конкретное письмо.',
+        parameters: {
+          type: 'object',
+          properties: {
+            number: { type: 'string', description: 'Номер письма (частичное совпадение)' },
+            org: { type: 'string', description: 'Название организации (частичное совпадение)' },
+            status: {
+              type: 'string',
+              description:
+                'Статус письма: NOT_REVIEWED, ACCEPTED, IN_PROGRESS, CLARIFICATION, FROZEN, REJECTED, READY, PROCESSED, DONE',
+            },
+            dateFrom: { type: 'string', description: 'Дата от (YYYY-MM-DD)' },
+            dateTo: { type: 'string', description: 'Дата до (YYYY-MM-DD)' },
+            limit: { type: 'number', description: 'Максимум результатов (по умолчанию 10)' },
+          },
+        },
+      },
+    } as any)
+
+    // НОВЫЙ ИНСТРУМЕНТ: изменение дедлайна
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'updateLetterDeadline',
+        description:
+          'Изменить дедлайн (срок исполнения) письма. Используй когда пользователь просит перенести или установить срок.',
+        parameters: {
+          type: 'object',
+          properties: {
+            number: { type: 'string', description: 'Номер письма' },
+            deadlineDate: {
+              type: 'string',
+              description: 'Новый дедлайн в формате YYYY-MM-DD',
+            },
+          },
+          required: ['number', 'deadlineDate'],
         },
       },
     } as any)
@@ -482,6 +545,7 @@ ${contextStr}`
                     content: { not: null },
                     deletedAt: null,
                   },
+                  select: { id: true, number: true, content: true },
                   take: 10,
                 })
                 if (letters.length === 0) {
@@ -492,24 +556,43 @@ ${contextStr}`
                     content: `Все письма уже имеют проставленные типы!`,
                   } as any)
                 } else {
-                  const updates = []
-                  for (const letter of letters) {
-                    const typePrompt = `Определи тип этого официального письма одним-двумя словами (например: Жалоба, Запрос документов, Уведомление, Реклама, Приказ). Текст письма: "${letter.content}". Выдай ТОЛЬКО тип письма, без кавычек и точек.`
-                    const typeResponse = await grok.chat.completions.create({
-                      model: 'grok-4.20',
-                      messages: [{ role: 'user', content: typePrompt }],
-                    })
-                    let letterType =
-                      typeResponse.choices[0]?.message?.content?.trim() || 'Неизвестно'
-                    if (letterType.length > 50) letterType = 'Прочее'
-                    await db.letter.update({ where: { id: letter.id }, data: { type: letterType } })
-                    updates.push(`№${letter.number}: ${letterType}`)
+                  // БАГ #5 ФИКС: один пакетный запрос вместо 10 последовательных
+                  const batchPrompt = `Определи тип каждого из следующих официальных писем. Верни JSON массив объектов {"id": "...", "type": "..."}. Тип — одно-два слова на русском (Жалоба, Запрос, Уведомление, Приглашение, Приказ, Согласование и т.п.).
+
+Письма:\n${letters.map((l) => `ID: ${l.id}\nТекст: ${(l.content || '').substring(0, 300)}`).join('\n---\n')}
+
+Ответ — ТОЛЬКО JSON массив.`
+                  const batchResponse = await grok.chat.completions.create({
+                    model: 'grok-4.20',
+                    messages: [{ role: 'user', content: batchPrompt }],
+                  })
+                  const updates: string[] = []
+                  try {
+                    let raw = batchResponse.choices[0]?.message?.content?.trim() || '[]'
+                    raw = raw
+                      .replace(/```json?/g, '')
+                      .replace(/```/g, '')
+                      .trim()
+                    const parsed: { id: string; type: string }[] = JSON.parse(raw)
+                    for (const item of parsed) {
+                      const letter = letters.find((l) => l.id === item.id)
+                      if (!letter) continue
+                      const letterType = item.type?.substring(0, 50) || 'Прочее'
+                      await db.letter.update({ where: { id: item.id }, data: { type: letterType } })
+                      updates.push(`№${letter.number}: ${letterType}`)
+                    }
+                  } catch {
+                    // Fallback: если JSON не распарсился, отмечаем всех как Прочее
+                    for (const letter of letters) {
+                      await db.letter.update({ where: { id: letter.id }, data: { type: 'Прочее' } })
+                      updates.push(`№${letter.number}: Прочее`)
+                    }
                   }
                   formattedMessages.push({
                     role: 'tool',
                     tool_call_id: toolCall.id,
                     name: toolCall.function.name,
-                    content: `Успешно категоризовано ${letters.length} писем:\n${updates.join('\n')}`,
+                    content: `Успешно категоризовано ${updates.length} писем:\n${updates.join('\n')}`,
                   } as any)
                 }
               } else if (toolCall.function.name === 'bulkUpdateLetters' && isSuperAdmin) {
@@ -574,6 +657,87 @@ ${contextStr}`
                       tool_call_id: toolCall.id,
                       name: toolCall.function.name,
                       content,
+                    } as any)
+                  }
+                }
+              } else if (toolCall.function.name === 'searchLetters') {
+                const args = JSON.parse(toolCall.function.arguments)
+                const where: any = { deletedAt: null }
+                if (args.number) where.number = { contains: args.number, mode: 'insensitive' }
+                if (args.org) where.org = { contains: args.org, mode: 'insensitive' }
+                if (args.status) where.status = args.status
+                if (args.dateFrom || args.dateTo) {
+                  where.date = {}
+                  if (args.dateFrom) where.date.gte = new Date(args.dateFrom)
+                  if (args.dateTo) where.date.lte = new Date(args.dateTo)
+                }
+                const found = await db.letter.findMany({
+                  where,
+                  take: Math.min(args.limit || 10, 20),
+                  select: {
+                    id: true,
+                    number: true,
+                    org: true,
+                    date: true,
+                    status: true,
+                    content: true,
+                    deadlineDate: true,
+                    owner: { select: { name: true } },
+                  },
+                  orderBy: { createdAt: 'desc' },
+                })
+                if (found.length === 0) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: 'По вашему запросу писем не найдено.',
+                  } as any)
+                } else {
+                  const list = found
+                    .map(
+                      (l) =>
+                        `№${l.number} | ${l.org} | ${new Date(l.date).toLocaleDateString('ru-RU')} | Статус: ${l.status} | Исполнитель: ${l.owner?.name || 'не назначен'} | Дедлайн: ${l.deadlineDate ? new Date(l.deadlineDate).toLocaleDateString('ru-RU') : 'не указан'}`
+                    )
+                    .join('\n')
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Найдено ${found.length} писем:\n${list}`,
+                  } as any)
+                }
+              } else if (toolCall.function.name === 'updateLetterDeadline') {
+                const args = JSON.parse(toolCall.function.arguments)
+                const letter = await db.letter.findFirst({
+                  where: { number: args.number, deletedAt: null },
+                })
+                if (!letter) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Письмо №${args.number} не найдено.`,
+                  } as any)
+                } else {
+                  const newDeadline = new Date(args.deadlineDate)
+                  if (isNaN(newDeadline.getTime())) {
+                    formattedMessages.push({
+                      role: 'tool',
+                      tool_call_id: toolCall.id,
+                      name: toolCall.function.name,
+                      content: `Некорректный формат даты: ${args.deadlineDate}. Используй YYYY-MM-DD.`,
+                    } as any)
+                  } else {
+                    await db.letter.update({
+                      where: { id: letter.id },
+                      data: { deadlineDate: newDeadline },
+                    })
+                    formattedMessages.push({
+                      role: 'tool',
+                      tool_call_id: toolCall.id,
+                      name: toolCall.function.name,
+                      content: `Дедлайн письма №${args.number} успешно обновлён на ${newDeadline.toLocaleDateString('ru-RU')}.`,
                     } as any)
                   }
                 }
