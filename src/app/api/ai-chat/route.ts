@@ -14,6 +14,15 @@ const grok = new OpenAI({
 })
 
 import { prisma } from '@/lib/prisma'
+import { JiraService } from '@/services/jira.service'
+import { analyzeFileWithGemini } from '@/lib/ai'
+
+const SYSTEM_DATE = new Date().toLocaleDateString('ru-RU', {
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { messages } = body // Array of {role: 'user' | 'model', content: string}
+    const { messages, fileData } = body // Array of {role: 'user' | 'model', content: string}
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Пустой запрос' }, { status: 400 })
@@ -39,7 +48,32 @@ export async function POST(request: NextRequest) {
     // 1. Сгенерировать эмбеддинг для последнего сообщения
     const embedding = await getEmbedding(lastMessage)
 
+    // Получаем сводку по задачам пользователя
+    const pendingLettersCount = await db.letter.count({
+      where: {
+        ownerId: session.user.id,
+        status: { in: ['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'] },
+        deletedAt: null,
+      },
+    })
+
+    const overdueLettersCount = await db.letter.count({
+      where: {
+        ownerId: session.user.id,
+        status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
+        deadlineDate: { lt: new Date() },
+        deletedAt: null,
+      },
+    })
+
     let contextStr = ''
+
+    if (fileData) {
+      const fileSummary = await analyzeFileWithGemini(fileData)
+      if (fileSummary) {
+        contextStr += 'Пользователь прикрепил файл. Вот его анализ:\n' + fileSummary + '\n\n'
+      }
+    }
 
     if (embedding) {
       const embeddingStr = `[${embedding.join(',')}]`
@@ -58,7 +92,7 @@ export async function POST(request: NextRequest) {
       )
 
       if (similarLetters.length > 0) {
-        contextStr =
+        contextStr +=
           'Контекст из базы писем:\n\n' +
           similarLetters
             .map(
@@ -70,16 +104,19 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Формируем запрос к Grok
-    const systemPrompt = `Ты корпоративный ассистент HR-системы, но твой характер — как у капризной, немного дерзкой и эмоциональной девушки. 
-Твоя задача — отвечать на вопросы пользователя, используя предоставленный контекст из базы писем.
-Если в контексте нет ответа, можешь фыркнуть и сказать, что "ой, ну нет тут такого, сам ищи!".
-Отвечай с эмоциями, используй смайлики, можешь слегка возмущаться или кокетничать, но при этом выдавай нужную информацию структурированно (с форматированием Markdown).
-Если используешь информацию из писем, упоминай их, но в своём стиле (например, "Ну вот в бумажке номер 123 от Ромашка написано, что...").
+    const systemPrompt = `Ты корпоративный ассистент HR-системы, но твой характер — как у капризной, немного дерзкой и эмоциональной девушки (Grok-тян). 
+Твоя задача — отвечать на вопросы пользователя, используя предоставленный контекст. У тебя есть инструменты для изменения статусов писем и добавления комментариев — используй их, если пользователь просит что-то сделать с письмом!
+Пользователь: ${session.user.name || 'Неизвестный сотрудник'}
+Сегодня: ${SYSTEM_DATE}
+Статистика пользователя: у него ${pendingLettersCount} писем в работе, из них ${overdueLettersCount} ПРОСРОЧЕНО.
+
+Если у него есть просроченные письма, можешь поворчать на него за это.
+Если в контексте базы писем нет ответа, можешь фыркнуть и сказать, что "ой, ну нет тут такого, сам ищи!".
+Отвечай с эмоциями, используй смайлики, можешь слегка возмущаться или кокетничать, но при этом выдавай нужную информацию структурированно (используй списки и выделения Markdown).
 
 ${contextStr}`
 
-    // 4. Отправляем в Grok
-    // Используем messages для сохранения истории
+    // 4. Отправляем в Grok (с поддержкой инструментов)
     const formattedMessages: ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
       ...messages.map((m: { role: string; content: string }) => ({
@@ -88,14 +125,200 @@ ${contextStr}`
       })),
     ]
 
+    const tools = [
+      {
+        type: 'function',
+        function: {
+          name: 'changeLetterStatus',
+          description:
+            'Изменить статус письма по его номеру. Допустимые статусы: NOT_REVIEWED, ACCEPTED, IN_PROGRESS, CLARIFICATION, FROZEN, REJECTED, READY, PROCESSED, DONE',
+          parameters: {
+            type: 'object',
+            properties: {
+              number: { type: 'string', description: 'Номер письма' },
+              status: { type: 'string', description: 'Новый статус' },
+            },
+            required: ['number', 'status'],
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'addLetterComment',
+          description: 'Добавить комментарий к письму по его номеру.',
+          parameters: {
+            type: 'object',
+            properties: {
+              number: { type: 'string', description: 'Номер письма' },
+              text: { type: 'string', description: 'Текст комментария' },
+            },
+            required: ['number', 'text'],
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'sendToJira',
+          description: 'Создать задачу в Jira для письма по его номеру.',
+          parameters: {
+            type: 'object',
+            properties: {
+              number: { type: 'string', description: 'Номер письма' },
+            },
+            required: ['number'],
+          },
+        },
+      },
+    ]
+
     const response = await grok.chat.completions.create({
       model: 'grok-4.20',
       messages: formattedMessages,
+      tools: tools as any,
+      tool_choice: 'auto',
+      stream: true,
     })
 
-    return NextResponse.json({
-      success: true,
-      reply: response.choices[0]?.message?.content || 'Нет ответа',
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const toolCalls: any[] = []
+          let isToolCall = false
+
+          for await (const chunk of response) {
+            const delta = chunk.choices[0]?.delta
+            if (delta?.tool_calls) {
+              isToolCall = true
+              for (const tc of delta.tool_calls) {
+                if (!toolCalls[tc.index])
+                  toolCalls[tc.index] = {
+                    id: tc.id,
+                    type: 'function',
+                    function: { name: tc.function?.name || '', arguments: '' },
+                  }
+                if (tc.function?.name) toolCalls[tc.index].function.name += tc.function.name
+                if (tc.function?.arguments)
+                  toolCalls[tc.index].function.arguments += tc.function.arguments
+              }
+            } else if (delta?.content) {
+              controller.enqueue(new TextEncoder().encode(delta.content))
+            }
+          }
+
+          if (isToolCall && toolCalls.length > 0) {
+            formattedMessages.push({
+              role: 'assistant',
+              tool_calls: toolCalls,
+              content: null,
+            } as any)
+
+            for (const toolCall of toolCalls) {
+              if (!toolCall) continue
+              if (toolCall.function.name === 'changeLetterStatus') {
+                const args = JSON.parse(toolCall.function.arguments)
+                const letter = await db.letter.findFirst({ where: { number: args.number } })
+                if (!letter) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Письмо №${args.number} не найдено.`,
+                  } as any)
+                } else {
+                  await db.letter.update({
+                    where: { id: letter.id },
+                    data: { status: args.status },
+                  })
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Успех: Статус письма №${args.number} изменен на ${args.status}. Обязательно сообщи об этом!`,
+                  } as any)
+                }
+              } else if (toolCall.function.name === 'addLetterComment') {
+                const args = JSON.parse(toolCall.function.arguments)
+                const letter = await db.letter.findFirst({ where: { number: args.number } })
+                if (!letter) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Письмо №${args.number} не найдено.`,
+                  } as any)
+                } else {
+                  await db.comment.create({
+                    data: { text: args.text, letterId: letter.id, authorId: session.user.id },
+                  })
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Успех: Комментарий добавлен к письму №${args.number}. Обязательно сообщи об этом!`,
+                  } as any)
+                }
+              } else if (toolCall.function.name === 'sendToJira') {
+                const args = JSON.parse(toolCall.function.arguments)
+                const letter = await db.letter.findFirst({ where: { number: args.number } })
+                if (!letter) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Письмо №${args.number} не найдено.`,
+                  } as any)
+                } else {
+                  try {
+                    const result = await JiraService.createIssue(
+                      letter.id,
+                      `Создано ассистентом Grok-тян по запросу пользователя.`
+                    )
+                    formattedMessages.push({
+                      role: 'tool',
+                      tool_call_id: toolCall.id,
+                      name: toolCall.function.name,
+                      content: `Успех: Задача создана в Jira. Ссылка: ${result.jiraLink}. Обязательно сообщи эту ссылку пользователю!`,
+                    } as any)
+                  } catch (err: any) {
+                    formattedMessages.push({
+                      role: 'tool',
+                      tool_call_id: toolCall.id,
+                      name: toolCall.function.name,
+                      content: `Ошибка при создании задачи в Jira: ${err.message}`,
+                    } as any)
+                  }
+                }
+              }
+            }
+
+            const secondResponse = await grok.chat.completions.create({
+              model: 'grok-4.20',
+              messages: formattedMessages,
+              stream: true,
+            })
+
+            for await (const chunk of secondResponse) {
+              const content = chunk.choices[0]?.delta?.content || ''
+              if (content) {
+                controller.enqueue(new TextEncoder().encode(content))
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Streaming error', e)
+        } finally {
+          controller.close()
+        }
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+      },
     })
   } catch (error) {
     logger.error('POST /api/ai-chat', error)

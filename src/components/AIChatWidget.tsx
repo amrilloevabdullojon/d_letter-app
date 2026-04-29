@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { Bot, X, Send, Loader2, Sparkles, MessageSquareText, Search } from 'lucide-react'
+import { Bot, X, Send, Loader2, Sparkles, MessageSquareText, Search, Paperclip } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { hapticLight, hapticMedium } from '@/lib/haptic'
+import { getPublicAiSettings } from '@/app/actions/settings'
 
 type Message = {
   role: 'user' | 'model'
@@ -16,6 +17,7 @@ type Message = {
 export function AIChatWidget() {
   const { data: session } = useSession()
   const [mounted, setMounted] = useState(false)
+  const [isEnabled, setIsEnabled] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -26,6 +28,15 @@ export function AIChatWidget() {
   ])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<{ name: string; dataUrl: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    getPublicAiSettings().then((res) => {
+      setIsEnabled(res.aiEnabled && res.aiChatEnabled)
+      setMounted(true)
+    })
+  }, [])
 
   // Ref for the scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -71,12 +82,35 @@ export function AIChatWidget() {
 
   if (!session) return null // Hide if not authenticated
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setSelectedFile({
+        name: file.name,
+        dataUrl: event.target?.result as string,
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return
+    if ((!input.trim() && !selectedFile) || isLoading) return
     hapticLight()
 
-    const userMessage = input.trim()
+    let userMessage = input.trim()
+    if (selectedFile) {
+      userMessage = userMessage
+        ? `${userMessage}\n\n[Прикреплен файл: ${selectedFile.name}]`
+        : `[Прикреплен файл: ${selectedFile.name}]`
+    }
+
     setInput('')
+    const filePayload = selectedFile?.dataUrl
+    setSelectedFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }])
     setIsLoading(true)
 
@@ -86,20 +120,42 @@ export function AIChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, { role: 'user', content: userMessage }],
+          fileData: filePayload,
         }),
       })
 
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setMessages((prev) => [...prev, { role: 'model', content: data.reply }])
-      } else {
+      if (!res.ok) {
+        let errorMsg = 'Неизвестная ошибка'
+        try {
+          const data = await res.json()
+          errorMsg = data.error || errorMsg
+        } catch (e) {}
         setMessages((prev) => [
           ...prev,
-          {
-            role: 'model',
-            content: 'К сожалению, произошла ошибка: ' + (data.error || 'Неизвестная ошибка'),
-          },
+          { role: 'model', content: 'К сожалению, произошла ошибка: ' + errorMsg },
         ])
+        return
+      }
+
+      setMessages((prev) => [...prev, { role: 'model', content: '' }])
+
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (reader) {
+        let done = false
+        while (!done) {
+          const { value, done: doneReading } = await reader.read()
+          done = doneReading
+          if (value) {
+            const chunk = decoder.decode(value, { stream: true })
+            setMessages((prev) => {
+              const newMsgs = [...prev]
+              newMsgs[newMsgs.length - 1].content += chunk
+              return newMsgs
+            })
+          }
+        }
       }
       hapticMedium()
     } catch (error) {
@@ -234,25 +290,78 @@ export function AIChatWidget() {
               )}
             </div>
 
+            {/* Quick Actions */}
+            <div className="scrollbar-none flex gap-2 overflow-x-auto border-t border-white/5 bg-slate-900/80 px-4 py-2">
+              <button
+                onClick={() => setInput('Есть ли у меня просроченные задачи?')}
+                className="whitespace-nowrap rounded-full border border-teal-500/20 bg-slate-800 px-3 py-1.5 text-xs text-teal-400 transition-colors hover:bg-slate-700"
+              >
+                🔥 Мои просрочки
+              </button>
+              <button
+                onClick={() => setInput('Покажи последние письма')}
+                className="whitespace-nowrap rounded-full border border-teal-500/20 bg-slate-800 px-3 py-1.5 text-xs text-teal-400 transition-colors hover:bg-slate-700"
+              >
+                📄 Последние письма
+              </button>
+              <button
+                onClick={() => setInput('Что мне сейчас делать?')}
+                className="whitespace-nowrap rounded-full border border-teal-500/20 bg-slate-800 px-3 py-1.5 text-xs text-teal-400 transition-colors hover:bg-slate-700"
+              >
+                🎯 Что делать?
+              </button>
+            </div>
+
             {/* Input Area */}
-            <div className="border-t border-white/5 bg-slate-900/50 p-3 backdrop-blur-md">
-              <div className="relative flex items-center">
+            <div className="flex flex-col gap-2 border-t border-white/5 bg-slate-900/50 p-3 backdrop-blur-md">
+              {selectedFile && (
+                <div className="flex items-center justify-between rounded-lg border border-teal-500/20 bg-teal-500/10 px-3 py-2">
+                  <span className="max-w-[200px] truncate text-xs text-teal-400">
+                    📎 {selectedFile.name}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedFile(null)
+                      if (fileInputRef.current) fileInputRef.current.value = ''
+                    }}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              <div className="relative flex items-center gap-2">
                 <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Спросите меня о письмах..."
-                  disabled={isLoading}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-800/50 py-3.5 pl-4 pr-12 text-sm text-white placeholder-slate-400 shadow-inner transition-all focus:border-teal-500/50 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500/50 disabled:opacity-50"
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*,application/pdf"
+                  className="hidden"
                 />
                 <button
-                  onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
-                  className="absolute right-2 flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500 text-white shadow-md transition-all hover:bg-teal-400 hover:shadow-teal-500/25 disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-800 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
                 >
-                  <Send className="h-4 w-4 translate-x-px translate-y-px" />
+                  <Paperclip className="h-5 w-5" />
                 </button>
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Спросите меня о письмах..."
+                    disabled={isLoading}
+                    className="w-full rounded-xl border border-white/10 bg-slate-800/50 py-3 pl-4 pr-12 text-sm text-white placeholder-slate-400 shadow-inner transition-all focus:border-teal-500/50 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500/50 disabled:opacity-50"
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={(!input.trim() && !selectedFile) || isLoading}
+                    className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-white shadow-md transition-all hover:bg-teal-400 hover:shadow-teal-500/25 disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none"
+                  >
+                    <Send className="h-4 w-4 translate-x-[1px]" />
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>

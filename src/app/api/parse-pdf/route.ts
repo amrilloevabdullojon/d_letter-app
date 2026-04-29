@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { calculateDeadline } from '@/lib/parsePdfLetter'
-import { extractLetterDataWithAI } from '@/lib/ai'
+import { extractLetterDataWithAI, extractLetterDataFromPdf } from '@/lib/ai'
+import { extractTextWithOCR } from '@/lib/ocr'
 import { withTimeout } from '@/lib/ai-utils'
 import { csrfGuard } from '@/lib/security'
 import { logger } from '@/lib/logger.server'
@@ -133,6 +134,16 @@ export async function POST(request: NextRequest) {
         const pdfParse = require('pdf-parse')
         const data = await pdfParse(buffer)
         documentText = data.text
+
+        // Если текста почти нет (скорее всего это картинка/скан), пробуем OCR
+        if (isParsingEnabled && (!documentText || documentText.trim().length < 50)) {
+          logger.info('Parse document', 'PDF has no text layer, falling back to OCR API')
+          const base64 = buffer.toString('base64')
+          const ocrText = await extractTextWithOCR(base64)
+          if (ocrText) {
+            documentText = ocrText
+          }
+        }
       } catch (error) {
         logger.error('Parse document', 'Failed to parse PDF text locally', { error })
       }
@@ -142,12 +153,21 @@ export async function POST(request: NextRequest) {
 
     extractedText = Boolean(documentText && documentText.trim())
 
-    if (isParsingEnabled && documentText && documentText.trim()) {
-      aiData = await withTimeout(
-        extractLetterDataWithAI(documentText),
-        45000,
-        'Document text parsing timeout after 45 seconds'
-      )
+    if (isParsingEnabled) {
+      if (documentKind === 'pdf') {
+        const base64 = buffer.toString('base64')
+        aiData = await withTimeout(
+          extractLetterDataFromPdf(base64),
+          60000,
+          'Gemini Vision PDF parsing timeout after 60 seconds'
+        )
+      } else if (documentText && documentText.trim()) {
+        aiData = await withTimeout(
+          extractLetterDataWithAI(documentText),
+          45000,
+          'Document text parsing timeout after 45 seconds'
+        )
+      }
     }
 
     logger.debug('Parse document', 'AI parsing completed', {

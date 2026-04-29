@@ -82,7 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <AuthGuard>
                 <PageTransition>{children}</PageTransition>
                 <ClientEffects />
-                {showChat && <AIChatWidget />}
+                <AIChatWidget />
               </AuthGuard>
             </ThemeProvider>
           </PWAProvider>

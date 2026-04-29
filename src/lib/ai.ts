@@ -342,3 +342,94 @@ export async function generateJiraDescription(processingText: string): Promise<s
     return null
   }
 }
+
+export async function extractLetterDataFromPdf(
+  pdfBase64: string
+): Promise<ExtractedLetterData | null> {
+  if (!process.env.GEMINI_API_KEY) {
+    logger.error('AI', new Error('GEMINI_API_KEY not configured'), {
+      action: 'extractLetterDataFromPdf',
+    })
+    return null
+  }
+
+  try {
+    const response = await withRetry('extractLetterDataFromPdf', () =>
+      genai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  mimeType: 'application/pdf',
+                  data: pdfBase64,
+                },
+              },
+              {
+                text: EXTRACTION_PROMPT,
+              },
+            ],
+          },
+        ],
+      })
+    )
+
+    const content = response.text
+    if (!content) return null
+
+    return parseExtractedLetterData(content)
+  } catch (error) {
+    logger.error('AI', error, { action: 'extractLetterDataFromPdf' })
+    return null
+  }
+}
+
+/**
+ * Анализирует файл (картинку или PDF) через Gemini 2.5 Flash и возвращает текстовое саммари
+ */
+export async function analyzeFileWithGemini(base64DataUrl: string): Promise<string | null> {
+  if (!process.env.GEMINI_API_KEY) {
+    logger.error('AI', new Error('GEMINI_API_KEY not configured'), {
+      action: 'analyzeFileWithGemini',
+    })
+    return null
+  }
+
+  // base64DataUrl looks like: data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...
+  const match = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/)
+  if (!match) return null
+
+  const mimeType = match[1]
+  const base64Data = match[2]
+
+  try {
+    const response = await withRetry('analyzeFileWithGemini', () =>
+      genai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data,
+                },
+              },
+              {
+                text: 'Пожалуйста, подробно опиши этот файл. Если это документ, сделай краткую выжимку его содержания. Если изображение, опиши, что на нем находится. Отвечай на русском языке.',
+              },
+            ],
+          },
+        ],
+      })
+    )
+
+    return response.text || null
+  } catch (error) {
+    logger.error('AI', error, { action: 'analyzeFileWithGemini' })
+    return null
+  }
+}
