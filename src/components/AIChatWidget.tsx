@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { Bot, X, Send, Loader2, Sparkles, MessageSquareText, Search } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -70,11 +69,7 @@ export function AIChatWidget() {
     }
   }, [messages, isLoading, isOpen])
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted || !session) return null // Hide if not authenticated or not mounted for Portal
+  if (!session) return null // Hide if not authenticated
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
@@ -124,7 +119,7 @@ export function AIChatWidget() {
     }
   }
 
-  const widgetContent = (
+  return (
     <>
       <AnimatePresence>
         {!isOpen && (
@@ -138,7 +133,14 @@ export function AIChatWidget() {
               hapticMedium()
               setIsOpen(true)
             }}
-            className="fixed bottom-24 right-4 z-[99999] flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-teal-600 to-emerald-400 text-white shadow-xl shadow-teal-500/30 ring-4 ring-slate-900 transition-all hover:shadow-teal-500/50 hover:ring-slate-800 md:bottom-6 md:right-6"
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-teal-600 to-emerald-400 text-white shadow-xl shadow-teal-500/30 ring-4 ring-slate-900 transition-all hover:shadow-teal-500/50 hover:ring-slate-800"
+            style={{
+              position: 'fixed',
+              bottom: '24px',
+              right: '24px',
+              zIndex: 999999,
+              transformOrigin: 'bottom right',
+            }}
           >
             <div className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-white/20 bg-slate-900">
               <Image src="/grok_avatar.png" alt="Grok Chan" fill className="object-cover" />
@@ -151,11 +153,20 @@ export function AIChatWidget() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
+            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+            exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-24 right-4 z-[9999] flex h-[500px] w-[calc(100vw-32px)] flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 shadow-2xl shadow-black/50 backdrop-blur-xl md:bottom-6 md:right-6 md:h-[550px] md:w-[380px]"
+            className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              zIndex: 999999,
+              width: 'min(400px, calc(100vw - 32px))',
+              height: 'min(600px, calc(100vh - 48px))',
+              transformOrigin: 'center',
+            }}
           >
             {/* Header */}
             <div className="relative flex items-center justify-between border-b border-white/5 bg-gradient-to-r from-teal-500/10 to-emerald-500/5 p-4">
@@ -249,6 +260,4 @@ export function AIChatWidget() {
       </AnimatePresence>
     </>
   )
-
-  return createPortal(widgetContent, document.body)
 }
