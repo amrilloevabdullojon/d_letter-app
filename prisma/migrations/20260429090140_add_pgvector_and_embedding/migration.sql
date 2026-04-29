@@ -1,0 +1,1 @@
+CREATE EXTENSION IF NOT EXISTS vector; ALTER TABLE "Letter" ADD COLUMN "embedding" vector(768);

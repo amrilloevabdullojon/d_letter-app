@@ -505,6 +505,26 @@ ${letter.org}
       )
     }
     await invalidateLettersCache()
+
+    // Background generation of embeddings
+    setTimeout(async () => {
+      try {
+        const { getEmbedding } = await import('@/lib/embeddings')
+        const textToEmbed = `Письмо №${letter.number}. Организация: ${letter.org}. Содержание: ${letter.content || ''}`
+        const embedding = await getEmbedding(textToEmbed)
+        if (embedding) {
+          const embeddingStr = `[${embedding.join(',')}]`
+          await prisma.$executeRawUnsafe(
+            `UPDATE "Letter" SET embedding = $1::vector WHERE id = $2`,
+            embeddingStr,
+            letter.id
+          )
+        }
+      } catch (e) {
+        logger.error('Background embedding init failed', e)
+      }
+    }, 0)
+
     return NextResponse.json({ success: true, letter }, { status: 201 })
   } catch (error) {
     logger.error('POST /api/letters', error)

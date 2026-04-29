@@ -683,6 +683,30 @@ ${letter.org}
       }
     }
 
+    // Обновляем эмбеддинги в фоне при изменении важных полей
+    if (['content', 'org', 'number'].includes(field)) {
+      setTimeout(async () => {
+        try {
+          const freshLetter = await prisma.letter.findUnique({ where: { id } })
+          if (freshLetter) {
+            const { getEmbedding } = await import('@/lib/embeddings')
+            const textToEmbed = `Письмо №${freshLetter.number}. Организация: ${freshLetter.org}. Содержание: ${freshLetter.content || ''}`
+            const embedding = await getEmbedding(textToEmbed)
+            if (embedding) {
+              const embeddingStr = `[${embedding.join(',')}]`
+              await prisma.$executeRawUnsafe(
+                `UPDATE "Letter" SET embedding = $1::vector WHERE id = $2`,
+                embeddingStr,
+                id
+              )
+            }
+          }
+        } catch (e) {
+          logger.error('Background embedding update failed', e)
+        }
+      }, 0)
+    }
+
     await invalidateLettersCache()
     return NextResponse.json({ success: true, letter: updatedLetter })
   } catch (error) {

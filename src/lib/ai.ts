@@ -38,6 +38,8 @@ export interface ExtractedLetterData {
   district: string | null
   contentSummary: string | null
   contentRussian: string | null
+  type: string | null
+  priority: number | null
 }
 
 const nullableExtractedString = z
@@ -59,6 +61,8 @@ const extractedLetterDataSchema = z.object({
   district: nullableExtractedString,
   contentSummary: nullableExtractedString,
   contentRussian: nullableExtractedString,
+  type: nullableExtractedString,
+  priority: z.number().nullable().optional(),
 })
 
 const EXTRACTION_RESPONSE_SCHEMA = {
@@ -71,6 +75,8 @@ const EXTRACTION_RESPONSE_SCHEMA = {
     district: { type: Type.STRING, nullable: true },
     contentSummary: { type: Type.STRING, nullable: true },
     contentRussian: { type: Type.STRING, nullable: true },
+    type: { type: Type.STRING, nullable: true },
+    priority: { type: Type.INTEGER, nullable: true },
   },
   required: [
     'number',
@@ -80,6 +86,8 @@ const EXTRACTION_RESPONSE_SCHEMA = {
     'district',
     'contentSummary',
     'contentRussian',
+    'type',
+    'priority',
   ],
 } as const
 
@@ -94,7 +102,9 @@ Format:
   "region": "region/oblast, translate to Russian if it is not already",
   "district": "district, translate to Russian if it is not already",
   "contentSummary": "short summary in Russian (1-2 sentences) or null",
-  "contentRussian": "full translation of the letter text into Russian (if possible) or null"
+  "contentRussian": "full translation of the letter text into Russian (if possible) or null",
+  "type": "type of letter (e.g. 'Запрос', 'Жалоба', 'Уведомление', 'Приглашение', 'Согласование', 'Поручение' or other short noun phrase) in Russian, or null",
+  "priority": "integer from 1 to 5 (where 1 is lowest, 5 is highest urgency/importance) based on the letter's tone and deadlines, or null"
 }
 
 Rules:
@@ -132,7 +142,10 @@ function parseExtractedLetterData(content: string): ExtractedLetterData | null {
       return null
     }
 
-    return result.data
+    return {
+      ...result.data,
+      priority: result.data.priority ?? null,
+    }
   } catch (error) {
     logger.warn('AI', 'Failed to parse extraction payload', {
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -307,6 +320,52 @@ export async function summarizeLetter(text: string): Promise<string | null> {
     return response.text || null
   } catch (error) {
     logger.error('AI', error, { action: 'summarizeLetter' })
+    return null
+  }
+}
+
+/**
+ * Генерирует официальный ответ (обработку) на основе содержания письма
+ */
+export async function generateProcessingText(content: string): Promise<string | null> {
+  if (!process.env.GEMINI_API_KEY) return null
+
+  try {
+    const response = await withRetry('generateProcessingText', () =>
+      genai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: `Напиши краткий официальный черновик ответа или описание принятых мер по следующему письму (на русском языке, 2-4 предложения). Не пиши приветствия и прощания, только суть решения/резолюции:\n\n${content}`,
+      })
+    )
+    return response.text || null
+  } catch (error) {
+    logger.error('AI', error, { action: 'generateProcessingText' })
+    return null
+  }
+}
+
+/**
+ * Генерирует описание задачи для Jira на основе текста обработки
+ */
+export async function generateJiraDescription(processingText: string): Promise<string | null> {
+  if (!process.env.GEMINI_API_KEY) return null
+
+  try {
+    const response = await withRetry('generateJiraDescription', () =>
+      genai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: `Перепиши этот текст в формате постановки задачи для команды (например, в Jira). Используй markdown:
+- Добавь секцию **Суть задачи**
+- Добавь список **Шаги / Что сделать**
+- Добавь **Ожидаемый результат**
+Ничего не придумывай, используй только тот контекст, что дан в тексте ниже.
+Текст:
+${processingText}`,
+      })
+    )
+    return response.text || null
+  } catch (error) {
+    logger.error('AI', error, { action: 'generateJiraDescription' })
     return null
   }
 }

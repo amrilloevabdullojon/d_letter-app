@@ -1,5 +1,6 @@
 import { Prisma, LetterStatus } from '@prisma/client'
 import { prisma } from './prisma'
+import { getEmbedding } from '@/lib/embeddings'
 
 /**
  * Параметры поиска писем
@@ -63,9 +64,7 @@ export type LetterSearchResult = {
 /**
  * Выполняет полнотекстовый поиск писем
  */
-export async function searchLetters(
-  params: LetterSearchParams
-): Promise<LetterSearchResult> {
+export async function searchLetters(params: LetterSearchParams): Promise<LetterSearchResult> {
   const {
     query,
     status,
@@ -151,7 +150,9 @@ export async function searchLetters(
   // Просроченные письма
   if (overdue) {
     where.deadlineDate = {
-      ...(typeof where.deadlineDate === 'object' && where.deadlineDate !== null ? where.deadlineDate : {}),
+      ...(typeof where.deadlineDate === 'object' && where.deadlineDate !== null
+        ? where.deadlineDate
+        : {}),
       lt: new Date(),
     }
     where.status = { not: 'DONE' }
@@ -243,12 +244,14 @@ export async function searchLetters(
     const sqlWhere: string[] = ['l."deletedAt" IS NULL']
 
     // FTS условие - используем Prisma.sql для безопасности
-    sqlWhere.push(Prisma.sql`l.search_vector @@ plainto_tsquery('russian', ${searchTerm})` as unknown as string)
+    sqlWhere.push(
+      Prisma.sql`l.search_vector @@ plainto_tsquery('russian', ${searchTerm})` as unknown as string
+    )
 
     // Добавляем основные фильтры в SQL
     if (status) {
       if (Array.isArray(status)) {
-        const statusList = status.map(s => `'${s}'`).join(',')
+        const statusList = status.map((s) => `'${s}'`).join(',')
         sqlWhere.push(`l.status IN (${statusList})`)
       } else {
         sqlWhere.push(`l.status = '${status}'`)
@@ -300,10 +303,20 @@ export async function searchLetters(
 
     const whereClause = sqlWhere.join(' AND ')
 
+    // Получаем эмбеддинг для семантического поиска
+    const queryEmbedding = await getEmbedding(searchTerm)
+
     // Определяем сортировку
     let orderByClause = 'ORDER BY '
     if (sortBy === 'relevance') {
-      orderByClause += `ts_rank(l.search_vector, plainto_tsquery('russian', '${searchTerm}')) DESC, l."createdAt" DESC`
+      const tsRankExpr = `ts_rank(l.search_vector, plainto_tsquery('russian', '${searchTerm.replace(/'/g, "''")}'))`
+      if (queryEmbedding) {
+        const embStr = `[${queryEmbedding.join(',')}]`
+        // Гибридный поиск: FTS rank + Semantic Similarity
+        orderByClause += `(${tsRankExpr} + COALESCE(1 - (l.embedding <=> '${embStr}'::vector), 0)) DESC, l."createdAt" DESC`
+      } else {
+        orderByClause += `${tsRankExpr} DESC, l."createdAt" DESC`
+      }
     } else {
       orderByClause += `l."${sortBy}" ${sortOrder.toUpperCase()}`
     }
@@ -327,7 +340,7 @@ export async function searchLetters(
     if (letterIds.length > 0) {
       letters = await prisma.letter.findMany({
         where: {
-          id: { in: letterIds.map(l => l.id) },
+          id: { in: letterIds.map((l) => l.id) },
         },
         include: {
           owner: {
@@ -468,7 +481,7 @@ export async function quickSearch(query: string, limit = 10) {
   // Получаем полные данные
   const letters = await prisma.letter.findMany({
     where: {
-      id: { in: letterIds.map(l => l.id) },
+      id: { in: letterIds.map((l) => l.id) },
     },
     select: {
       id: true,

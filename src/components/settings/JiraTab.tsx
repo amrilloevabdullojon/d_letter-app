@@ -2,12 +2,17 @@ import { useState, useEffect } from 'react'
 import { useToast } from '@/components/Toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Loader2, Link as LinkIcon, Database } from 'lucide-react'
+import { Loader2, Link as LinkIcon, Database, Sparkles, CheckCircle2 } from 'lucide-react'
 
 export function JiraTab() {
   const [settings, setSettings] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillResult, setBackfillResult] = useState<{
+    processed: number
+    failed: number
+  } | null>(null)
   const toast = useToast()
 
   useEffect(() => {
@@ -51,6 +56,25 @@ export function JiraTab() {
       toast.error('Ошибка соединения')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleBackfill = async () => {
+    setBackfilling(true)
+    setBackfillResult(null)
+    try {
+      const res = await fetch('/api/letters/backfill-embeddings', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setBackfillResult({ processed: data.processed, failed: data.failed ?? 0 })
+        toast.success(`Готово! Обработано ${data.processed} писем`)
+      } else {
+        toast.error('Ошибка бэкфилла: ' + (data.error || 'Неизвестная ошибка'))
+      }
+    } catch (err) {
+      toast.error('Ошибка соединения')
+    } finally {
+      setBackfilling(false)
     }
   }
 
@@ -137,6 +161,53 @@ export function JiraTab() {
           </Button>
         </div>
       </form>
+
+      {/* AI Embeddings Section */}
+      <div className="mt-8 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-teal-400" />
+          <h3 className="font-semibold text-white">AI Семантический поиск</h3>
+        </div>
+        <p className="mb-4 text-sm text-slate-400">
+          Для работы поиска дубликатов и RAG-чата необходимо сгенерировать векторные представления
+          (эмбеддинги) для всех существующих писем. Это одноразовая операция — новые письма
+          обрабатываются автоматически.
+        </p>
+
+        {backfillResult && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg bg-teal-500/10 px-4 py-3 text-sm text-teal-300">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>
+              Готово: обработано <strong>{backfillResult.processed}</strong> писем
+              {backfillResult.failed > 0 && (
+                <span className="text-amber-400"> · {backfillResult.failed} с ошибкой</span>
+              )}
+            </span>
+          </div>
+        )}
+
+        <Button
+          onClick={handleBackfill}
+          disabled={backfilling}
+          className="bg-teal-600 hover:bg-teal-500 disabled:bg-slate-700"
+        >
+          {backfilling ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Генерация эмбеддингов...
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Запустить бэкфилл писем
+            </>
+          )}
+        </Button>
+        <p className="mt-2 text-xs text-slate-500">
+          Процесс может занять несколько минут в зависимости от количества писем. Не закрывайте
+          страницу во время работы.
+        </p>
+      </div>
     </div>
   )
 }

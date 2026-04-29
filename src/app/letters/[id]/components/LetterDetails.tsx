@@ -15,6 +15,8 @@ import {
   Plus,
   ClipboardCheck,
   Database,
+  Sparkles,
+  Loader2,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { EditableField } from '@/components/EditableField'
@@ -58,6 +60,7 @@ export const LetterDetails = memo(function LetterDetails({
   const [customType, setCustomType] = useState('')
   const toast = useToast()
   const [sendingToJira, setSendingToJira] = useState(false)
+  const [generatingProcessing, setGeneratingProcessing] = useState(false)
 
   const handleSendToJiraModeration = async () => {
     if (!letter.processing) {
@@ -81,6 +84,36 @@ export const LetterDetails = memo(function LetterDetails({
       toast.error('Ошибка соединения')
     } finally {
       setSendingToJira(false)
+    }
+  }
+
+  const handleGenerateProcessing = async () => {
+    if (!letter.content?.trim()) {
+      toast.error('Для генерации необходимо заполнить содержание письма')
+      return
+    }
+
+    setGeneratingProcessing(true)
+    const toastId = toast.loading('Генерация ответа AI...')
+    try {
+      const res = await fetch(`/api/letters/${letter.id}/ai-processing`, {
+        method: 'POST',
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success('Текст успешно сгенерирован', { id: toastId })
+        const newVal = letter.processing
+          ? `${letter.processing}\n\n${data.processing}`
+          : data.processing
+        onUpdate('processing', newVal)
+      } else {
+        toast.error(data.error || 'Ошибка при генерации', { id: toastId })
+      }
+    } catch (err) {
+      toast.error('Ошибка соединения', { id: toastId })
+    } finally {
+      setGeneratingProcessing(false)
     }
   }
 
@@ -195,6 +228,19 @@ export const LetterDetails = memo(function LetterDetails({
               title="Отправить на проверку в Jira"
             >
               <Database className="h-3.5 w-3.5" />В Jira
+            </button>
+            <button
+              onClick={handleGenerateProcessing}
+              disabled={generatingProcessing || !letter.content?.trim()}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-400 transition-colors hover:bg-purple-500/20 disabled:opacity-50"
+              title="Сгенерировать черновик ответа с помощью AI"
+            >
+              {generatingProcessing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              AI
             </button>
             <LetterTemplateSelector
               letter={letter}

@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 // ===== АВТОРИЗАЦИЯ (NextAuth) =====
@@ -47,91 +49,91 @@ model VerificationToken {
 // ===== ПОЛЬЗОВАТЕЛИ =====
 
 model User {
-  id             String    @id @default(cuid())
-  name           String?
-  email          String?   @unique
-  emailVerified  DateTime?
-  image          String?
-  role           Role      @default(EMPLOYEE)
-  canLogin       Boolean   @default(false)
-  telegramChatId String?
-  notifyEmail    Boolean   @default(true)
-  notifyTelegram Boolean   @default(false)
-  notifySms      Boolean   @default(false)
-  notifyInApp    Boolean   @default(true)
+  id              String          @id @default(cuid())
+  name            String?
+  email           String?         @unique
+  emailVerified   DateTime?
+  image           String?
+  role            Role            @default(EMPLOYEE)
+  canLogin        Boolean         @default(false)
+  telegramChatId  String?
+  notifyEmail     Boolean         @default(true)
+  notifyTelegram  Boolean         @default(false)
+  notifySms       Boolean         @default(false)
+  notifyInApp     Boolean         @default(true)
   quietHoursStart String?
   quietHoursEnd   String?
   digestFrequency DigestFrequency @default(NONE)
-  tokenVersion   Int       @default(0) // Инкрементируется для инвалидации JWT токенов
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  lastLoginAt    DateTime?
+  tokenVersion    Int             @default(0) // Инкрементируется для инвалидации JWT токенов
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  lastLoginAt     DateTime?
 
-  accounts        Account[]
-  sessions        Session[]
-  letters         Letter[]        @relation("OwnerLetters")
-  comments        Comment[]
-  commentEdits    CommentEdit[]
-  watchers        Watcher[]
-  favorites       Favorite[]
-  history         History[]
-  answerTemplates AnswerTemplate[]
-  letterTemplates LetterTemplate[] @relation("LetterTemplateCreator")
-  notifications   Notification[]
-  notificationsCreated Notification[] @relation("NotificationActor")
-  notificationPreference NotificationPreference?
+  accounts                  Account[]
+  sessions                  Session[]
+  letters                   Letter[]                   @relation("OwnerLetters")
+  comments                  Comment[]
+  commentEdits              CommentEdit[]
+  watchers                  Watcher[]
+  favorites                 Favorite[]
+  history                   History[]
+  answerTemplates           AnswerTemplate[]
+  letterTemplates           LetterTemplate[]           @relation("LetterTemplateCreator")
+  notifications             Notification[]
+  notificationsCreated      Notification[]             @relation("NotificationActor")
+  notificationPreference    NotificationPreference?
   notificationSubscriptions NotificationSubscription[]
-  notificationDeliveries NotificationDelivery[]
-  profile         UserProfile?
-  auditsTarget    UserAudit[]     @relation("UserAuditTarget")
-  auditsActor     UserAudit[]     @relation("UserAuditActor")
-  loginAudits     LoginAudit[]
-  approvalsTarget AdminApproval[] @relation("AdminApprovalTarget")
-  approvalsRequested AdminApproval[] @relation("AdminApprovalRequestedBy")
-  approvalsApproved AdminApproval[] @relation("AdminApprovalApprovedBy")
-  requestsAssigned   Request[]        @relation("RequestAssignee")
-  requestComments    RequestComment[] @relation("RequestCommentAuthor")
-  requestHistory     RequestHistory[] @relation("RequestHistoryActor")
-  pushSubscriptions  PushSubscription[]
-  requestTemplates   RequestResponseTemplate[]
-  preferences        UserPreferences?
-  settingsHistory    SettingsHistory[]
-  settingsHistoryChanged SettingsHistory[] @relation("SettingsHistoryChangedBy")
-  uploadedFiles      File[]            @relation("FileUploader")
+  notificationDeliveries    NotificationDelivery[]
+  profile                   UserProfile?
+  auditsTarget              UserAudit[]                @relation("UserAuditTarget")
+  auditsActor               UserAudit[]                @relation("UserAuditActor")
+  loginAudits               LoginAudit[]
+  approvalsTarget           AdminApproval[]            @relation("AdminApprovalTarget")
+  approvalsRequested        AdminApproval[]            @relation("AdminApprovalRequestedBy")
+  approvalsApproved         AdminApproval[]            @relation("AdminApprovalApprovedBy")
+  requestsAssigned          Request[]                  @relation("RequestAssignee")
+  requestComments           RequestComment[]           @relation("RequestCommentAuthor")
+  requestHistory            RequestHistory[]           @relation("RequestHistoryActor")
+  pushSubscriptions         PushSubscription[]
+  requestTemplates          RequestResponseTemplate[]
+  preferences               UserPreferences?
+  settingsHistory           SettingsHistory[]
+  settingsHistoryChanged    SettingsHistory[]          @relation("SettingsHistoryChangedBy")
+  uploadedFiles             File[]                     @relation("FileUploader")
 
-  @@index([role])              // Индекс для фильтрации по роли
-  @@index([canLogin])          // Индекс для фильтрации по доступу
-  @@index([createdAt])         // Индекс для сортировки по дате создания
+  @@index([role]) // Индекс для фильтрации по роли
+  @@index([canLogin]) // Индекс для фильтрации по доступу
+  @@index([createdAt]) // Индекс для сортировки по дате создания
 }
 
 model UserProfile {
-  id              String             @id @default(cuid())
-  userId          String             @unique
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio             String?            @db.Text
-  phone           String?
-  position        String?
-  department      String?
-  location        String?
-  timezone        String?
-  skills          String[]           @default([])
-  avatarUrl       String?
-  coverUrl        String?
-  publicEmail     Boolean            @default(false)
-  publicPhone     Boolean            @default(false)
-  publicBio       Boolean            @default(true)
-  publicPosition  Boolean            @default(true)
-  publicDepartment Boolean           @default(true)
-  publicLocation  Boolean            @default(true)
-  publicTimezone  Boolean            @default(true)
-  publicSkills    Boolean            @default(true)
-  publicLastLogin Boolean            @default(false)
-  publicProfileEnabled Boolean       @default(false)
-  publicProfileToken   String?       @unique
-  publicProfileTokenEncrypted String? @db.Text
-  visibility      ProfileVisibility  @default(INTERNAL)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id                          String            @id @default(cuid())
+  userId                      String            @unique
+  user                        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                         String?           @db.Text
+  phone                       String?
+  position                    String?
+  department                  String?
+  location                    String?
+  timezone                    String?
+  skills                      String[]          @default([])
+  avatarUrl                   String?
+  coverUrl                    String?
+  publicEmail                 Boolean           @default(false)
+  publicPhone                 Boolean           @default(false)
+  publicBio                   Boolean           @default(true)
+  publicPosition              Boolean           @default(true)
+  publicDepartment            Boolean           @default(true)
+  publicLocation              Boolean           @default(true)
+  publicTimezone              Boolean           @default(true)
+  publicSkills                Boolean           @default(true)
+  publicLastLogin             Boolean           @default(false)
+  publicProfileEnabled        Boolean           @default(false)
+  publicProfileToken          String?           @unique
+  publicProfileTokenEncrypted String?           @db.Text
+  visibility                  ProfileVisibility @default(INTERNAL)
+  createdAt                   DateTime          @default(now())
+  updatedAt                   DateTime          @updatedAt
 
   @@index([userId])
 }
@@ -162,9 +164,9 @@ model UserPreferences {
   particles          Boolean        @default(false)
 
   // Уведомления
-  soundNotifications  Boolean @default(true)
+  soundNotifications   Boolean @default(true)
   desktopNotifications Boolean @default(true)
-  reportPresets      Json?
+  reportPresets        Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -242,17 +244,17 @@ model UserAudit {
 }
 
 model AdminApproval {
-  id            String                @id @default(cuid())
+  id            String              @id @default(cuid())
   action        AdminApprovalAction
-  status        AdminApprovalStatus   @default(PENDING)
+  status        AdminApprovalStatus @default(PENDING)
   targetUserId  String
-  targetUser    User                  @relation("AdminApprovalTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetUser    User                @relation("AdminApprovalTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
   requestedById String
-  requestedBy   User                  @relation("AdminApprovalRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  requestedBy   User                @relation("AdminApprovalRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
   approvedById  String?
-  approvedBy    User?                 @relation("AdminApprovalApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedBy    User?               @relation("AdminApprovalApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
   payload       Json?
-  createdAt     DateTime              @default(now())
+  createdAt     DateTime            @default(now())
   resolvedAt    DateTime?
 
   @@index([status, createdAt])
@@ -273,37 +275,37 @@ enum AdminApprovalStatus {
 // ===== ПИСЬМА =====
 
 model Letter {
-  id            String       @id @default(cuid())
-  number        String       // Номер письма
-  org           String       // Организация
-  date          DateTime     // Дата письма
-  deadlineDate  DateTime     // Дата дедлайна
-  status        LetterStatus @default(NOT_REVIEWED)
-  type          String?      // Тип запроса
-  content       String?      @db.Text // Содержание
-  zordoc        String?      // ZorDoc номер
-  processing    String?      @db.Text // Обработка (заполненный шаблон)
-  answer        String?      @db.Text // Ответ
-  sendStatus    String?      // Статус отправки
-  ijroDate      DateTime?    // Дата исполнения
-  comment       String?      @db.Text // Комментарий
-  contacts      String?      // Контакты
-  applicantName String?
-  applicantEmail String?
-  applicantPhone String?
-  applicantTelegramChatId String?
-  applicantAccessToken String? @unique
+  id                            String       @id @default(cuid())
+  number                        String // Номер письма
+  org                           String // Организация
+  date                          DateTime // Дата письма
+  deadlineDate                  DateTime // Дата дедлайна
+  status                        LetterStatus @default(NOT_REVIEWED)
+  type                          String? // Тип запроса
+  content                       String?      @db.Text // Содержание
+  zordoc                        String? // ZorDoc номер
+  processing                    String?      @db.Text // Обработка (заполненный шаблон)
+  answer                        String?      @db.Text // Ответ
+  sendStatus                    String? // Статус отправки
+  ijroDate                      DateTime? // Дата исполнения
+  comment                       String?      @db.Text // Комментарий
+  contacts                      String? // Контакты
+  applicantName                 String?
+  applicantEmail                String?
+  applicantPhone                String?
+  applicantTelegramChatId       String?
+  applicantAccessToken          String?      @unique
   applicantAccessTokenExpiresAt DateTime?
-  closeDate     DateTime?    // Дата закрытия
-  frozenAt      DateTime?    // Момент заморозки (FROZEN/REJECTED) — для паузы SLA
-  jiraLink      String?      // Ссылка на Jira
-  jiraIssueId   String?      @unique // ID задачи в Jira
-  isPendingJira Boolean      @default(false) // Ожидает отправки в Jira
-  priority      Int          @default(50) // Приоритет (0-100)
-  attachmentsFolderId String?
+  closeDate                     DateTime? // Дата закрытия
+  frozenAt                      DateTime? // Момент заморозки (FROZEN/REJECTED) — для паузы SLA
+  jiraLink                      String? // Ссылка на Jira
+  jiraIssueId                   String?      @unique // ID задачи в Jira
+  isPendingJira                 Boolean      @default(false) // Ожидает отправки в Jira
+  priority                      Int          @default(50) // Приоритет (0-100)
+  attachmentsFolderId           String?
 
-  ownerId       String?
-  owner         User?        @relation("OwnerLetters", fields: [ownerId], references: [id])
+  ownerId String?
+  owner   User?   @relation("OwnerLetters", fields: [ownerId], references: [id])
 
   files         File[]
   tags          Tag[]
@@ -316,17 +318,20 @@ model Letter {
   notifications Notification[]
 
   // Для синхронизации с Google Sheets
-  sheetRowNum   Int?         // Номер строки в Google Sheets
-  lastSyncedAt  DateTime?    // Последняя синхронизация
+  sheetRowNum  Int? // Номер строки в Google Sheets
+  lastSyncedAt DateTime? // Последняя синхронизация
 
   // Soft delete
-  deletedAt     DateTime?    // Дата удаления (null = не удалено)
+  deletedAt DateTime? // Дата удаления (null = не удалено)
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  // Векторное представление текста письма для семантического поиска
+  embedding Unsupported("vector(768)")?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
-  @@index([deletedAt])       // Индекс для фильтрации удалённых
+  @@index([deletedAt]) // Индекс для фильтрации удалённых
   @@index([ownerId])
   @@index([deadlineDate])
   @@index([number])
@@ -334,25 +339,24 @@ model Letter {
   @@index([closeDate])
   @@index([priority])
   @@index([status, deadlineDate]) // Составной индекс для срочных/просроченных
-  @@index([status, ownerId])      // Составной индекс для фильтрации по статусу и ответственному
+  @@index([status, ownerId]) // Составной индекс для фильтрации по статусу и ответственному
   @@index([deletedAt, createdAt]) // Основной список: WHERE deletedAt IS NULL ORDER BY createdAt
   @@index([deletedAt, status, deadlineDate]) // Dashboard: overdue/urgent запросы
-  @@index([deletedAt, ownerId])   // Фильтр по исполнителю с soft delete
-  @@index([org])                  // Поиск по организации
+  @@index([deletedAt, ownerId]) // Фильтр по исполнителю с soft delete
+  @@index([org]) // Поиск по организации
 }
 
 enum LetterStatus {
-  NOT_REVIEWED  // не рассмотрен
-  ACCEPTED      // принят
-  IN_PROGRESS   // взято в работу
+  NOT_REVIEWED // не рассмотрен
+  ACCEPTED // принят
+  IN_PROGRESS // взято в работу
   CLARIFICATION // на уточнении
-  FROZEN        // заморожен
-  REJECTED      // отклонён
-  READY         // готово
-  PROCESSED     // обработано
-  DONE          // сделано
+  FROZEN // заморожен
+  REJECTED // отклонён
+  READY // готово
+  PROCESSED // обработано
+  DONE // сделано
 }
-
 
 enum RequestStatus {
   NEW
@@ -370,18 +374,18 @@ enum RequestPriority {
 }
 
 enum RequestCategory {
-  CONSULTATION    // Консультация
-  TECHNICAL       // Техническая поддержка
-  DOCUMENTATION   // Документация
-  COMPLAINT       // Жалоба
-  SUGGESTION      // Предложение
-  OTHER           // Другое
+  CONSULTATION // Консультация
+  TECHNICAL // Техническая поддержка
+  DOCUMENTATION // Документация
+  COMPLAINT // Жалоба
+  SUGGESTION // Предложение
+  OTHER // Другое
 }
 
 enum SlaStatus {
-  ON_TIME       // В срок
-  AT_RISK       // Под угрозой нарушения
-  BREACHED      // Нарушен
+  ON_TIME // В срок
+  AT_RISK // Под угрозой нарушения
+  BREACHED // Нарушен
 }
 
 model Request {
@@ -401,21 +405,21 @@ model Request {
   ipHash          String?
 
   // SLA fields
-  slaDeadline      DateTime?
-  firstResponseAt  DateTime?
-  resolvedAt       DateTime?
-  slaStatus        SlaStatus       @default(ON_TIME)
+  slaDeadline     DateTime?
+  firstResponseAt DateTime?
+  resolvedAt      DateTime?
+  slaStatus       SlaStatus @default(ON_TIME)
 
   // Soft delete
-  deletedAt       DateTime?
+  deletedAt DateTime?
 
-  files           RequestFile[]
-  comments        RequestComment[]
-  history         RequestHistory[]
-  tags            RequestTag[]
+  files    RequestFile[]
+  comments RequestComment[]
+  history  RequestHistory[]
+  tags     RequestTag[]
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status, createdAt])
   @@index([assignedToId])
@@ -464,7 +468,7 @@ model RequestHistory {
   request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation("RequestHistoryActor", fields: [userId], references: [id], onDelete: Cascade)
-  field     String   // status, priority, category, assignedTo, etc.
+  field     String // status, priority, category, assignedTo, etc.
   oldValue  String?  @db.Text
   newValue  String?  @db.Text
   createdAt DateTime @default(now())
@@ -475,15 +479,15 @@ model RequestHistory {
 
 // Шаблоны ответов для заявок
 model RequestResponseTemplate {
-  id          String          @id @default(cuid())
+  id          String           @id @default(cuid())
   name        String
-  content     String          @db.Text
+  content     String           @db.Text
   category    RequestCategory?
-  isPublic    Boolean         @default(false)
+  isPublic    Boolean          @default(false)
   createdById String
-  createdBy   User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdBy   User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@index([category])
   @@index([createdById])
@@ -504,24 +508,24 @@ model RequestTag {
 // ===== ФАЙЛЫ =====
 
 model File {
-  id        String   @id @default(cuid())
-  name      String
-  url       String
-  driveFileId String?
-  storageProvider FileStorageProvider @default(DRIVE)
-  storagePath String?
-  status    FileStatus @default(READY)
-  uploadError String? @db.Text
-  syncAttempts Int @default(0)
+  id                String              @id @default(cuid())
+  name              String
+  url               String
+  driveFileId       String?
+  storageProvider   FileStorageProvider @default(DRIVE)
+  storagePath       String?
+  status            FileStatus          @default(READY)
+  uploadError       String?             @db.Text
+  syncAttempts      Int                 @default(0)
   lastSyncAttemptAt DateTime?
-  mimeType  String?
-  size      Int?
-  letterId  String
-  letter    Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
-  uploadedById String?
-  uploadedBy   User?    @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  mimeType          String?
+  size              Int?
+  letterId          String
+  letter            Letter              @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  uploadedById      String?
+  uploadedBy        User?               @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   @@index([status])
   @@index([uploadedById])
@@ -551,18 +555,18 @@ model Tag {
 // ===== КОММЕНТАРИИ (threaded) =====
 
 model Comment {
-  id        String    @id @default(cuid())
-  text      String    @db.Text
+  id        String        @id @default(cuid())
+  text      String        @db.Text
   letterId  String
-  letter    Letter    @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  letter    Letter        @relation(fields: [letterId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User      @relation(fields: [authorId], references: [id])
+  author    User          @relation(fields: [authorId], references: [id])
   parentId  String?
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies   Comment[] @relation("CommentReplies")
+  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[]     @relation("CommentReplies")
   edits     CommentEdit[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@index([letterId])
   @@index([authorId])
@@ -586,14 +590,14 @@ model CommentEdit {
 // ===== WATCHERS (подписки на письма) =====
 
 model Watcher {
-  id               String  @id @default(cuid())
+  id               String   @id @default(cuid())
   letterId         String
-  letter           Letter  @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  letter           Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
   userId           String
-  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notifyOnChange   Boolean @default(true)
-  notifyOnComment  Boolean @default(true)
-  notifyOnDeadline Boolean @default(true)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifyOnChange   Boolean  @default(true)
+  notifyOnComment  Boolean  @default(true)
+  notifyOnDeadline Boolean  @default(true)
   createdAt        DateTime @default(now())
 
   @@unique([letterId, userId])
@@ -617,12 +621,12 @@ model Favorite {
 // ===== СВЯЗАННЫЕ ПИСЬМА =====
 
 model LinkedLetter {
-  id         String @id @default(cuid())
-  fromId     String
-  from       Letter @relation("LinkedFrom", fields: [fromId], references: [id], onDelete: Cascade)
-  toId       String
-  to         Letter @relation("LinkedTo", fields: [toId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  fromId    String
+  from      Letter   @relation("LinkedFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        Letter   @relation("LinkedTo", fields: [toId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
   @@unique([fromId, toId])
 }
@@ -635,7 +639,7 @@ model History {
   letter    Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  field     String   // status, owner, comment, etc.
+  field     String // status, owner, comment, etc.
   oldValue  String?  @db.Text
   newValue  String?  @db.Text
   createdAt DateTime @default(now())
@@ -648,31 +652,31 @@ model History {
 // ===== СИНХРОНИЗАЦИЯ =====
 
 model SyncLog {
-  id          String     @id @default(cuid())
-  direction   SyncDirection
-  status      SyncStatus
-  rowsAffected Int       @default(0)
-  error       String?    @db.Text
-  startedAt   DateTime   @default(now())
-  finishedAt  DateTime?
+  id           String        @id @default(cuid())
+  direction    SyncDirection
+  status       SyncStatus
+  rowsAffected Int           @default(0)
+  error        String?       @db.Text
+  startedAt    DateTime      @default(now())
+  finishedAt   DateTime?
 }
 
 // Лог изменений для автоматической синхронизации с Google Sheets
 model LetterChangeLog {
-  id         String              @id @default(cuid())
+  id         String             @id @default(cuid())
   letterId   String
   action     LetterChangeAction
-  field      String?             // Какое поле изменилось (null для create/delete)
-  oldValue   String?             @db.Text
-  newValue   String?             @db.Text
-  syncStatus LetterSyncStatus    @default(PENDING)
-  syncError  String?             @db.Text
-  retryCount Int                 @default(0)
-  userId     String?             // Кто сделал изменение
-  createdAt  DateTime            @default(now())
-  syncedAt   DateTime?           // Когда синхронизировано
+  field      String? // Какое поле изменилось (null для create/delete)
+  oldValue   String?            @db.Text
+  newValue   String?            @db.Text
+  syncStatus LetterSyncStatus   @default(PENDING)
+  syncError  String?            @db.Text
+  retryCount Int                @default(0)
+  userId     String? // Кто сделал изменение
+  createdAt  DateTime           @default(now())
+  syncedAt   DateTime? // Когда синхронизировано
 
-  @@index([syncStatus, createdAt])  // Для выборки несинхронизированных
+  @@index([syncStatus, createdAt]) // Для выборки несинхронизированных
   @@index([letterId])
 }
 
@@ -683,16 +687,16 @@ enum LetterChangeAction {
 }
 
 enum LetterSyncStatus {
-  PENDING     // Ожидает синхронизации
-  PROCESSING  // В процессе
-  SYNCED      // Синхронизировано
-  FAILED      // Ошибка (будет retry)
-  SKIPPED     // Пропущено (дубликат или устарело)
+  PENDING // Ожидает синхронизации
+  PROCESSING // В процессе
+  SYNCED // Синхронизировано
+  FAILED // Ошибка (будет retry)
+  SKIPPED // Пропущено (дубликат или устарело)
 }
 
 enum SyncDirection {
-  TO_SHEETS    // Из приложения в Google Sheets
-  FROM_SHEETS  // Из Google Sheets в приложение
+  TO_SHEETS // Из приложения в Google Sheets
+  FROM_SHEETS // Из Google Sheets в приложение
 }
 
 enum SyncStatus {
@@ -706,9 +710,9 @@ enum SyncStatus {
 
 model AnswerTemplate {
   id          String   @id @default(cuid())
-  name        String   // Название шаблона
+  name        String // Название шаблона
   content     String   @db.Text // Содержание шаблона
-  category    String?  // Категория (необязательно)
+  category    String? // Категория (необязательно)
   isPublic    Boolean  @default(false) // Доступен всем или только создателю
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
@@ -723,11 +727,11 @@ model AnswerTemplate {
 
 model LetterTemplate {
   id          String   @id @default(cuid())
-  name        String   // Название шаблона
-  subject     String?  // Тема письма (опционально)
+  name        String // Название шаблона
+  subject     String? // Тема письма (опционально)
   body        String   @db.Text // Тело письма
   signature   String?  @db.Text // Подпись (опционально)
-  category    String?  // Категория шаблона
+  category    String? // Категория шаблона
   variables   String[] @default([]) // Доступные переменные
   isPublic    Boolean  @default(false) // Публичный или личный
   usageCount  Int      @default(0) // Счётчик использований
@@ -745,21 +749,21 @@ model LetterTemplate {
 // ===== Notifications =====
 
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  actorId   String?
-  actor     User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
-  letterId  String?
-  letter    Letter?          @relation(fields: [letterId], references: [id], onDelete: Cascade)
-  type      NotificationType
-  title     String
-  body      String?          @db.Text
-  isRead    Boolean          @default(false)
-  priority  NotificationPriority @default(NORMAL)
-  dedupeKey String?
-  metadata  Json?
-  createdAt DateTime         @default(now())
+  id         String                 @id @default(cuid())
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actorId    String?
+  actor      User?                  @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  letterId   String?
+  letter     Letter?                @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  title      String
+  body       String?                @db.Text
+  isRead     Boolean                @default(false)
+  priority   NotificationPriority   @default(NORMAL)
+  dedupeKey  String?
+  metadata   Json?
+  createdAt  DateTime               @default(now())
   deliveries NotificationDelivery[]
 
   @@index([userId, isRead, createdAt])
@@ -794,13 +798,13 @@ model NotificationPreference {
 }
 
 model NotificationSubscription {
-  id        String   @id @default(cuid())
+  id        String                        @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event     String   @default("ALL")
+  user      User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     String                        @default("ALL")
   scope     NotificationSubscriptionScope
   value     String?
-  createdAt DateTime @default(now())
+  createdAt DateTime                      @default(now())
 
   @@index([userId, scope])
 }
@@ -814,20 +818,20 @@ enum NotificationSubscriptionScope {
 // ===== ИСТОРИЯ НАСТРОЕК =====
 
 model SettingsHistory {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entityType SettingsEntity
-  entityId   String
-  action     SettingsAction
-  before     Json?
-  after      Json
-  diff       Json?
-  changedBy  String?
-  changedByUser User? @relation("SettingsHistoryChangedBy", fields: [changedBy], references: [id], onDelete: SetNull)
-  ipAddress  String?
-  userAgent  String?  @db.Text
-  createdAt  DateTime @default(now())
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entityType    SettingsEntity
+  entityId      String
+  action        SettingsAction
+  before        Json?
+  after         Json
+  diff          Json?
+  changedBy     String?
+  changedByUser User?          @relation("SettingsHistoryChangedBy", fields: [changedBy], references: [id], onDelete: SetNull)
+  ipAddress     String?
+  userAgent     String?        @db.Text
+  createdAt     DateTime       @default(now())
 
   @@index([userId, entityType, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
@@ -849,18 +853,18 @@ enum SettingsAction {
 }
 
 model NotificationDelivery {
-  id              String   @id @default(cuid())
-  notificationId  String?
-  notification    Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull)
-  userId          String?
-  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  channel         NotificationChannel
-  status          NotificationDeliveryStatus @default(QUEUED)
-  recipient       String?
-  error           String?  @db.Text
-  sentAt          DateTime?
-  metadata        Json?
-  createdAt       DateTime @default(now())
+  id             String                     @id @default(cuid())
+  notificationId String?
+  notification   Notification?              @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?                      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  channel        NotificationChannel
+  status         NotificationDeliveryStatus @default(QUEUED)
+  recipient      String?
+  error          String?                    @db.Text
+  sentAt         DateTime?
+  metadata       Json?
+  createdAt      DateTime                   @default(now())
 
   @@index([userId, channel, createdAt])
   @@index([notificationId])
@@ -886,7 +890,7 @@ enum NotificationDeliveryStatus {
 model RolePermission {
   id         String   @id @default(cuid())
   role       Role
-  permission String   // Permission key (MANAGE_USERS, VIEW_LETTERS, etc.)
+  permission String // Permission key (MANAGE_USERS, VIEW_LETTERS, etc.)
   enabled    Boolean  @default(true)
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
@@ -929,11 +933,11 @@ model PushSubscription {
 
 model LetterStatusConfig {
   id        String       @id @default(cuid())
-  status    LetterStatus @unique  // Ссылка на enum статус
-  label     String                // Кастомное отображаемое название
-  color     String       @default("#6B7280")  // Цвет для бейджа
-  order     Int          @default(0)  // Порядок сортировки в списках
-  isActive  Boolean      @default(true)   // Показывать ли статус в UI
+  status    LetterStatus @unique // Ссылка на enum статус
+  label     String // Кастомное отображаемое название
+  color     String       @default("#6B7280") // Цвет для бейджа
+  order     Int          @default(0) // Порядок сортировки в списках
+  isActive  Boolean      @default(true) // Показывать ли статус в UI
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -944,10 +948,10 @@ model LetterStatusConfig {
 // ===== СИСТЕМНЫЕ НАСТРОЙКИ =====
 
 model SystemSettings {
-  id              String   @id @default("global")
-  jiraHost        String?
-  jiraEmail       String?
-  jiraToken       String?  @db.Text
-  jiraProjectKey  String   @default("MAIL")
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default("global")
+  jiraHost       String?
+  jiraEmail      String?
+  jiraToken      String?  @db.Text
+  jiraProjectKey String   @default("MAIL")
+  updatedAt      DateTime @updatedAt
 }

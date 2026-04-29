@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -15,6 +15,7 @@ import {
   X,
   Loader2,
   AlertTriangle,
+  AlertCircle,
   Sparkles,
   Scan,
   MapPin,
@@ -46,6 +47,8 @@ interface ParsedPdfData {
   contentRussian: string | null
   region: string | null
   district: string | null
+  type: string | null
+  priority: number | null
 }
 
 interface ParseMeta {
@@ -56,13 +59,23 @@ interface ParseMeta {
   }
 }
 
+interface SimilarLetter {
+  id: string
+  number: string
+  org: string
+  date: string
+  status: string
+}
+
 interface QuickLetterUploadProps {
   onClose?: () => void
 }
 
 const QUICK_UPLOAD_ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx'] as const
 
-export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
+export const QuickLetterUpload = memo(function QuickLetterUpload({
+  onClose,
+}: QuickLetterUploadProps) {
   const router = useRouter()
   const toast = useToast()
   const [dragOver, setDragOver] = useState(false)
@@ -81,6 +94,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
   const [contentRussian, setContentRussian] = useState('')
   const [region, setRegion] = useState('')
   const [district, setDistrict] = useState('')
+  const [parsedPriority, setParsedPriority] = useState<number | null>(null)
+  const [similarLetters, setSimilarLetters] = useState<SimilarLetter[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -218,6 +233,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       setContentRussian('')
       setRegion('')
       setDistrict('')
+      setParsedPriority(null)
+      setSimilarLetters([])
 
       toast.loading('Анализ документа с помощью AI...', { id: 'parsing' })
 
@@ -256,14 +273,41 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
         if (data.contentRussian) setContentRussian(data.contentRussian)
         setRegion(data.region || '')
         setDistrict(data.district || '')
-        const recommendedType = recommendLetterType({
-          content: data.content,
-          contentRussian: data.contentRussian,
-          organization: data.organization,
-          filename: f.name,
-        })
-        if (recommendedType) {
-          setValue('type', recommendedType)
+        if (data.type) {
+          setValue('type', data.type)
+        } else {
+          const recommendedType = recommendLetterType({
+            content: data.content,
+            contentRussian: data.contentRussian,
+            organization: data.organization,
+            filename: f.name,
+          })
+          if (recommendedType) {
+            setValue('type', recommendedType)
+          }
+        }
+
+        if (data.priority !== null && data.priority !== undefined) {
+          setParsedPriority(data.priority)
+        }
+
+        // Поиск похожих писем (семантический поиск)
+        if (data.content && data.content.trim().length > 10) {
+          try {
+            const similarRes = await fetch('/api/letters/similar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: data.content }),
+            })
+            if (similarRes.ok) {
+              const similarData = await similarRes.json()
+              if (similarData.success && similarData.similarLetters?.length > 0) {
+                setSimilarLetters(similarData.similarLetters)
+              }
+            }
+          } catch (err) {
+            console.error('Failed to search similar letters', err)
+          }
         }
 
         const sourceText = meta.extractedFrom?.ai
@@ -367,6 +411,7 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       if (contentRussian) formData.append('contentRussian', contentRussian)
       if (region) formData.append('region', region)
       if (district) formData.append('district', district)
+      if (parsedPriority !== null) formData.append('priority', parsedPriority.toString())
       if (selectedOwner?.id) formData.append('ownerId', selectedOwner.id)
       if (file) {
         formData.append('file', file)
@@ -410,6 +455,8 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
     setContentRussian('')
     setRegion('')
     setDistrict('')
+    setParsedPriority(null)
+    setSimilarLetters([])
     setServerError(null)
     setCreatedLetterId(null)
     setSelectedOwner(null)
@@ -770,6 +817,26 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
             </div>
           </div>
 
+          {/* Similar Letters Alert */}
+          {similarLetters.length > 0 && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <div className="mb-2 flex items-center gap-2 text-amber-400">
+                <AlertCircle className="h-5 w-5" />
+                <h4 className="font-semibold">Внимание! Найдены похожие письма:</h4>
+              </div>
+              <div className="space-y-2 text-sm text-amber-200/80">
+                <p>Возможно, это дубликат. Похожие письма в системе:</p>
+                <ul className="list-inside list-disc space-y-1">
+                  {similarLetters.map((l) => (
+                    <li key={l.id}>
+                      Письмо №{l.number} от {l.org} ({new Date(l.date).toLocaleDateString('ru-RU')})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           {/* Russian translation */}
           {contentRussian && (
             <div>
@@ -815,4 +882,4 @@ export function QuickLetterUpload({ onClose }: QuickLetterUploadProps) {
       )}
     </div>
   )
-}
+})

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Header } from '@/components/Header'
 import { useToast } from '@/components/Toast'
 import { Button } from '@/components/ui/button'
-import { Loader2, Database, Send, ArrowLeft, ExternalLink } from 'lucide-react'
+import { Loader2, Database, Send, ArrowLeft, ExternalLink, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -28,7 +28,7 @@ export default function JiraRequestsPage() {
   const [letters, setLetters] = useState<PendingLetter[]>([])
   const [loading, setLoading] = useState(true)
   const [processingState, setProcessingState] = useState<
-    Record<string, { text: string; sending: boolean }>
+    Record<string, { text: string; sending: boolean; generating?: boolean }>
   >({})
 
   useEffect(() => {
@@ -55,9 +55,10 @@ export default function JiraRequestsPage() {
         setLetters(data.letters || [])
 
         // Инициализируем стейт для редактирования
-        const newState: Record<string, { text: string; sending: boolean }> = {}
+        const newState: Record<string, { text: string; sending: boolean; generating?: boolean }> =
+          {}
         data.letters?.forEach((l: PendingLetter) => {
-          newState[l.id] = { text: l.processing || '', sending: false }
+          newState[l.id] = { text: l.processing || '', sending: false, generating: false }
         })
         setProcessingState(newState)
       }
@@ -96,6 +97,45 @@ export default function JiraRequestsPage() {
       setProcessingState((prev) => ({
         ...prev,
         [letterId]: { ...prev[letterId], sending: false },
+      }))
+    }
+  }
+
+  const handleGenerateJira = async (letterId: string) => {
+    const text = processingState[letterId]?.text || ''
+    if (!text.trim()) {
+      toast.error('Пустой текст обработки. Нечего улучшать.')
+      return
+    }
+
+    setProcessingState((prev) => ({
+      ...prev,
+      [letterId]: { ...prev[letterId], generating: true },
+    }))
+
+    try {
+      const res = await fetch(`/api/letters/${letterId}/ai-jira-description`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ processingText: text }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success('Описание успешно сгенерировано')
+        setProcessingState((prev) => ({
+          ...prev,
+          [letterId]: { ...prev[letterId], text: data.description },
+        }))
+      } else {
+        toast.error(data.error || 'Ошибка при генерации')
+      }
+    } catch (err) {
+      toast.error('Ошибка соединения')
+    } finally {
+      setProcessingState((prev) => ({
+        ...prev,
+        [letterId]: { ...prev[letterId], generating: false },
       }))
     }
   }
@@ -187,7 +227,23 @@ export default function JiraRequestsPage() {
                   />
                 </div>
 
-                <div className="mt-6 flex justify-end">
+                <div className="mt-6 flex justify-between">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleGenerateJira(letter.id)}
+                    disabled={
+                      processingState[letter.id]?.generating || !processingState[letter.id]?.text
+                    }
+                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300"
+                  >
+                    {processingState[letter.id]?.generating ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    ✨ Улучшить с AI
+                  </Button>
+
                   <Button
                     onClick={() => handleSendToJira(letter.id)}
                     disabled={processingState[letter.id]?.sending}

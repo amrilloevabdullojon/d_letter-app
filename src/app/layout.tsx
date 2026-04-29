@@ -11,6 +11,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { PWAProvider } from '@/components/PWAProvider'
 import { ClientEffects } from '@/components/ClientEffects'
 import { BackgroundEffects } from '@/components/BackgroundEffects'
+import { AIChatWidget } from '@/components/AIChatWidget'
 
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
@@ -75,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <AuthGuard>
                 <PageTransition>{children}</PageTransition>
                 <ClientEffects />
+                <AIChatWidget />
               </AuthGuard>
             </ThemeProvider>
           </PWAProvider>

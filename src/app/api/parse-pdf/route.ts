@@ -181,6 +181,8 @@ export async function POST(request: NextRequest) {
         contentRussian: aiData?.contentRussian || null,
         region,
         district,
+        type: aiData?.type || null,
+        priority: aiData?.priority || null,
       },
       meta: {
         filename: file.name,
