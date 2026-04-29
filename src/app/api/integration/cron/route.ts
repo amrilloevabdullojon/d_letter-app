@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await syncT1ToT2()
-    logger.info('Integration cron sync completed', result)
+    logger.info('Integration cron sync completed', JSON.stringify(result))
     return NextResponse.json(result)
   } catch (error) {
     logger.error('GET /api/integration/cron', error)

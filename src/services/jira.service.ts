@@ -91,15 +91,53 @@ export class JiraService {
   static mapStatus(jiraStatusName: string): LetterStatus {
     const status = jiraStatusName.toLowerCase().trim()
 
-    if (status.includes('needs approval')) return 'ACCEPTED'
-    if (status.includes('к выполнению') || status.includes('in progress')) return 'IN_PROGRESS'
-    if (status.includes('not doing')) return 'REJECTED'
-    if (status.includes('done')) return 'DONE'
-    if (status.includes('на уточнении') || status.includes('clarification')) return 'CLARIFICATION'
-    if (status.includes('testing')) return 'READY'
+    // 1. Принято (To Do / К выполнению / Needs Approval)
+    if (
+      status.includes('needs approval') ||
+      status.includes('to do') ||
+      status.includes('к выполнению') ||
+      status.includes('сделать')
+    ) {
+      return 'ACCEPTED'
+    }
 
-    // По умолчанию, если статус не распознан
-    return 'IN_PROGRESS'
+    // 2. В работе (In Progress / В работе)
+    if (status.includes('in progress') || status.includes('в работе')) {
+      return 'IN_PROGRESS'
+    }
+
+    // 3. Отклонено (Not Doing / Отклонено / Отменено)
+    if (
+      status.includes('not doing') ||
+      status.includes('отклонен') ||
+      status.includes('отменен') ||
+      status.includes('cancelled')
+    ) {
+      return 'REJECTED'
+    }
+
+    // 4. Сделано (Done / Выполнено / Закрыто)
+    if (
+      status.includes('done') ||
+      status.includes('выполнен') ||
+      status.includes('закрыт') ||
+      status.includes('closed')
+    ) {
+      return 'DONE'
+    }
+
+    // 5. На уточнении
+    if (status.includes('на уточнении') || status.includes('clarification')) {
+      return 'CLARIFICATION'
+    }
+
+    // 6. Тестирование / Готово (Testing)
+    if (status.includes('testing') || status.includes('тестирован') || status.includes('готово')) {
+      return 'READY'
+    }
+
+    // По умолчанию возвращаем ACCEPTED (Принят)
+    return 'ACCEPTED'
   }
 
   /**
