@@ -124,7 +124,7 @@ export function AIChatWidget() {
     }
   }
 
-  return (
+  const widgetContent = (
     <>
       <AnimatePresence>
         {!isOpen && (
