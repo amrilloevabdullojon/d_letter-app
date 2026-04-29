@@ -12,6 +12,10 @@ import {
   Search,
   Paperclip,
   Mic,
+  Maximize2,
+  Minimize2,
+  Copy,
+  Check,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { useSession } from 'next-auth/react'
@@ -45,6 +49,7 @@ export function AIChatWidget() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pathname = usePathname()
   const [isListening, setIsListening] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
@@ -303,32 +308,58 @@ export function AIChatWidget() {
               top: '50%',
               left: '50%',
               zIndex: 999999,
-              width: 'min(400px, calc(100vw - 32px))',
-              height: 'min(600px, calc(100vh - 48px))',
+              width: isExpanded
+                ? 'min(800px, calc(100vw - 32px))'
+                : 'min(400px, calc(100vw - 32px))',
+              height: isExpanded
+                ? 'min(800px, calc(100vh - 48px))'
+                : 'min(600px, calc(100vh - 48px))',
               transformOrigin: 'center',
             }}
           >
             {/* Header */}
             <div className="relative flex items-center justify-between border-b border-white/5 bg-gradient-to-r from-teal-500/10 to-emerald-500/5 p-4">
               <div className="flex items-center gap-3">
-                <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-slate-800 shadow-inner">
-                  <Image src="/grok_avatar.png" alt="Grok Chan" fill className="object-cover" />
-                  <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-slate-900 bg-emerald-500" />
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-800 shadow-inner">
+                  <div
+                    className={`absolute inset-0 rounded-full border-2 border-teal-500 ${isLoading ? 'animate-ping' : 'hidden'}`}
+                  />
+                  <div className="relative h-full w-full overflow-hidden rounded-full">
+                    <Image src="/grok_avatar.png" alt="Grok Chan" fill className="object-cover" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 z-10 h-3 w-3 rounded-full border-2 border-slate-900 bg-emerald-500" />
                 </div>
                 <div>
                   <h3 className="font-semibold tracking-tight text-white">Grok-тян 🌸</h3>
-                  <p className="text-[11px] font-medium text-teal-400">Настроение: вредное 💅</p>
+                  <p className="text-[11px] font-medium text-teal-400">
+                    Настроение: {isLoading ? 'думаю...' : 'вредное 💅'}
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  hapticLight()
-                  setIsOpen(false)
-                }}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    hapticLight()
+                    setIsExpanded(!isExpanded)
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {isExpanded ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    hapticLight()
+                    setIsOpen(false)
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {/* Chat Area */}
@@ -444,25 +475,49 @@ export function AIChatWidget() {
                                           </span>
                                         </div>
                                       </div>
-                                      <button
-                                        onClick={async (e) => {
-                                          const btn = e.currentTarget
-                                          btn.disabled = true
-                                          btn.innerText = 'Сохраняю...'
-                                          hapticLight()
-                                          const res = await saveDraftLetter(data)
-                                          if (res.success) {
-                                            btn.innerText = '✅ Сохранено'
-                                            btn.className =
-                                              'mt-3 w-full rounded-lg bg-emerald-500/20 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/30 transition-colors'
-                                          } else {
-                                            btn.innerText = 'Ошибка'
-                                          }
-                                        }}
-                                        className="mt-3 w-full rounded-lg bg-indigo-500 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-indigo-400"
-                                      >
-                                        Сохранить в базу
-                                      </button>
+                                      <div className="mt-3 flex gap-2">
+                                        <button
+                                          onClick={async (e) => {
+                                            const btn = e.currentTarget
+                                            btn.disabled = true
+                                            btn.innerText = 'Сохраняю...'
+                                            hapticLight()
+                                            const res = await saveDraftLetter(data)
+                                            if (res.success) {
+                                              btn.innerText = '✅ Сохранено'
+                                              btn.className =
+                                                'flex-1 rounded-lg bg-emerald-500/20 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/30 transition-colors'
+                                            } else {
+                                              btn.innerText = 'Ошибка'
+                                            }
+                                          }}
+                                          className="flex-1 rounded-lg border border-indigo-500/30 bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-300 transition-colors hover:bg-indigo-500/40"
+                                        >
+                                          💾 Сохранить в БД
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            hapticLight()
+                                            navigator.clipboard.writeText(
+                                              `Номер: ${data.number || 'Б/Н'}\nОт: ${data.org}\nДата: ${data.date}\nСуть: ${data.summary}\nДедлайн: ${data.deadlineDate}`
+                                            )
+                                            const btn = e.currentTarget
+                                            const icon = btn.querySelector('svg')
+                                            if (icon) {
+                                              const oldHtml = btn.innerHTML
+                                              btn.innerHTML =
+                                                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+                                              setTimeout(() => {
+                                                btn.innerHTML = oldHtml
+                                              }, 2000)
+                                            }
+                                          }}
+                                          className="flex w-10 items-center justify-center rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 transition-colors hover:bg-indigo-500/20"
+                                          title="Скопировать"
+                                        >
+                                          <Copy className="h-4 w-4" />
+                                        </button>
+                                      </div>
                                     </div>
                                   )
                                 } catch (e) {
@@ -578,13 +633,53 @@ export function AIChatWidget() {
                 </button>
                 <button
                   onClick={toggleListening}
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 transition-colors ${
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 transition-colors ${
                     isListening
-                      ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
+                      ? 'bg-red-500/20 hover:bg-red-500/30'
                       : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
                   }`}
                 >
-                  <Mic className={`h-5 w-5 ${isListening ? 'animate-pulse' : ''}`} />
+                  {isListening ? (
+                    <div className="flex h-5 w-5 items-center justify-center gap-[2px]">
+                      <motion.div
+                        animate={{ height: ['4px', '16px', '4px'] }}
+                        transition={{ repeat: Infinity, duration: 0.5, ease: 'easeInOut' }}
+                        className="w-1 rounded-full bg-red-500"
+                      />
+                      <motion.div
+                        animate={{ height: ['4px', '20px', '4px'] }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 0.6,
+                          ease: 'easeInOut',
+                          delay: 0.1,
+                        }}
+                        className="w-1 rounded-full bg-red-500"
+                      />
+                      <motion.div
+                        animate={{ height: ['4px', '12px', '4px'] }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 0.4,
+                          ease: 'easeInOut',
+                          delay: 0.2,
+                        }}
+                        className="w-1 rounded-full bg-red-500"
+                      />
+                      <motion.div
+                        animate={{ height: ['4px', '18px', '4px'] }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 0.7,
+                          ease: 'easeInOut',
+                          delay: 0.3,
+                        }}
+                        className="w-1 rounded-full bg-red-500"
+                      />
+                    </div>
+                  ) : (
+                    <Mic className="h-5 w-5" />
+                  )}
                 </button>
                 <div className="relative flex-1">
                   <input

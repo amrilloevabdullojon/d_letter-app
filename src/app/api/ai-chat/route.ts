@@ -252,6 +252,30 @@ ${contextStr}`
       tools.push({
         type: 'function',
         function: {
+          name: 'bulkUpdateLetters',
+          description:
+            'Массовое обновление писем по заданным фильтрам. Позволяет сменить статус или исполнителя для многих писем разом (до 50 за раз).',
+          parameters: {
+            type: 'object',
+            properties: {
+              whereStatus: {
+                type: 'string',
+                description: 'Фильтр по текущему статусу (например, NOT_REVIEWED, ACCEPTED)',
+              },
+              whereOrg: {
+                type: 'string',
+                description: 'Фильтр по организации (поиск по подстроке)',
+              },
+              whereType: { type: 'string', description: 'Фильтр по типу письма' },
+              newStatus: { type: 'string', description: 'Новый статус для установки' },
+              newOwnerName: { type: 'string', description: 'Имя нового ответственного' },
+            },
+          },
+        },
+      } as any)
+      tools.push({
+        type: 'function',
+        function: {
           name: 'getUserStats',
           description: 'Получить статистику писем по конкретному сотруднику (поиск по имени).',
           parameters: {
@@ -487,6 +511,71 @@ ${contextStr}`
                     name: toolCall.function.name,
                     content: `Успешно категоризовано ${letters.length} писем:\n${updates.join('\n')}`,
                   } as any)
+                }
+              } else if (toolCall.function.name === 'bulkUpdateLetters' && isSuperAdmin) {
+                const args = JSON.parse(toolCall.function.arguments)
+                const whereClause: any = { deletedAt: null }
+                if (args.whereStatus) whereClause.status = args.whereStatus
+                if (args.whereOrg)
+                  whereClause.org = { contains: args.whereOrg, mode: 'insensitive' }
+                if (args.whereType)
+                  whereClause.type = { contains: args.whereType, mode: 'insensitive' }
+
+                const dataToUpdate: any = {}
+                if (args.newStatus) dataToUpdate.status = args.newStatus
+
+                let targetUser = null
+                if (args.newOwnerName) {
+                  targetUser = await db.user.findFirst({
+                    where: { name: { contains: args.newOwnerName, mode: 'insensitive' } },
+                  })
+                  if (targetUser) dataToUpdate.ownerId = targetUser.id
+                }
+
+                if (Object.keys(whereClause).length === 1) {
+                  // only deletedAt
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Укажите хотя бы один фильтр для массового обновления.`,
+                  } as any)
+                } else if (Object.keys(dataToUpdate).length === 0) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Укажите хотя бы одно действие (новый статус или исполнитель).`,
+                  } as any)
+                } else {
+                  const lettersToUpdate = await db.letter.findMany({
+                    where: whereClause,
+                    take: 50,
+                    select: { id: true, number: true },
+                  })
+                  if (lettersToUpdate.length === 0) {
+                    formattedMessages.push({
+                      role: 'tool',
+                      tool_call_id: toolCall.id,
+                      name: toolCall.function.name,
+                      content: `Писем по данным фильтрам не найдено.`,
+                    } as any)
+                  } else {
+                    const ids = lettersToUpdate.map((l: any) => l.id)
+                    const numbers = lettersToUpdate.map((l: any) => l.number).join(', ')
+                    await db.letter.updateMany({ where: { id: { in: ids } }, data: dataToUpdate })
+
+                    let content = `Массовое обновление завершено. Обновлено писем: ${lettersToUpdate.length}. Номера: ${numbers}.`
+                    if (args.newOwnerName && !targetUser) {
+                      content += ` ВНИМАНИЕ: Сотрудник "${args.newOwnerName}" не найден, исполнитель не изменен.`
+                    }
+                    formattedMessages.push({
+                      role: 'tool',
+                      tool_call_id: toolCall.id,
+                      name: toolCall.function.name,
+                      content,
+                    } as any)
+                  }
                 }
               } else if (toolCall.function.name === 'getUserStats' && isSuperAdmin) {
                 const args = JSON.parse(toolCall.function.arguments)
