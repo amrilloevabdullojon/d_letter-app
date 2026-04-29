@@ -199,7 +199,9 @@ export async function extractLetterDataFromPdf(
   pdfBase64: string
 ): Promise<ExtractedLetterData | null> {
   if (!process.env.GEMINI_API_KEY) {
-    console.warn('GEMINI_API_KEY not configured')
+    logger.error('AI', new Error('GEMINI_API_KEY not configured'), {
+      action: 'extractLetterDataFromPdf',
+    })
     return null
   }
 

@@ -122,25 +122,25 @@ export async function POST(request: NextRequest) {
     let documentText: string | null = null
 
     if (documentKind === 'pdf') {
-      try {
-        const pdfParse = require('pdf-parse')
-        const data = await pdfParse(buffer)
-        documentText = data.text
-      } catch (error) {
-        logger.error('Parse document', 'Failed to parse PDF text locally', { error })
-      }
+      // PDF handles Gemini vision directly
+      const base64 = buffer.toString('base64')
+      aiData = await withTimeout(
+        extractLetterDataFromPdf(base64),
+        45000,
+        'PDF parsing timeout after 45 seconds'
+      )
+      extractedText = true // assume vision extracted something
     } else {
       documentText = await extractTextFromOfficeDocument(buffer, documentKind)
-    }
+      extractedText = Boolean(documentText && documentText.trim())
 
-    extractedText = Boolean(documentText && documentText.trim())
-
-    if (documentText && documentText.trim()) {
-      aiData = await withTimeout(
-        extractLetterDataWithAI(documentText),
-        45000,
-        'Document text parsing timeout after 45 seconds'
-      )
+      if (documentText && documentText.trim()) {
+        aiData = await withTimeout(
+          extractLetterDataWithAI(documentText),
+          45000,
+          'Document text parsing timeout after 45 seconds'
+        )
+      }
     }
 
     logger.debug('Parse document', 'AI parsing completed', {

@@ -18,6 +18,6 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     return response.embeddings?.[0]?.values || null
   } catch (error) {
     logger.error('AI', error, { action: 'getEmbedding' })
-    return null
+    throw error
   }
 }

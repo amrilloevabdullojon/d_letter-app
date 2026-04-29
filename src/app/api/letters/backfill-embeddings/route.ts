@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     logger.error('POST /api/letters/backfill-embeddings', error)
-    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Детали ошибки: ' + (error.message || JSON.stringify(error)) },
+      { status: 500 }
+    )
   }
 }
