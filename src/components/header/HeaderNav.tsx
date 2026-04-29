@@ -219,6 +219,25 @@ export const HeaderNav = memo(function HeaderNav({
                   <span>Экспорт в Sheets</span>
                 </button>
               </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="mx-2 my-1 bg-white/10" />
+
+              <DropdownMenuLabel className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Интеграции
+              </DropdownMenuLabel>
+
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin/jira-requests"
+                  onClick={(event) => handleNavClick(event, '/admin/jira-requests')}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-200 outline-none transition-colors hover:bg-white/5 hover:text-white"
+                >
+                  <svg className="h-4 w-4 text-[#0052CC]" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11.53 2c0 2.4 1.97 4.35 4.35 4.35h3.52V2.83c0-2.4-1.97-4.35-4.35-4.35h-3.52v3.52zm-5.76 5.76c0 2.4 1.97 4.35 4.35 4.35h3.52V8.59c0-2.4-1.97-4.35-4.35-4.35H5.77v3.52zM0 13.53c0 2.4 1.97 4.35 4.35 4.35h3.52v-3.52c0-2.4-1.97-4.35-4.35-4.35H4.35v3.52z" />
+                  </svg>
+                  <span>Jira Заявки</span>
+                </Link>
+              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

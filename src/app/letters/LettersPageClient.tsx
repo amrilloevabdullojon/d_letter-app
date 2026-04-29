@@ -267,7 +267,7 @@ function LettersPageContent({ initialData }: LettersPageClientProps) {
   const lettersRequestIdRef = useRef(0)
   const skipInitialLoadRef = useRef(Boolean(initialData))
   const skipInitialSearchRef = useRef(Boolean(initialData))
-  const skipUsersLoadRef = useRef(Boolean(initialData?.users?.length) || !canManageUsers)
+  const skipUsersLoadRef = useRef(Boolean(initialData?.users?.length))
   const isFirstFilterLoadRef = useRef(true) // Для отслеживания первой загрузки фильтров
   const lettersCacheRef = useRef<
     Map<string, { letters: Letter[]; pagination: Pagination | null; storedAt: number }>

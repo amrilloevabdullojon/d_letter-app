@@ -20,10 +20,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const permissionError = requirePermission(session.user.role, 'MANAGE_USERS')
-    if (permissionError) {
-      return permissionError
-    }
+    // Разрешаем доступ всем авторизованным пользователям для работы поиска,
+    // но ограничиваем поля, если нет прав MANAGE_USERS
+    const canManageUsers = !requirePermission(session.user.role, 'MANAGE_USERS')
 
     // Парсим и валидируем query параметры
     const searchParams = Object.fromEntries(request.nextUrl.searchParams)
@@ -58,25 +57,29 @@ export async function GET(request: NextRequest) {
           name: true,
           email: true,
           image: true,
-          role: true,
-          canLogin: true,
-          telegramChatId: true,
-          createdAt: true,
-          lastLoginAt: true,
-          notifyEmail: true,
-          notifyTelegram: true,
-          notifySms: true,
-          notifyInApp: true,
-          quietHoursStart: true,
-          quietHoursEnd: true,
-          digestFrequency: true,
-          _count: {
-            select: {
-              letters: true,
-              comments: true,
-              sessions: true,
-            },
-          },
+          ...(canManageUsers
+            ? {
+                role: true,
+                canLogin: true,
+                telegramChatId: true,
+                createdAt: true,
+                lastLoginAt: true,
+                notifyEmail: true,
+                notifyTelegram: true,
+                notifySms: true,
+                notifyInApp: true,
+                quietHoursStart: true,
+                quietHoursEnd: true,
+                digestFrequency: true,
+                _count: {
+                  select: {
+                    letters: true,
+                    comments: true,
+                    sessions: true,
+                  },
+                },
+              }
+            : {}),
           profile: {
             select: {
               avatarUrl: true,

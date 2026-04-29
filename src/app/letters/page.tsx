@@ -92,17 +92,15 @@ export default async function LettersPage({ searchParams }: PageProps) {
   const canManageUsers = hasPermission(session.user.role, 'MANAGE_USERS')
   let users: Array<{ id: string; name: string | null; email: string | null }> = []
 
-  if (canManageUsers) {
-    const cachedUsers = await cache.get<typeof users>(CACHE_KEYS.USERS)
-    if (cachedUsers) {
-      users = cachedUsers
-    } else {
-      users = await prisma.user.findMany({
-        select: { id: true, name: true, email: true },
-        orderBy: { createdAt: 'desc' },
-      })
-      await cache.set(CACHE_KEYS.USERS, users, CACHE_TTL.USERS)
-    }
+  const cachedUsers = await cache.get<typeof users>(CACHE_KEYS.USERS)
+  if (cachedUsers) {
+    users = cachedUsers
+  } else {
+    users = await prisma.user.findMany({
+      select: { id: true, name: true, email: true },
+      orderBy: { createdAt: 'desc' },
+    })
+    await cache.set(CACHE_KEYS.USERS, users, CACHE_TTL.USERS)
   }
 
   const letters = list.letters.map((letter) => ({

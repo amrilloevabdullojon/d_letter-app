@@ -2,9 +2,15 @@ import 'server-only'
 import { GoogleGenAI, Type } from '@google/genai'
 import { z } from 'zod'
 import { logger } from '@/lib/logger.server'
+import OpenAI from 'openai'
 
 const genai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
+})
+
+const grok = new OpenAI({
+  apiKey: process.env.XAI_API_KEY || 'missing-key',
+  baseURL: 'https://api.x.ai/v1',
 })
 
 const MAX_AI_RETRIES = 2
@@ -234,29 +240,29 @@ export async function extractLetterDataFromPdf(
 }
 
 /**
- * Извлекает данные из текста письма с помощью Gemini AI (legacy)
+ * Извлекает данные из текста письма с помощью Grok AI
  */
 export async function extractLetterDataWithAI(
   pdfText: string
 ): Promise<ExtractedLetterData | null> {
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn('GEMINI_API_KEY not configured')
+  if (!process.env.XAI_API_KEY) {
+    console.warn('XAI_API_KEY not configured')
     return null
   }
 
   try {
     const response = await withRetry('extractLetterDataWithAI', () =>
-      genai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: EXTRACTION_PROMPT + '\n\nТекст письма:\n' + pdfText.substring(0, 4000),
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: EXTRACTION_RESPONSE_SCHEMA,
-        },
+      grok.chat.completions.create({
+        model: 'grok-4.20',
+        messages: [
+          { role: 'system', content: EXTRACTION_PROMPT },
+          { role: 'user', content: 'Текст письма:\n' + pdfText.substring(0, 4000) },
+        ],
+        response_format: { type: 'json_object' },
       })
     )
 
-    const content = response.text
+    const content = response.choices[0]?.message?.content
     if (!content) return null
     return parseExtractedLetterData(content)
   } catch (error) {
@@ -266,11 +272,11 @@ export async function extractLetterDataWithAI(
 }
 
 /**
- * Переводит текст на русский с помощью Gemini
+ * Переводит текст на русский с помощью Grok
  * ✅ ОПТИМИЗАЦИЯ: Кэширует переводы для снижения AI API вызовов
  */
 export async function translateToRussian(text: string): Promise<string | null> {
-  if (!process.env.GEMINI_API_KEY) return null
+  if (!process.env.XAI_API_KEY) return null
 
   // Проверяем кэш
   const cached = getCachedTranslation(text)
@@ -281,14 +287,15 @@ export async function translateToRussian(text: string): Promise<string | null> {
 
   try {
     const response = await withRetry('translateToRussian', () =>
-      genai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: `Translate to Russian. Return only the translation:
-
-  ${text}`,
+      grok.chat.completions.create({
+        model: 'grok-4.20',
+        messages: [
+          { role: 'system', content: 'Translate to Russian. Return only the translation.' },
+          { role: 'user', content: text },
+        ],
       })
     )
-    const result = response.text || null
+    const result = response.choices[0]?.message?.content || null
 
     // Сохраняем в кэш
     if (result) {
@@ -306,18 +313,19 @@ export async function translateToRussian(text: string): Promise<string | null> {
  * Создаёт краткое содержание письма
  */
 export async function summarizeLetter(text: string): Promise<string | null> {
-  if (!process.env.GEMINI_API_KEY) return null
+  if (!process.env.XAI_API_KEY) return null
 
   try {
     const response = await withRetry('summarizeLetter', () =>
-      genai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: `Summarize in Russian (1-2 sentences):
-
-  ${text}`,
+      grok.chat.completions.create({
+        model: 'grok-4.20',
+        messages: [
+          { role: 'system', content: 'Summarize in Russian (1-2 sentences).' },
+          { role: 'user', content: text },
+        ],
       })
     )
-    return response.text || null
+    return response.choices[0]?.message?.content || null
   } catch (error) {
     logger.error('AI', error, { action: 'summarizeLetter' })
     return null
@@ -328,16 +336,23 @@ export async function summarizeLetter(text: string): Promise<string | null> {
  * Генерирует официальный ответ (обработку) на основе содержания письма
  */
 export async function generateProcessingText(content: string): Promise<string | null> {
-  if (!process.env.GEMINI_API_KEY) return null
+  if (!process.env.XAI_API_KEY) return null
 
   try {
     const response = await withRetry('generateProcessingText', () =>
-      genai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: `Напиши краткий официальный черновик ответа или описание принятых мер по следующему письму (на русском языке, 2-4 предложения). Не пиши приветствия и прощания, только суть решения/резолюции:\n\n${content}`,
+      grok.chat.completions.create({
+        model: 'grok-4.20',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Напиши краткий официальный черновик ответа или описание принятых мер по следующему письму (на русском языке, 2-4 предложения). Не пиши приветствия и прощания, только суть решения/резолюции.',
+          },
+          { role: 'user', content },
+        ],
       })
     )
-    return response.text || null
+    return response.choices[0]?.message?.content || null
   } catch (error) {
     logger.error('AI', error, { action: 'generateProcessingText' })
     return null
@@ -348,22 +363,23 @@ export async function generateProcessingText(content: string): Promise<string | 
  * Генерирует описание задачи для Jira на основе текста обработки
  */
 export async function generateJiraDescription(processingText: string): Promise<string | null> {
-  if (!process.env.GEMINI_API_KEY) return null
+  if (!process.env.XAI_API_KEY) return null
 
   try {
     const response = await withRetry('generateJiraDescription', () =>
-      genai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: `Перепиши этот текст в формате постановки задачи для команды (например, в Jira). Используй markdown:
-- Добавь секцию **Суть задачи**
-- Добавь список **Шаги / Что сделать**
-- Добавь **Ожидаемый результат**
-Ничего не придумывай, используй только тот контекст, что дан в тексте ниже.
-Текст:
-${processingText}`,
+      grok.chat.completions.create({
+        model: 'grok-4.20',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Перепиши этот текст в формате постановки задачи для команды (например, в Jira). Используй markdown:\n- Добавь секцию **Суть задачи**\n- Добавь список **Шаги / Что сделать**\n- Добавь **Ожидаемый результат**\nНичего не придумывай, используй только тот контекст, что дан в тексте ниже.',
+          },
+          { role: 'user', content: processingText },
+        ],
       })
     )
-    return response.text || null
+    return response.choices[0]?.message?.content || null
   } catch (error) {
     logger.error('AI', error, { action: 'generateJiraDescription' })
     return null
