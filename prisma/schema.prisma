@@ -297,6 +297,8 @@ model Letter {
   closeDate     DateTime?    // Дата закрытия
   frozenAt      DateTime?    // Момент заморозки (FROZEN/REJECTED) — для паузы SLA
   jiraLink      String?      // Ссылка на Jira
+  jiraIssueId   String?      @unique // ID задачи в Jira
+  isPendingJira Boolean      @default(false) // Ожидает отправки в Jira
   priority      Int          @default(50) // Приоритет (0-100)
   attachmentsFolderId String?
 
@@ -937,4 +939,15 @@ model LetterStatusConfig {
 
   @@index([order])
   @@index([isActive])
+}
+
+// ===== СИСТЕМНЫЕ НАСТРОЙКИ =====
+
+model SystemSettings {
+  id              String   @id @default("global")
+  jiraHost        String?
+  jiraEmail       String?
+  jiraToken       String?  @db.Text
+  jiraProjectKey  String   @default("MAIL")
+  updatedAt       DateTime @updatedAt
 }

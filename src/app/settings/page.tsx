@@ -16,6 +16,7 @@ import {
   Settings,
   Tags,
   ArrowLeft,
+  Database,
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { hasPermission } from '@/lib/permissions'
@@ -102,6 +103,11 @@ const StatusConfigTab = dynamic(
   }
 )
 
+const JiraTab = dynamic(
+  () => import('@/components/settings/JiraTab').then((mod) => ({ default: mod.JiraTab })),
+  { loading: () => <TabSkeleton /> }
+)
+
 type TabType =
   | 'permissions'
   | 'users'
@@ -111,6 +117,7 @@ type TabType =
   | 'personalization'
   | 'workflow'
   | 'statuses'
+  | 'jira'
 
 const TAB_INFO: Record<TabType, string> = {
   permissions: 'Роли и права доступа',
@@ -121,6 +128,7 @@ const TAB_INFO: Record<TabType, string> = {
   personalization: 'Тема, язык и эффекты',
   workflow: 'Параметры рабочего процесса',
   statuses: 'Конфигурация статусов писем',
+  jira: 'Интеграция с Jira',
 }
 
 export default function SettingsPage() {
@@ -226,6 +234,15 @@ export default function SettingsPage() {
       label: 'Статусы',
       icon: <Tags className="h-5 w-5" />,
     },
+    ...(isSuperAdmin
+      ? [
+          {
+            value: 'jira' as TabType,
+            label: 'Jira',
+            icon: <Database className="h-5 w-5" />,
+          },
+        ]
+      : []),
   ]
   const handleMobileTabChange = (tab: string) => {
     handleTabChange(tab as TabType)
@@ -398,6 +415,23 @@ export default function SettingsPage() {
                 </div>
                 Статусы
               </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => handleTabChange('jira')}
+                  className={`tap-highlight touch-target-sm group flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+                    activeTab === 'jira'
+                      ? 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-500/30'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <div
+                    className={`rounded-lg p-1.5 ${activeTab === 'jira' ? 'bg-teal-500/20' : 'bg-slate-700/50 group-hover:bg-slate-600/50'}`}
+                  >
+                    <Database className="h-4 w-4" />
+                  </div>
+                  Jira API
+                </button>
+              )}
             </ScrollIndicator>
           </div>
         )}
@@ -445,6 +479,12 @@ export default function SettingsPage() {
             {activeTab === 'statuses' && (
               <div className="panel panel-glass rounded-2xl p-6">
                 <StatusConfigTab />
+              </div>
+            )}
+
+            {activeTab === 'jira' && isSuperAdmin && (
+              <div className="panel panel-glass rounded-2xl p-6">
+                <JiraTab />
               </div>
             )}
           </motion.div>

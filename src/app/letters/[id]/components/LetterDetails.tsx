@@ -14,7 +14,9 @@ import {
   FileEdit,
   Plus,
   ClipboardCheck,
+  Database,
 } from 'lucide-react'
+import { useToast } from '@/components/Toast'
 import { EditableField } from '@/components/EditableField'
 import { LETTER_TYPES } from '@/lib/constants'
 import type { Letter } from '../types'
@@ -54,6 +56,33 @@ export const LetterDetails = memo(function LetterDetails({
   const hasCustomType = !!typeValue && !letterTypeOptions.some((opt) => opt.value === typeValue)
   const [showCustomType, setShowCustomType] = useState(false)
   const [customType, setCustomType] = useState('')
+  const toast = useToast()
+  const [sendingToJira, setSendingToJira] = useState(false)
+
+  const handleSendToJiraModeration = async () => {
+    if (!letter.processing) {
+      toast.error('Пожалуйста, заполните текст обработки перед отправкой')
+      return
+    }
+
+    setSendingToJira(true)
+    try {
+      const res = await fetch(`/api/letters/${letter.id}/pending-jira`, {
+        method: 'POST',
+      })
+      if (res.ok) {
+        toast.success('Заявка отправлена на модерацию суперадмину')
+        // Optimistic UI update or refresh could be here
+        onUpdate('isPendingJira', 'true') // If it's passed down, but we just trigger toast
+      } else {
+        toast.error('Ошибка отправки заявки')
+      }
+    } catch (e) {
+      toast.error('Ошибка соединения')
+    } finally {
+      setSendingToJira(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -146,16 +175,37 @@ export const LetterDetails = memo(function LetterDetails({
               <ClipboardCheck className="h-4 w-4 text-indigo-400" />
             </div>
             <h3 className="font-semibold text-white">Обработка</h3>
+            {(letter as any).isPendingJira ? (
+              <span className="ml-2 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-400">
+                На модерации (Jira)
+              </span>
+            ) : (letter as any).jiraIssueId ? (
+              <span className="ml-2 rounded-full bg-teal-500/10 px-2.5 py-0.5 text-xs font-medium text-teal-400">
+                Отправлено в Jira
+              </span>
+            ) : null}
           </div>
-          <LetterTemplateSelector
-            letter={letter}
-            currentUserId={currentUserId}
-            field="processing"
-            onSelect={(content) => {
-              const newVal = letter.processing ? `${letter.processing}\n\n${content}` : content
-              onUpdate('processing', newVal)
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSendToJiraModeration}
+              disabled={
+                sendingToJira || !!(letter as any).isPendingJira || !!(letter as any).jiraIssueId
+              }
+              className="flex items-center gap-1.5 rounded-lg bg-slate-800/80 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-white disabled:opacity-50"
+              title="Отправить на проверку в Jira"
+            >
+              <Database className="h-3.5 w-3.5" />В Jira
+            </button>
+            <LetterTemplateSelector
+              letter={letter}
+              currentUserId={currentUserId}
+              field="processing"
+              onSelect={(content) => {
+                const newVal = letter.processing ? `${letter.processing}\n\n${content}` : content
+                onUpdate('processing', newVal)
+              }}
+            />
+          </div>
         </div>
         <div className="space-y-3">
           <EditableField
