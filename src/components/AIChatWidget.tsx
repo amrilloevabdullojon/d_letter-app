@@ -213,7 +213,7 @@ export function AIChatWidget() {
             animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
             exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/90 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="flex flex-col overflow-hidden rounded-3xl border border-teal-500/20 bg-slate-900/90 shadow-[0_0_50px_-12px_rgba(20,184,166,0.25)] backdrop-blur-2xl"
             style={{
               position: 'fixed',
               top: '50%',
@@ -267,8 +267,27 @@ export function AIChatWidget() {
                     }`}
                   >
                     {m.role === 'model' ? (
-                      <div className="prose prose-sm prose-invert prose-p:leading-relaxed prose-pre:bg-slate-900/50 prose-pre:border prose-pre:border-white/5 max-w-none">
-                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      <div className="prose prose-sm prose-invert prose-p:leading-relaxed prose-pre:bg-slate-900/80 prose-pre:border prose-pre:border-white/10 max-w-none">
+                        <ReactMarkdown
+                          components={{
+                            a: ({ node, ...props }) => (
+                              <a
+                                {...props}
+                                className="inline-flex items-center gap-1 rounded-md bg-teal-500/15 px-2 py-0.5 text-xs font-semibold text-teal-300 no-underline ring-1 ring-teal-500/30 transition-colors hover:bg-teal-500/30"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              />
+                            ),
+                            strong: ({ node, ...props }) => (
+                              <strong
+                                {...props}
+                                className="rounded bg-teal-500/5 px-1 font-semibold text-teal-200"
+                              />
+                            ),
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
                       </div>
                     ) : (
                       m.content
@@ -282,9 +301,21 @@ export function AIChatWidget() {
                   animate={{ opacity: 1 }}
                   className="flex justify-start"
                 >
-                  <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm border border-white/5 bg-slate-800/80 px-4 py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-teal-400" />
-                    <span className="text-xs font-medium text-slate-400">Генерирует ответ...</span>
+                  <div className="flex items-center justify-center rounded-2xl rounded-tl-sm border border-white/5 bg-slate-800/80 px-4 py-3">
+                    <div className="flex h-5 items-center gap-1">
+                      <div
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-teal-400"
+                        style={{ animationDelay: '0ms' }}
+                      />
+                      <div
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-teal-400"
+                        style={{ animationDelay: '150ms' }}
+                      />
+                      <div
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-teal-400"
+                        style={{ animationDelay: '300ms' }}
+                      />
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -314,22 +345,29 @@ export function AIChatWidget() {
 
             {/* Input Area */}
             <div className="flex flex-col gap-2 border-t border-white/5 bg-slate-900/50 p-3 backdrop-blur-md">
-              {selectedFile && (
-                <div className="flex items-center justify-between rounded-lg border border-teal-500/20 bg-teal-500/10 px-3 py-2">
-                  <span className="max-w-[200px] truncate text-xs text-teal-400">
-                    📎 {selectedFile.name}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSelectedFile(null)
-                      if (fileInputRef.current) fileInputRef.current.value = ''
-                    }}
-                    className="text-slate-400 hover:text-white"
+              <AnimatePresence>
+                {selectedFile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="flex items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-2 shadow-[0_0_15px_-3px_rgba(20,184,166,0.15)]"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
+                    <span className="max-w-[250px] truncate text-xs font-medium text-teal-300">
+                      📎 {selectedFile.name}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedFile(null)
+                        if (fileInputRef.current) fileInputRef.current.value = ''
+                      }}
+                      className="rounded-full bg-teal-500/10 p-1 text-teal-500 transition-colors hover:bg-teal-500/20 hover:text-teal-300"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="relative flex items-center gap-2">
                 <input
                   type="file"
