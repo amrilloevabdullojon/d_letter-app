@@ -6,11 +6,23 @@ export interface LetterTypeOption {
 }
 
 const CACHE_KEY = 'letter-types-cache'
-const CACHE_TTL = 1000 * 60 * 60 // 1 hour
+const CACHE_TTL = 1000 * 60 * 10 // БАГ #7 ФИКС: 10 минут вместо 1 часа
 
 interface CacheData {
   types: LetterTypeOption[]
   timestamp: number
+}
+
+/**
+ * Принудительно сбрасывает кэш типов писем.
+ * Вызывается после добавления нового типа через LetterDetails.
+ */
+export function invalidateLetterTypesCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY)
+  } catch {
+    // Игнорируем ошибки localStorage (SSR и т.п.)
+  }
 }
 
 export function useLetterTypes() {
@@ -48,8 +60,7 @@ export function useLetterTypes() {
         } else {
           setIsLoading(false)
         }
-      } catch (err) {
-        console.error('Failed to load letter types', err)
+      } catch {
         if (mounted) setIsLoading(false)
       }
     }

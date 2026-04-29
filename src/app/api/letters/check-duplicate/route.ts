@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
+import { logger } from '@/lib/logger.server'
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions)
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   try {
     const existingLetter = await prisma.letter.findFirst({
       where: {
-        number,
+        number: { equals: number, mode: 'insensitive' }, // БАГ #1 ФИКС: регистронезависимый поиск
         deletedAt: null,
       },
       select: {
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ exists: false })
   } catch (error) {
-    console.error('Error checking duplicate:', error)
+    logger.error('GET /api/letters/check-duplicate', error) // БАГ #6 ФИКС: используем структурированный logger
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

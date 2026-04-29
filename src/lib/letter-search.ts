@@ -1,6 +1,7 @@
 import { Prisma, LetterStatus } from '@prisma/client'
 import { prisma } from './prisma'
 import { getEmbedding } from '@/lib/embeddings'
+import { logger } from '@/lib/logger.server'
 
 /**
  * Параметры поиска писем
@@ -560,7 +561,7 @@ export async function getPopularTypes(limit = 20) {
 export async function saveSearchQuery(userId: string, query: string, filters: any) {
   // Можно создать модель SearchHistory для хранения истории поиска
   // Пока просто логируем
-  console.log(`User ${userId} searched: "${query}"`, filters)
+  logger.debug('searchLetters', `User ${userId} searched: "${query}"`, filters) // БАГ #5 ФИКС: убран console.log из продакшна
 }
 
 /**

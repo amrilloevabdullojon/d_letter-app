@@ -819,7 +819,17 @@ ${contextStr}`
             }
           }
         } catch (e) {
-          console.error('Streaming error', e)
+          // БАГ #8 ФИКС: структурированное логирование + ошибка видна пользователю
+          logger.error('Streaming error in ai-chat', e)
+          try {
+            controller.enqueue(
+              new TextEncoder().encode(
+                '\n\n⚠️ Произошла внутренняя ошибка при обработке ответа. Попробуйте ещё раз.'
+              )
+            )
+          } catch {
+            // контроллер уже закрыт
+          }
         } finally {
           controller.close()
         }

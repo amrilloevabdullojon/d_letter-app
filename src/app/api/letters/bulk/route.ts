@@ -312,6 +312,36 @@ async function handleBulkCreate(
   })
 
   await invalidateLettersCache()
+
+  // БАГ #2 ФИКС: фоновая генерация эмбеддингов для массово созданных писем
+  // Без этого грок-тян не знала о письмах, созданных через BulkCreate
+  setTimeout(async () => {
+    try {
+      const { getEmbedding } = await import('@/lib/embeddings')
+      for (const letter of createdLetters) {
+        const fullLetter = await prisma.letter.findUnique({
+          where: { id: letter.id },
+          select: { id: true, number: true, org: true, content: true },
+        })
+        if (!fullLetter) continue
+        const textToEmbed = `Письмо №${fullLetter.number}. Организация: ${fullLetter.org}. Содержание: ${fullLetter.content || ''}`
+        const embedding = await getEmbedding(textToEmbed)
+        if (embedding) {
+          const embeddingStr = `[${embedding.join(',')}]`
+          await prisma.$executeRawUnsafe(
+            `UPDATE "Letter" SET embedding = $1::vector WHERE id = $2`,
+            embeddingStr,
+            fullLetter.id
+          )
+        }
+        // Небольшая задержка между запросами
+        await new Promise((r) => setTimeout(r, 150))
+      }
+    } catch (e) {
+      logger.error('Bulk create background embedding failed', e)
+    }
+  }, 0)
+
   return NextResponse.json(
     {
       success: true,

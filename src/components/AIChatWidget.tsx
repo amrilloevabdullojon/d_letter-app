@@ -50,6 +50,8 @@ export function AIChatWidget() {
   const pathname = usePathname()
   const [isListening, setIsListening] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [rateLimitCooldown, setRateLimitCooldown] = useState(0) // БАГ #4 ФИКС: обратный отсчёт после 429
+  const rateLimitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
@@ -177,7 +179,7 @@ export function AIChatWidget() {
   }
 
   const handleSend = async () => {
-    if ((!input.trim() && selectedFiles.length === 0) || isLoading) return
+    if ((!input.trim() && selectedFiles.length === 0) || isLoading || rateLimitCooldown > 0) return
     hapticLight()
 
     let userMessage = input.trim()
@@ -219,6 +221,32 @@ export function AIChatWidget() {
           const data = await res.json()
           errorMsg = data.error || errorMsg
         } catch (e) {}
+
+        // БАГ #4 ФИКС: специальная обработка 429 rate-limit с обратным отсчётом
+        if (res.status === 429) {
+          const COOLDOWN_SECONDS = 60
+          setRateLimitCooldown(COOLDOWN_SECONDS)
+          if (rateLimitTimerRef.current) clearInterval(rateLimitTimerRef.current)
+          rateLimitTimerRef.current = setInterval(() => {
+            setRateLimitCooldown((prev) => {
+              if (prev <= 1) {
+                clearInterval(rateLimitTimerRef.current!)
+                rateLimitTimerRef.current = null
+                return 0
+              }
+              return prev - 1
+            })
+          }, 1000)
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: 'model',
+              content: `⏳ Уффф, слишком много вопросов сразу! Я не успеваю! Подожди **${COOLDOWN_SECONDS} секунд** и спрашивай снова, ладно? 😤`,
+            },
+          ])
+          return
+        }
+
         setMessages((prev) => [
           ...prev,
           { role: 'model', content: 'К сожалению, произошла ошибка: ' + errorMsg },
@@ -687,16 +715,31 @@ export function AIChatWidget() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Спросите меня о письмах..."
-                    disabled={isLoading}
+                    placeholder={
+                      rateLimitCooldown > 0
+                        ? `Подожди ${rateLimitCooldown}с...`
+                        : 'Спросите меня о письмах...'
+                    }
+                    disabled={isLoading || rateLimitCooldown > 0}
                     className="w-full rounded-xl border border-white/10 bg-slate-800/50 py-3 pl-4 pr-12 text-sm text-white placeholder-slate-400 shadow-inner transition-all focus:border-teal-500/50 focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500/50 disabled:opacity-50"
                   />
                   <button
                     onClick={handleSend}
-                    disabled={(!input.trim() && selectedFiles.length === 0) || isLoading}
+                    disabled={
+                      (!input.trim() && selectedFiles.length === 0) ||
+                      isLoading ||
+                      rateLimitCooldown > 0
+                    }
                     className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-white shadow-md transition-all hover:bg-teal-400 hover:shadow-teal-500/25 disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none"
+                    title={
+                      rateLimitCooldown > 0 ? `Подожди ${rateLimitCooldown} секунд` : undefined
+                    }
                   >
-                    <Send className="h-4 w-4 translate-x-[1px]" />
+                    {rateLimitCooldown > 0 ? (
+                      <span className="text-[10px] font-bold">{rateLimitCooldown}</span>
+                    ) : (
+                      <Send className="h-4 w-4 translate-x-[1px]" />
+                    )}
                   </button>
                 </div>
               </div>

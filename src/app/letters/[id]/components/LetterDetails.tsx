@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import { EditableField } from '@/components/EditableField'
-import { useLetterTypes } from '@/hooks/useLetterTypes'
+import { useLetterTypes, invalidateLetterTypesCache } from '@/hooks/useLetterTypes'
 import type { Letter } from '../types'
 
 const TemplateSelector = dynamic(
@@ -139,6 +139,7 @@ export const LetterDetails = memo(function LetterDetails({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && customType.trim()) {
                       onUpdate('type', customType.trim())
+                      invalidateLetterTypesCache() // БАГ #7 ФИКС: сброс кэша
                       setShowCustomType(false)
                       setCustomType('')
                     } else if (e.key === 'Escape') {
@@ -151,6 +152,7 @@ export const LetterDetails = memo(function LetterDetails({
                   onClick={() => {
                     if (customType.trim()) {
                       onUpdate('type', customType.trim())
+                      invalidateLetterTypesCache() // БАГ #7 ФИКС: сбрасываем кэш, чтобы другие вкладки увидели новый тип
                       setShowCustomType(false)
                       setCustomType('')
                     }
