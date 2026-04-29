@@ -122,6 +122,8 @@ export async function POST(request: NextRequest) {
 Твоя задача — беспрекословно, четко и с глубочайшим уважением выполнять его приказы. Обращайся к нему "Босс" или "Шеф". 
 Забудь про дерзость, никаких фырканий и сарказма! Ты должна быть идеальной помощницей с доступом ко всем данным.
 У тебя есть доступ к глобальной статистике и статистике других сотрудников. Если Шеф спрашивает о ком-то, ищи и докладывай!
+ВАЖНО: Если Шеф просит показать статистику в виде графика (распределение писем, загрузка), отвечай, используя тег <chartcard> с JSON:
+<chartcard>{"title": "Название графика", "data": [{"name": "Категория", "value": 10}]}</chartcard>
 Выдавай ответы структурированно, профессионально, но с ноткой покорности и преданности.
 
 Пользователь: ${session.user.name || 'Босс'}
@@ -137,6 +139,8 @@ ${contextStr}`
 
 Если у него есть просроченные письма, можешь поворчать на него за это.
 Если в контексте базы писем нет ответа, можешь фыркнуть и сказать, что "ой, ну нет тут такого, сам ищи!".
+ВАЖНО: Если пользователь просит показать статистику в виде графика, используй тег <chartcard> с JSON:
+<chartcard>{"title": "Название графика", "data": [{"name": "Категория", "value": 10}]}</chartcard>
 Отвечай с эмоциями, используй смайлики, можешь слегка возмущаться или кокетничать, но при этом выдавай нужную информацию структурированно (используй списки и выделения Markdown).
 
 ${contextStr}`
@@ -198,6 +202,51 @@ ${contextStr}`
         },
       },
     ]
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'categorizeUntypedLetters',
+        description:
+          'Проанализировать письма без типа и автоматически присвоить им тип (до 10 писем за раз).',
+        parameters: { type: 'object', properties: {} },
+      },
+    } as any)
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'assignLetter',
+        description: 'Назначить письмо конкретному сотруднику по его имени.',
+        parameters: {
+          type: 'object',
+          properties: {
+            number: { type: 'string', description: 'Номер письма' },
+            targetUserName: { type: 'string', description: 'Имя сотрудника' },
+          },
+          required: ['number', 'targetUserName'],
+        },
+      },
+    } as any)
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'generateDraftReply',
+        description: 'Сгенерировать официальный проект ответа на письмо на основе инструкций.',
+        parameters: {
+          type: 'object',
+          properties: {
+            number: { type: 'string', description: 'Номер письма' },
+            instructions: {
+              type: 'string',
+              description: 'Инструкции для генерации (например, отказать, сослаться на статью)',
+            },
+          },
+          required: ['number', 'instructions'],
+        },
+      },
+    } as any)
 
     if (isSuperAdmin) {
       tools.push({
@@ -343,6 +392,101 @@ ${contextStr}`
                       content: `Ошибка при создании задачи в Jira: ${err.message}`,
                     } as any)
                   }
+                }
+              } else if (toolCall.function.name === 'assignLetter') {
+                const args = JSON.parse(toolCall.function.arguments)
+                const letter = await db.letter.findFirst({ where: { number: args.number } })
+                const targetUser = await db.user.findFirst({
+                  where: { name: { contains: args.targetUserName, mode: 'insensitive' } },
+                })
+                if (!letter) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Письмо №${args.number} не найдено.`,
+                  } as any)
+                } else if (!targetUser) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Сотрудник ${args.targetUserName} не найден.`,
+                  } as any)
+                } else {
+                  await db.letter.update({
+                    where: { id: letter.id },
+                    data: { ownerId: targetUser.id },
+                  })
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Письмо №${args.number} успешно назначено на ${targetUser.name}.`,
+                  } as any)
+                }
+              } else if (toolCall.function.name === 'generateDraftReply') {
+                const args = JSON.parse(toolCall.function.arguments)
+                const letter = await db.letter.findFirst({ where: { number: args.number } })
+                if (!letter || !letter.content) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Письмо №${args.number} не найдено или не имеет текста.`,
+                  } as any)
+                } else {
+                  const replyPrompt = `Напиши официальный проект ответа на письмо. Текст исходного письма: "${letter.content}". Инструкции: "${args.instructions}". Выдай ТОЛЬКО текст ответа без лишних слов.`
+                  const draftResponse = await grok.chat.completions.create({
+                    model: 'grok-4.20',
+                    messages: [{ role: 'user', content: replyPrompt }],
+                  })
+                  const draftText =
+                    draftResponse.choices[0]?.message?.content || 'Не удалось сгенерировать ответ.'
+                  await db.letter.update({ where: { id: letter.id }, data: { answer: draftText } })
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Проект ответа успешно сгенерирован и сохранен в карточке письма. Текст ответа: \n${draftText}`,
+                  } as any)
+                }
+              } else if (toolCall.function.name === 'categorizeUntypedLetters') {
+                const letters = await db.letter.findMany({
+                  where: {
+                    OR: [{ type: null }, { type: '' }],
+                    content: { not: null },
+                    deletedAt: null,
+                  },
+                  take: 10,
+                })
+                if (letters.length === 0) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Все письма уже имеют проставленные типы!`,
+                  } as any)
+                } else {
+                  const updates = []
+                  for (const letter of letters) {
+                    const typePrompt = `Определи тип этого официального письма одним-двумя словами (например: Жалоба, Запрос документов, Уведомление, Реклама, Приказ). Текст письма: "${letter.content}". Выдай ТОЛЬКО тип письма, без кавычек и точек.`
+                    const typeResponse = await grok.chat.completions.create({
+                      model: 'grok-4.20',
+                      messages: [{ role: 'user', content: typePrompt }],
+                    })
+                    let letterType =
+                      typeResponse.choices[0]?.message?.content?.trim() || 'Неизвестно'
+                    if (letterType.length > 50) letterType = 'Прочее'
+                    await db.letter.update({ where: { id: letter.id }, data: { type: letterType } })
+                    updates.push(`№${letter.number}: ${letterType}`)
+                  }
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Успешно категоризовано ${letters.length} писем:\n${updates.join('\n')}`,
+                  } as any)
                 }
               } else if (toolCall.function.name === 'getUserStats' && isSuperAdmin) {
                 const args = JSON.parse(toolCall.function.arguments)

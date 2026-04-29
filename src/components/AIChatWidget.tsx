@@ -2,7 +2,17 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { Bot, X, Send, Loader2, Sparkles, MessageSquareText, Search, Paperclip } from 'lucide-react'
+import {
+  Bot,
+  X,
+  Send,
+  Loader2,
+  Sparkles,
+  MessageSquareText,
+  Search,
+  Paperclip,
+  Mic,
+} from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -34,6 +44,8 @@ export function AIChatWidget() {
   const [selectedFiles, setSelectedFiles] = useState<{ name: string; dataUrl: string }[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pathname = usePathname()
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
     getPublicAiSettings().then((res) => {
@@ -59,6 +71,42 @@ export function AIChatWidget() {
       }
     })
   }, [])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition()
+        recognitionRef.current.continuous = false
+        recognitionRef.current.interimResults = false
+        recognitionRef.current.lang = 'ru-RU'
+
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript
+          setInput((prev) => (prev ? prev + ' ' + transcript : transcript))
+        }
+
+        recognitionRef.current.onerror = () => setIsListening(false)
+        recognitionRef.current.onend = () => setIsListening(false)
+      }
+    }
+  }, [])
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+    } else {
+      if (recognitionRef.current) {
+        recognitionRef.current.start()
+        setIsListening(true)
+        hapticLight()
+      } else {
+        alert('Голосовой ввод не поддерживается в этом браузере.')
+      }
+    }
+  }
 
   // Ref for the scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -305,80 +353,124 @@ export function AIChatWidget() {
                     {m.role === 'model' ? (
                       <div className="prose prose-sm prose-invert prose-p:leading-relaxed prose-pre:bg-slate-900/80 prose-pre:border prose-pre:border-white/10 max-w-none">
                         <ReactMarkdown
-                          components={{
-                            a: ({ node, ...props }) => (
-                              <a
-                                {...props}
-                                className="inline-flex items-center gap-1 rounded-md bg-teal-500/15 px-2 py-0.5 text-xs font-semibold text-teal-300 no-underline ring-1 ring-teal-500/30 transition-colors hover:bg-teal-500/30"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              />
-                            ),
-                            strong: ({ node, ...props }) => (
-                              <strong
-                                {...props}
-                                className="rounded bg-teal-500/5 px-1 font-semibold text-teal-200"
-                              />
-                            ),
-                            // @ts-expect-error: custom react-markdown component
-                            draftcard: ({ children }: any) => {
-                              try {
-                                const text = String(children).trim()
-                                const data = JSON.parse(text)
-                                return (
-                                  <div className="my-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 shadow-[0_0_20px_-5px_rgba(99,102,241,0.15)]">
-                                    <div className="mb-2 flex items-center gap-2">
-                                      <Sparkles className="h-4 w-4 text-indigo-400" />
-                                      <span className="text-sm font-semibold text-indigo-300">
-                                        Черновик письма (AI)
-                                      </span>
+                          components={
+                            {
+                              a: ({ node, ...props }: any) => (
+                                <a
+                                  {...props}
+                                  className="inline-flex items-center gap-1 rounded-md bg-teal-500/15 px-2 py-0.5 text-xs font-semibold text-teal-300 no-underline ring-1 ring-teal-500/30 transition-colors hover:bg-teal-500/30"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                />
+                              ),
+                              strong: ({ node, ...props }: any) => (
+                                <strong
+                                  {...props}
+                                  className="rounded bg-teal-500/5 px-1 font-semibold text-teal-200"
+                                />
+                              ),
+                              chartcard: ({ children }: any) => {
+                                try {
+                                  const text = String(children).trim()
+                                  const data = JSON.parse(text)
+                                  const maxVal =
+                                    Math.max(...data.data.map((d: any) => d.value)) || 1
+                                  return (
+                                    <div className="my-3 overflow-hidden rounded-xl border border-teal-500/20 bg-slate-900 shadow-xl">
+                                      <div className="border-b border-white/5 bg-slate-800/50 px-4 py-2">
+                                        <h4 className="text-sm font-semibold text-teal-300">
+                                          📊 {data.title || 'График'}
+                                        </h4>
+                                      </div>
+                                      <div className="flex flex-col gap-2 p-4">
+                                        {data.data.map((item: any, i: number) => (
+                                          <div key={i} className="flex flex-col gap-1">
+                                            <div className="flex justify-between text-xs text-slate-300">
+                                              <span>{item.name}</span>
+                                              <span className="font-semibold text-teal-400">
+                                                {item.value}
+                                              </span>
+                                            </div>
+                                            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                                              <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{
+                                                  width: `${(item.value / maxVal) * 100}%`,
+                                                }}
+                                                transition={{ duration: 1, ease: 'easeOut' }}
+                                                className="h-full rounded-full bg-gradient-to-r from-teal-600 to-emerald-400"
+                                              />
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
-                                    <div className="space-y-1 text-xs text-slate-300">
-                                      <div>
-                                        <span className="text-slate-500">Номер:</span>{' '}
-                                        {data.number || 'Б/Н'}
+                                  )
+                                } catch (e) {
+                                  return null
+                                }
+                              },
+                              draftcard: ({ children }: any) => {
+                                try {
+                                  const text = String(children).trim()
+                                  const data = JSON.parse(text)
+                                  return (
+                                    <div className="my-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 shadow-[0_0_20px_-5px_rgba(99,102,241,0.15)]">
+                                      <div className="mb-2 flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-indigo-400" />
+                                        <span className="text-sm font-semibold text-indigo-300">
+                                          Черновик письма (AI)
+                                        </span>
                                       </div>
-                                      <div>
-                                        <span className="text-slate-500">От:</span> {data.org}
+                                      <div className="space-y-1 text-xs text-slate-300">
+                                        <div>
+                                          <span className="text-slate-500">Номер:</span>{' '}
+                                          {data.number || 'Б/Н'}
+                                        </div>
+                                        <div>
+                                          <span className="text-slate-500">От:</span> {data.org}
+                                        </div>
+                                        <div>
+                                          <span className="text-slate-500">Дата:</span> {data.date}
+                                        </div>
+                                        <div>
+                                          <span className="text-slate-500">Суть:</span>{' '}
+                                          <span className="text-white">{data.summary}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-slate-500">Дедлайн:</span>{' '}
+                                          <span className="text-amber-400">
+                                            {data.deadlineDate}
+                                          </span>
+                                        </div>
                                       </div>
-                                      <div>
-                                        <span className="text-slate-500">Дата:</span> {data.date}
-                                      </div>
-                                      <div>
-                                        <span className="text-slate-500">Суть:</span>{' '}
-                                        <span className="text-white">{data.summary}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-slate-500">Дедлайн:</span>{' '}
-                                        <span className="text-amber-400">{data.deadlineDate}</span>
-                                      </div>
+                                      <button
+                                        onClick={async (e) => {
+                                          const btn = e.currentTarget
+                                          btn.disabled = true
+                                          btn.innerText = 'Сохраняю...'
+                                          hapticLight()
+                                          const res = await saveDraftLetter(data)
+                                          if (res.success) {
+                                            btn.innerText = '✅ Сохранено'
+                                            btn.className =
+                                              'mt-3 w-full rounded-lg bg-emerald-500/20 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/30 transition-colors'
+                                          } else {
+                                            btn.innerText = 'Ошибка'
+                                          }
+                                        }}
+                                        className="mt-3 w-full rounded-lg bg-indigo-500 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-indigo-400"
+                                      >
+                                        Сохранить в базу
+                                      </button>
                                     </div>
-                                    <button
-                                      onClick={async (e) => {
-                                        const btn = e.currentTarget
-                                        btn.disabled = true
-                                        btn.innerText = 'Сохраняю...'
-                                        hapticLight()
-                                        const res = await saveDraftLetter(data)
-                                        if (res.success) {
-                                          btn.innerText = '✅ Сохранено'
-                                          btn.className =
-                                            'mt-3 w-full rounded-lg bg-emerald-500/20 py-2 text-xs font-semibold text-emerald-400 border border-emerald-500/30 transition-colors'
-                                        } else {
-                                          btn.innerText = 'Ошибка'
-                                        }
-                                      }}
-                                      className="mt-3 w-full rounded-lg bg-indigo-500 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-indigo-400"
-                                    >
-                                      Сохранить в базу
-                                    </button>
-                                  </div>
-                                )
-                              } catch (e) {
-                                return <div>{children}</div>
-                              }
-                            },
-                          }}
+                                  )
+                                } catch (e) {
+                                  return <div>{children}</div>
+                                }
+                              },
+                            } as any
+                          }
                         >
                           {m.content}
                         </ReactMarkdown>
@@ -483,6 +575,16 @@ export function AIChatWidget() {
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-800 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
                 >
                   <Paperclip className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={toggleListening}
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 transition-colors ${
+                    isListening
+                      ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
+                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                  }`}
+                >
+                  <Mic className={`h-5 w-5 ${isListening ? 'animate-pulse' : ''}`} />
                 </button>
                 <div className="relative flex-1">
                   <input
