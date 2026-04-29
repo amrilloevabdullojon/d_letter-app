@@ -238,6 +238,8 @@ export function previewTemplate(text: string): string {
     closeDate: null,
     frozenAt: null,
     jiraLink: 'https://jira.example.com/PROJ-123',
+    jiraIssueId: null,
+    isPendingJira: false,
     priority: 50,
     attachmentsFolderId: null,
     ownerId: 'owner-id',
