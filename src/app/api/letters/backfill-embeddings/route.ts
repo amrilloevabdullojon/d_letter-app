@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       failed,
       remaining: letters.length === 50 ? 'Возможно есть еще' : 0,
     })
-  } catch (error) {
+  } catch (error: any) {
     logger.error('POST /api/letters/backfill-embeddings', error)
     return NextResponse.json(
       { error: 'Детали ошибки: ' + (error.message || JSON.stringify(error)) },
