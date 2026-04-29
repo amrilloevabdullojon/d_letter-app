@@ -3,7 +3,13 @@
 import { useEffect } from 'react'
 import { StatusBadge } from './StatusBadge'
 import { X, Loader2, Calendar, Clock, User, ExternalLink, ArrowRight } from 'lucide-react'
-import { formatDate, getWorkingDaysUntilDeadline, pluralizeDays, isDoneStatus } from '@/lib/utils'
+import {
+  formatDate,
+  getWorkingDaysUntilDeadline,
+  pluralizeDays,
+  isDoneStatus,
+  isTerminalStatus,
+} from '@/lib/utils'
 import type { LetterStatus } from '@/types/prisma'
 import Link from 'next/link'
 import { useLetter } from '@/hooks/useLetters'
@@ -52,7 +58,7 @@ export function LetterPreview({ letterId, onClose }: LetterPreviewProps) {
 
   const daysLeft = letter ? getWorkingDaysUntilDeadline(letter.deadlineDate) : 0
   const isDone = letter ? isDoneStatus(letter.status) : false
-  const isOverdue = !isDone && daysLeft < 0
+  const isOverdue = letter ? !isTerminalStatus(letter.status) && daysLeft < 0 : false
 
   return (
     <>

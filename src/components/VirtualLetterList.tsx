@@ -16,7 +16,13 @@ import {
   Square,
   Star,
 } from 'lucide-react'
-import { formatDate, getWorkingDaysUntilDeadline, isDoneStatus, pluralizeDays } from '@/lib/utils'
+import {
+  formatDate,
+  getWorkingDaysUntilDeadline,
+  isDoneStatus,
+  isTerminalStatus,
+  pluralizeDays,
+} from '@/lib/utils'
 import { usePrefetch } from '@/lib/react-query'
 
 // Hook for responsive column count with ResizeObserver
@@ -407,9 +413,14 @@ export const VirtualLetterTable = memo(function VirtualLetterTable({
   const getDeadlineInfo = useCallback((letter: Letter) => {
     const daysLeft = getWorkingDaysUntilDeadline(letter.deadlineDate)
     const isDone = isDoneStatus(letter.status)
+    const isTerminal = isTerminalStatus(letter.status)
 
     if (isDone) {
       return { text: 'Готово', className: 'text-emerald-400', isOverdue: false, isUrgent: false }
+    }
+    if (isTerminal) {
+      // FROZEN, REJECTED — не считаются просроченными
+      return { text: '—', className: 'text-slate-500', isOverdue: false, isUrgent: false }
     }
     if (daysLeft < 0) {
       const absDays = Math.abs(daysLeft)

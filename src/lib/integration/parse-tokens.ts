@@ -42,7 +42,8 @@ export interface ParseTokensResult {
 
 export async function parseAndAppendTokens(buffer: Buffer): Promise<ParseTokensResult> {
   const workbook = new ExcelJS.Workbook()
-  await workbook.xlsx.load(buffer)
+  // Cast required: newer @types/node defines Buffer<ArrayBufferLike> but ExcelJS expects plain Buffer
+  await workbook.xlsx.load(buffer as unknown as Buffer)
 
   const worksheet = workbook.worksheets[0]
   if (!worksheet) {
