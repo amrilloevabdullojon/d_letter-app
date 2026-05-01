@@ -156,7 +156,10 @@ export async function searchLetters(params: LetterSearchParams): Promise<LetterS
         : {}),
       lt: new Date(),
     }
-    where.status = { not: 'DONE' }
+    // Не перезаписываем status если он уже задан явно
+    if (!status) {
+      where.status = { notIn: ['DONE', 'PROCESSED', 'READY', 'FROZEN', 'REJECTED'] }
+    }
   }
 
   // Дедлайн сегодня
@@ -170,7 +173,9 @@ export async function searchLetters(params: LetterSearchParams): Promise<LetterS
       gte: today,
       lt: tomorrow,
     }
-    where.status = { not: 'DONE' }
+    if (!status) {
+      where.status = { notIn: ['DONE', 'PROCESSED', 'READY', 'FROZEN', 'REJECTED'] }
+    }
   }
 
   // Дедлайн на этой неделе
@@ -184,7 +189,9 @@ export async function searchLetters(params: LetterSearchParams): Promise<LetterS
       gte: today,
       lt: nextWeek,
     }
-    where.status = { not: 'DONE' }
+    if (!status) {
+      where.status = { notIn: ['DONE', 'PROCESSED', 'READY', 'FROZEN', 'REJECTED'] }
+    }
   }
 
   // Фильтр по приоритету
@@ -241,101 +248,122 @@ export async function searchLetters(params: LetterSearchParams): Promise<LetterS
   if (useFTS && query) {
     const searchTerm = query.trim()
 
-    // Строим WHERE clauses для SQL
-    const sqlWhere: string[] = ['l."deletedAt" IS NULL']
+    // Строим WHERE clause через Prisma.sql — параметризованные запросы без SQL-инъекций
+    let sqlWhere = Prisma.sql`l."deletedAt" IS NULL AND l.search_vector @@ plainto_tsquery('russian', ${searchTerm})`
 
-    // FTS условие - используем Prisma.sql для безопасности
-    sqlWhere.push(
-      Prisma.sql`l.search_vector @@ plainto_tsquery('russian', ${searchTerm})` as unknown as string
-    )
-
-    // Добавляем основные фильтры в SQL
+    // Фильтр по статусу
     if (status) {
       if (Array.isArray(status)) {
-        const statusList = status.map((s) => `'${s}'`).join(',')
-        sqlWhere.push(`l.status IN (${statusList})`)
+        sqlWhere = Prisma.sql`${sqlWhere} AND l.status = ANY(ARRAY[${Prisma.join(status)}]::text[])`
       } else {
-        sqlWhere.push(`l.status = '${status}'`)
+        sqlWhere = Prisma.sql`${sqlWhere} AND l.status = ${status}`
       }
+    } else if (overdue || dueToday || dueThisWeek) {
+      // Фикс Баг #2: применяем статусный фильтр только если status не задан явно
+      sqlWhere = Prisma.sql`${sqlWhere} AND l.status NOT IN ('DONE', 'PROCESSED', 'READY', 'FROZEN', 'REJECTED')`
     }
 
+    // Фильтр по владельцу
     if (ownerId) {
-      sqlWhere.push(`l."ownerId" = '${ownerId}'`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l."ownerId" = ${ownerId}`
     }
 
+    // Фильтр по организации
     if (org) {
-      sqlWhere.push(`l.org ILIKE '%${org.replace(/'/g, "''")}%'`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l.org ILIKE ${'%' + org + '%'}`
     }
 
+    // Фильтр по типу
     if (type) {
-      sqlWhere.push(`l.type ILIKE '%${type.replace(/'/g, "''")}%'`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l.type ILIKE ${'%' + type + '%'}`
     }
 
+    // Фильтры по датам
     if (dateFrom) {
-      sqlWhere.push(`l.date >= '${dateFrom.toISOString()}'`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l.date >= ${dateFrom}`
     }
-
     if (dateTo) {
-      sqlWhere.push(`l.date <= '${dateTo.toISOString()}'`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l.date <= ${dateTo}`
     }
-
     if (deadlineFrom) {
-      sqlWhere.push(`l."deadlineDate" >= '${deadlineFrom.toISOString()}'`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l."deadlineDate" >= ${deadlineFrom}`
     }
-
     if (deadlineTo) {
-      sqlWhere.push(`l."deadlineDate" <= '${deadlineTo.toISOString()}'`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l."deadlineDate" <= ${deadlineTo}`
     }
 
+    // Просроченные
     if (overdue) {
-      sqlWhere.push(`l."deadlineDate" < NOW()`)
-      sqlWhere.push(`l.status NOT IN ('READY', 'DONE')`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l."deadlineDate" < NOW()`
     }
 
+    // Дедлайн сегодня
     if (dueToday) {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
-      sqlWhere.push(`l."deadlineDate" >= '${today.toISOString()}'`)
-      sqlWhere.push(`l."deadlineDate" < '${tomorrow.toISOString()}'`)
-      sqlWhere.push(`l.status NOT IN ('READY', 'DONE')`)
+      sqlWhere = Prisma.sql`${sqlWhere} AND l."deadlineDate" >= ${today} AND l."deadlineDate" < ${tomorrow}`
     }
-
-    const whereClause = sqlWhere.join(' AND ')
 
     // Получаем эмбеддинг для семантического поиска
     const queryEmbedding = await getEmbedding(searchTerm)
 
-    // Определяем сортировку
-    let orderByClause = 'ORDER BY '
-    if (sortBy === 'relevance') {
-      const tsRankExpr = `ts_rank(l.search_vector, plainto_tsquery('russian', '${searchTerm.replace(/'/g, "''")}'))`
-      if (queryEmbedding) {
-        const embStr = `[${queryEmbedding.join(',')}]`
-        // Гибридный поиск: FTS rank + Semantic Similarity
-        orderByClause += `(${tsRankExpr} + COALESCE(1 - (l.embedding <=> '${embStr}'::vector), 0)) DESC, l."createdAt" DESC`
-      } else {
-        orderByClause += `${tsRankExpr} DESC, l."createdAt" DESC`
-      }
-    } else {
-      orderByClause += `l."${sortBy}" ${sortOrder.toUpperCase()}`
-    }
-
     // Count query
-    const countQuery = `SELECT COUNT(*) as count FROM "Letter" l WHERE ${whereClause}`
-    const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(countQuery)
+    const countResult = await prisma.$queryRaw<Array<{ count: bigint }>>(
+      Prisma.sql`SELECT COUNT(*) as count FROM "Letter" l WHERE ${sqlWhere}`
+    )
     total = Number(countResult[0].count)
 
-    // Fetch letter IDs with FTS ranking
-    const idsQuery = `
-      SELECT l.id
-      FROM "Letter" l
-      WHERE ${whereClause}
-      ${orderByClause}
-      LIMIT ${take} OFFSET ${skip}
-    `
-    const letterIds = await prisma.$queryRawUnsafe<Array<{ id: string }>>(idsQuery)
+    // Fetch letter IDs с учётом сортировки
+    let letterIds: Array<{ id: string }>
+
+    if (sortBy === 'relevance') {
+      if (queryEmbedding) {
+        const embStr = `[${queryEmbedding.join(',')}]`
+        letterIds = await prisma.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT l.id FROM "Letter" l
+            WHERE ${sqlWhere}
+            ORDER BY (
+              ts_rank(l.search_vector, plainto_tsquery('russian', ${searchTerm}))
+              + COALESCE(1 - (l.embedding <=> ${embStr}::vector), 0)
+            ) DESC, l."createdAt" DESC
+            LIMIT ${take} OFFSET ${skip}
+          `
+        )
+      } else {
+        letterIds = await prisma.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT l.id FROM "Letter" l
+            WHERE ${sqlWhere}
+            ORDER BY ts_rank(l.search_vector, plainto_tsquery('russian', ${searchTerm})) DESC, l."createdAt" DESC
+            LIMIT ${take} OFFSET ${skip}
+          `
+        )
+      }
+    } else {
+      // Белый список имён колонок — безопасно для Prisma.raw
+      const validSortFields = [
+        'date',
+        'deadlineDate',
+        'priority',
+        'createdAt',
+        'updatedAt',
+      ] as const
+      const safeSortField = (validSortFields as readonly string[]).includes(sortBy ?? '')
+        ? sortBy!
+        : 'createdAt'
+      const safeSortOrder = sortOrder === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`
+      letterIds = await prisma.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT l.id FROM "Letter" l
+          WHERE ${sqlWhere}
+          ORDER BY l.${Prisma.raw(`"${safeSortField}"`)} ${safeSortOrder}
+          LIMIT ${take} OFFSET ${skip}
+        `
+      )
+    }
 
     // Fetch full letter data using Prisma for includes
     if (letterIds.length > 0) {

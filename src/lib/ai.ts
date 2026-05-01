@@ -189,7 +189,7 @@ const withRetry = async <T>(label: string, action: () => Promise<T>): Promise<T>
       }
       const jitter = Math.floor(Math.random() * 200)
       const delay = AI_RETRY_BASE_DELAY_MS * 2 ** attempt + jitter
-      console.warn(`[AI] rate limited, retrying ${label} in ${delay}ms`)
+      logger.warn('AI', `Rate limited, retrying ${label} in ${delay}ms`, { attempt, delay })
       await sleep(delay)
     }
   }
@@ -203,7 +203,7 @@ export async function extractLetterDataWithAI(
   pdfText: string
 ): Promise<ExtractedLetterData | null> {
   if (!process.env.XAI_API_KEY) {
-    console.warn('XAI_API_KEY not configured')
+    logger.warn('AI', 'XAI_API_KEY not configured — extractLetterDataWithAI skipped')
     return null
   }
 

@@ -63,23 +63,29 @@ export async function POST(request: NextRequest) {
     // 1. Сгенерировать эмбеддинг для последнего сообщения
     const embedding = await getEmbedding(lastMessage)
 
-    // Получаем сводку по задачам пользователя
-    const pendingLettersCount = await db.letter.count({
-      where: {
-        ownerId: session.user.id,
-        status: { in: ['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'] },
-        deletedAt: null,
-      },
-    })
+    // Получаем сводку по задачам пользователя (только для обычных пользователей)
+    // Для SUPERADMIN эти данные не используются в system prompt
+    const isRegularUser = session.user.role !== 'SUPERADMIN' && session.user.role !== 'ADMIN'
+    const pendingLettersCount = isRegularUser
+      ? await db.letter.count({
+          where: {
+            ownerId: session.user.id,
+            status: { in: ['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'] },
+            deletedAt: null,
+          },
+        })
+      : 0
 
-    const overdueLettersCount = await db.letter.count({
-      where: {
-        ownerId: session.user.id,
-        status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
-        deadlineDate: { lt: new Date() },
-        deletedAt: null,
-      },
-    })
+    const overdueLettersCount = isRegularUser
+      ? await db.letter.count({
+          where: {
+            ownerId: session.user.id,
+            status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
+            deadlineDate: { lt: new Date() },
+            deletedAt: null,
+          },
+        })
+      : 0
 
     let contextStr = ''
 
@@ -361,6 +367,40 @@ ${contextStr}`
           },
         },
       } as any)
+      tools.push({
+        type: 'function',
+        function: {
+          name: 'getOverdueLetters',
+          description:
+            'Получить список просроченных писем с деталями (номер, организация, дедлайн, исполнитель). Используй когда спрашивают "какие письма просрочены", "покажи просрочку".',
+          parameters: {
+            type: 'object',
+            properties: {
+              ownerName: {
+                type: 'string',
+                description: 'Фильтр по имени ответственного (необязательно)',
+              },
+              limit: { type: 'number', description: 'Сколько показать (по умолчанию 15)' },
+            },
+          },
+        },
+      } as any)
+      tools.push({
+        type: 'function',
+        function: {
+          name: 'getLettersByMonth',
+          description:
+            'Получить статистику писем за конкретный месяц (создано, завершено, просрочено). Используй при вопросах "за апрель", "в прошлом месяце" и т.п.',
+          parameters: {
+            type: 'object',
+            properties: {
+              year: { type: 'number', description: 'Год (например, 2026)' },
+              month: { type: 'number', description: 'Месяц 1-12 (1=январь, 4=апрель)' },
+            },
+            required: ['year', 'month'],
+          },
+        },
+      } as any)
     }
 
     const response = await grok.chat.completions.create({
@@ -420,6 +460,16 @@ ${contextStr}`
                   await db.letter.update({
                     where: { id: letter.id },
                     data: { status: args.status },
+                  })
+                  // Баг #7 фикс: записываем историю
+                  await db.history.create({
+                    data: {
+                      letterId: letter.id,
+                      userId: session.user.id,
+                      field: 'status',
+                      oldValue: letter.status,
+                      newValue: args.status,
+                    },
                   })
                   formattedMessages.push({
                     role: 'tool',
@@ -505,6 +555,29 @@ ${contextStr}`
                     where: { id: letter.id },
                     data: { ownerId: targetUser.id },
                   })
+                  // Баг #6 фикс: записываем историю
+                  await db.history.create({
+                    data: {
+                      letterId: letter.id,
+                      userId: session.user.id,
+                      field: 'owner',
+                      oldValue: letter.ownerId,
+                      newValue: targetUser.id,
+                    },
+                  })
+                  // Баг #6 фикс: уведомляем нового владельца
+                  if (targetUser.id !== session.user.id) {
+                    await db.notification.create({
+                      data: {
+                        userId: targetUser.id,
+                        actorId: session.user.id,
+                        letterId: letter.id,
+                        type: 'ASSIGNMENT',
+                        title: `Назначено письмо №${letter.number}`,
+                        body: `${letter.org} — назначено через AI-ассистента`,
+                      },
+                    })
+                  }
                   formattedMessages.push({
                     role: 'tool',
                     tool_call_id: toolCall.id,
@@ -754,53 +827,174 @@ ${contextStr}`
                     content: `Сотрудник с именем ${args.name} не найден.`,
                   } as any)
                 } else {
-                  const pending = await db.letter.count({
-                    where: {
-                      ownerId: targetUser.id,
-                      status: { in: ['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'] },
-                      deletedAt: null,
-                    },
+                  const [userTotal, userPending, userOverdue, userDone, userRejected] =
+                    await Promise.all([
+                      db.letter.count({
+                        where: { ownerId: targetUser.id, deletedAt: null },
+                      }),
+                      db.letter.count({
+                        where: {
+                          ownerId: targetUser.id,
+                          status: {
+                            in: ['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'],
+                          },
+                          deletedAt: null,
+                        },
+                      }),
+                      db.letter.count({
+                        where: {
+                          ownerId: targetUser.id,
+                          status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
+                          deadlineDate: { lt: new Date() },
+                          deletedAt: null,
+                        },
+                      }),
+                      db.letter.count({
+                        where: {
+                          ownerId: targetUser.id,
+                          status: { in: ['DONE', 'PROCESSED', 'READY'] },
+                          deletedAt: null,
+                        },
+                      }),
+                      db.letter.count({
+                        where: { ownerId: targetUser.id, status: 'REJECTED', deletedAt: null },
+                      }),
+                    ])
+                  const userRejectedPct =
+                    userTotal > 0 ? ((userRejected / userTotal) * 100).toFixed(1) : '0.0'
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: `Статистика сотрудника ${targetUser.name}:\nВсего писем: ${userTotal}\nВ работе: ${userPending}\nПросрочено: ${userOverdue}\nЗавершено: ${userDone}\nОтказано: ${userRejected}\nПроцент отказов: ${userRejectedPct}%.`,
+                  } as any)
+                }
+              } else if (toolCall.function.name === 'getGlobalStats' && isSuperAdmin) {
+                const [gTotal, gPending, gOverdue, gDone, gRejected, gFrozen, gNotReviewed] =
+                  await Promise.all([
+                    db.letter.count({ where: { deletedAt: null } }),
+                    db.letter.count({
+                      where: {
+                        status: { in: ['ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'] },
+                        deletedAt: null,
+                      },
+                    }),
+                    db.letter.count({
+                      where: {
+                        status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
+                        deadlineDate: { lt: new Date() },
+                        deletedAt: null,
+                      },
+                    }),
+                    db.letter.count({
+                      where: {
+                        status: { in: ['DONE', 'PROCESSED', 'READY'] },
+                        deletedAt: null,
+                      },
+                    }),
+                    db.letter.count({ where: { status: 'REJECTED', deletedAt: null } }),
+                    db.letter.count({ where: { status: 'FROZEN', deletedAt: null } }),
+                    db.letter.count({ where: { status: 'NOT_REVIEWED', deletedAt: null } }),
+                  ])
+                const gRejectedPct = gTotal > 0 ? ((gRejected / gTotal) * 100).toFixed(1) : '0.0'
+                formattedMessages.push({
+                  role: 'tool',
+                  tool_call_id: toolCall.id,
+                  name: toolCall.function.name,
+                  content: `Глобальная статистика компании по состоянию на ${SYSTEM_DATE}:\nВсего писем: ${gTotal}\nНе рассмотрено: ${gNotReviewed}\nВ работе (активные): ${gPending}\nПросрочено: ${gOverdue}\nЗавершено (DONE/READY/PROCESSED): ${gDone}\nОтказано: ${gRejected}\nЗаморожено: ${gFrozen}\nПроцент отказов: ${gRejectedPct}%.`,
+                } as any)
+              } else if (toolCall.function.name === 'getOverdueLetters' && isSuperAdmin) {
+                const args = JSON.parse(toolCall.function.arguments || '{}')
+                const limit = Math.min(args.limit || 15, 30)
+                const overdueWhere: any = {
+                  deletedAt: null,
+                  status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
+                  deadlineDate: { lt: new Date() },
+                }
+                if (args.ownerName) {
+                  const ownerFilter = await db.user.findFirst({
+                    where: { name: { contains: args.ownerName, mode: 'insensitive' } },
+                    select: { id: true },
                   })
-                  const overdue = await db.letter.count({
-                    where: {
-                      ownerId: targetUser.id,
-                      status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
-                      deadlineDate: { lt: new Date() },
-                      deletedAt: null,
-                    },
-                  })
-                  const done = await db.letter.count({
-                    where: { ownerId: targetUser.id, status: 'DONE', deletedAt: null },
+                  if (ownerFilter) overdueWhere.ownerId = ownerFilter.id
+                }
+                const overdueList = await db.letter.findMany({
+                  where: overdueWhere,
+                  take: limit,
+                  orderBy: { deadlineDate: 'asc' },
+                  select: {
+                    number: true,
+                    org: true,
+                    deadlineDate: true,
+                    status: true,
+                    owner: { select: { name: true } },
+                  },
+                })
+                if (overdueList.length === 0) {
+                  formattedMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: 'Просроченных писем не найдено.',
+                  } as any)
+                } else {
+                  const lines = overdueList.map((l) => {
+                    const daysOverdue = Math.floor(
+                      (Date.now() - new Date(l.deadlineDate!).getTime()) / 86400000
+                    )
+                    return `№${l.number} | ${l.org} | Дедлайн: ${new Date(l.deadlineDate!).toLocaleDateString('ru-RU')} (просрочено на ${daysOverdue} дн.) | Статус: ${l.status} | Исполнитель: ${l.owner?.name || 'не назначен'}`
                   })
                   formattedMessages.push({
                     role: 'tool',
                     tool_call_id: toolCall.id,
                     name: toolCall.function.name,
-                    content: `Статистика сотрудника ${targetUser.name}:\nВ работе: ${pending}\nПросрочено: ${overdue}\nВыполнено: ${done}.`,
+                    content: `Просроченные письма (${overdueList.length}):\n${lines.join('\n')}`,
                   } as any)
                 }
-              } else if (toolCall.function.name === 'getGlobalStats' && isSuperAdmin) {
-                const pending = await db.letter.count({
-                  where: {
-                    status: { in: ['NOT_REVIEWED', 'ACCEPTED', 'IN_PROGRESS', 'CLARIFICATION'] },
-                    deletedAt: null,
-                  },
+              } else if (toolCall.function.name === 'getLettersByMonth' && isSuperAdmin) {
+                const args = JSON.parse(toolCall.function.arguments || '{}')
+                const year = Number(args.year) || new Date().getFullYear()
+                const month = Math.max(
+                  1,
+                  Math.min(12, Number(args.month) || new Date().getMonth() + 1)
+                )
+                const monthStart = new Date(year, month - 1, 1)
+                const monthEnd = new Date(year, month, 1)
+                const monthName = monthStart.toLocaleDateString('ru-RU', {
+                  month: 'long',
+                  year: 'numeric',
                 })
-                const overdue = await db.letter.count({
-                  where: {
-                    status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
-                    deadlineDate: { lt: new Date() },
-                    deletedAt: null,
-                  },
-                })
-                const total = await db.letter.count({
-                  where: { deletedAt: null },
-                })
+                const [mCreated, mDone, mOverdue, mRejected] = await Promise.all([
+                  db.letter.count({
+                    where: { deletedAt: null, createdAt: { gte: monthStart, lt: monthEnd } },
+                  }),
+                  db.letter.count({
+                    where: {
+                      deletedAt: null,
+                      status: { in: ['DONE', 'PROCESSED', 'READY'] },
+                      closeDate: { gte: monthStart, lt: monthEnd },
+                    },
+                  }),
+                  db.letter.count({
+                    where: {
+                      deletedAt: null,
+                      status: { notIn: ['DONE', 'PROCESSED', 'REJECTED', 'READY', 'FROZEN'] },
+                      deadlineDate: { gte: monthStart, lt: monthEnd },
+                    },
+                  }),
+                  db.letter.count({
+                    where: {
+                      deletedAt: null,
+                      status: 'REJECTED',
+                      updatedAt: { gte: monthStart, lt: monthEnd },
+                    },
+                  }),
+                ])
                 formattedMessages.push({
                   role: 'tool',
                   tool_call_id: toolCall.id,
                   name: toolCall.function.name,
-                  content: `Глобальная статистика компании:\nВсего писем в базе: ${total}\nВсего в работе: ${pending}\nВсего просрочено: ${overdue}.`,
+                  content: `Статистика за ${monthName}:\nСоздано писем: ${mCreated}\nЗавершено: ${mDone}\nСроки по письмам истекали в этом месяце: ${mOverdue}\nОтклонено: ${mRejected}`,
                 } as any)
               }
             }

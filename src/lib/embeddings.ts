@@ -19,6 +19,6 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     return response.data[0]?.embedding || null
   } catch (error: any) {
     logger.error('AI', error, { action: 'getEmbedding' })
-    throw error // Let the route catch it and show the error directly to user
+    return null // Graceful degradation: chat works without RAG context
   }
 }

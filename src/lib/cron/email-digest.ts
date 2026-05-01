@@ -160,6 +160,7 @@ export async function sendDailyDigests() {
         where: {
           userId: user.id,
           createdAt: { gte: since },
+          isRead: false, // Только непрочитанные
         },
         include: {
           letter: {
@@ -229,6 +230,7 @@ export async function sendWeeklyDigests() {
         where: {
           userId: user.id,
           createdAt: { gte: since },
+          isRead: false, // Только непрочитанные
         },
         include: {
           letter: {
