@@ -84,16 +84,32 @@ export type Env = z.infer<typeof envSchema>
 // Validate and export environment
 let env: Env
 
-try {
-  env = envSchema.parse(process.env)
-} catch (error) {
-  if (error instanceof z.ZodError) {
-    console.error('❌ Invalid environment variables:')
-    console.error(error.errors.map((e) => `  - ${e.path.join('.')}: ${e.message}`).join('\n'))
-    console.error('\n💡 Check your .env file and ensure all required variables are set')
-    console.error('📝 See .env.example for reference\n')
+if (process.env.SKIP_ENV_VALIDATION === 'true' || process.env.SKIP_ENV_VALIDATION === '1') {
+  env = {
+    DATABASE_URL: process.env.DATABASE_URL || 'postgresql://localhost:5432/db',
+    NODE_ENV: (process.env.NODE_ENV || 'production') as any,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || '12345678901234567890123456789012',
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || 'dummy',
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || 'dummy',
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'dummy@dummy.com',
+    GOOGLE_PRIVATE_KEY:
+      process.env.GOOGLE_PRIVATE_KEY ||
+      '-----BEGIN PRIVATE KEY-----\ndummy\n-----END PRIVATE KEY-----',
+    GOOGLE_SPREADSHEET_ID: process.env.GOOGLE_SPREADSHEET_ID || 'dummy',
+  } as Env
+} else {
+  try {
+    env = envSchema.parse(process.env)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('❌ Invalid environment variables:')
+      console.error(error.errors.map((e) => `  - ${e.path.join('.')}: ${e.message}`).join('\n'))
+      console.error('\n💡 Check your .env file and ensure all required variables are set')
+      console.error('📝 See .env.example for reference\n')
+    }
+    throw new Error('Environment validation failed')
   }
-  throw new Error('Environment validation failed')
 }
 
 export { env }

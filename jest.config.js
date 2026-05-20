@@ -12,7 +12,12 @@ const customJestConfig = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^server-only$': '<rootDir>/src/lib/__tests__/server-only.ts',
+    '^@auth/prisma-adapter$': '<rootDir>/src/lib/__mocks__/prisma-adapter.ts',
   },
+  testMatch: [
+    '<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}',
+    '<rootDir>/src/**/*.{spec,test}.{js,jsx,ts,tsx}',
+  ],
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.next/',

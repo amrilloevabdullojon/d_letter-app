@@ -22,12 +22,17 @@ jest.mock('@/lib/cache-manager', () => ({
   },
 }))
 
+jest.mock('@/lib/embeddings', () => ({
+  getEmbedding: jest.fn().mockResolvedValue(null),
+}))
+
 import { getServerSession } from 'next-auth'
 
 describe('Letters API', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     ;(getServerSession as jest.Mock).mockResolvedValue(mockSession)
+    mockPrisma.rolePermission.findMany.mockResolvedValue([])
   })
 
   describe('GET /api/letters', () => {
@@ -132,13 +137,17 @@ describe('Letters API', () => {
       const request = createMockRequest('POST', {
         url: 'http://localhost:3000/api/letters',
         body: newLetter,
+        headers: {
+          'x-csrf-token': 'csrf-test-token',
+          cookie: 'csrf-token=csrf-test-token',
+        },
       })
       const response = await POST(request)
 
       expect(response.status).toBe(201)
 
-      const data = await parseResponse<{ id: string }>(response)
-      expect(data.id).toBe('new-letter-id')
+      const data = await parseResponse<{ letter: { id: string } }>(response)
+      expect(data.letter.id).toBe('new-letter-id')
     })
 
     it('should reject duplicate letter number', async () => {
@@ -151,6 +160,12 @@ describe('Letters API', () => {
         body: {
           number: testData.letter.number,
           org: 'Test Org',
+          date: '2024-01-20',
+          type: 'incoming',
+        },
+        headers: {
+          'x-csrf-token': 'csrf-test-token',
+          cookie: 'csrf-token=csrf-test-token',
         },
       })
       const response = await POST(request)
@@ -164,6 +179,10 @@ describe('Letters API', () => {
       const request = createMockRequest('POST', {
         url: 'http://localhost:3000/api/letters',
         body: {}, // Missing required fields
+        headers: {
+          'x-csrf-token': 'csrf-test-token',
+          cookie: 'csrf-token=csrf-test-token',
+        },
       })
       const response = await POST(request)
 
@@ -176,6 +195,7 @@ describe('Letter Detail API', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     ;(getServerSession as jest.Mock).mockResolvedValue(mockSession)
+    mockPrisma.rolePermission.findMany.mockResolvedValue([])
   })
 
   describe('GET /api/letters/[id]', () => {
@@ -221,14 +241,18 @@ describe('Letter Detail API', () => {
 
       const request = createMockRequest('PATCH', {
         url: 'http://localhost:3000/api/letters/letter-123',
-        body: { status: 'DONE' },
+        body: { field: 'status', value: 'DONE' },
+        headers: {
+          'x-csrf-token': 'csrf-test-token',
+          cookie: 'csrf-token=csrf-test-token',
+        },
       })
       const response = await PATCH(request, { params: Promise.resolve({ id: 'letter-123' }) })
 
       expect(response.status).toBe(200)
 
-      const data = await parseResponse<{ status: string }>(response)
-      expect(data.status).toBe('DONE')
+      const data = await parseResponse<{ letter: { status: string } }>(response)
+      expect(data.letter.status).toBe('DONE')
     })
   })
 
@@ -244,6 +268,10 @@ describe('Letter Detail API', () => {
 
       const request = createMockRequest('DELETE', {
         url: 'http://localhost:3000/api/letters/letter-123',
+        headers: {
+          'x-csrf-token': 'csrf-test-token',
+          cookie: 'csrf-token=csrf-test-token',
+        },
       })
       const response = await DELETE(request, { params: Promise.resolve({ id: 'letter-123' }) })
 

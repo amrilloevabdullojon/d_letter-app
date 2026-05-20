@@ -142,7 +142,23 @@ type MockPrisma = {
     findMany: jest.Mock
     updateMany: jest.Mock
   }
+  comment: {
+    count: jest.Mock
+    findMany: jest.Mock
+  }
+  history: {
+    create: jest.Mock
+  }
+  watcher: {
+    findFirst: jest.Mock
+    upsert: jest.Mock
+    createMany: jest.Mock
+  }
+  rolePermission: {
+    findMany: jest.Mock
+  }
   $transaction: jest.Mock
+  $queryRaw: jest.Mock
 }
 
 export const mockPrisma: MockPrisma = {
@@ -174,12 +190,31 @@ export const mockPrisma: MockPrisma = {
     findMany: jest.fn(),
     updateMany: jest.fn(),
   },
+  comment: {
+    count: jest.fn(),
+    findMany: jest.fn(),
+  },
+  history: {
+    create: jest.fn(),
+  },
+  watcher: {
+    findFirst: jest.fn(),
+    upsert: jest.fn(),
+    createMany: jest.fn(),
+  },
+  rolePermission: {
+    findMany: jest.fn(),
+  },
   $transaction: jest.fn(),
+  $queryRaw: jest.fn(),
 }
 
 mockPrisma.$transaction.mockImplementation(async (fn: (tx: MockPrisma) => unknown) =>
   fn(mockPrisma)
 )
+
+mockPrisma.$queryRaw.mockResolvedValue([])
+mockPrisma.rolePermission.findMany.mockResolvedValue([])
 
 /**
  * Sample test data
@@ -199,6 +234,9 @@ export const testData = {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    favorites: [],
+    files: [],
+    watchers: [],
   },
   user: {
     id: 'test-user-id',

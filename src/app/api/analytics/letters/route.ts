@@ -12,6 +12,7 @@ import {
   getPerformanceMetrics,
   getActivityPatterns,
   exportAnalytics,
+  exportAnalyticsToXlsx,
   AnalyticsFilters,
 } from '@/lib/letter-analytics'
 import { LetterStatus } from '@prisma/client'
@@ -48,12 +49,6 @@ export async function GET(request: NextRequest) {
     // Строим фильтры
     const filters: AnalyticsFilters = {}
 
-    if (searchParams.get('dateFrom')) {
-      filters.dateFrom = new Date(searchParams.get('dateFrom')!)
-    }
-    if (searchParams.get('dateTo')) {
-      filters.dateTo = new Date(searchParams.get('dateTo')!)
-    }
     if (searchParams.get('ownerId')) {
       filters.ownerId = searchParams.get('ownerId')!
     }
@@ -66,13 +61,75 @@ export async function GET(request: NextRequest) {
       filters.status = statusParam.split(',') as LetterStatus[]
     }
 
+    const preset = searchParams.get('preset') || '1m'
+    let groupBy = (searchParams.get('groupBy') || 'day') as 'hour' | 'day' | 'week' | 'month'
+
+    if (preset === '1d') {
+      filters.dateFrom = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      filters.dateTo = new Date()
+      groupBy = 'hour'
+    } else if (preset === '7d') {
+      filters.dateFrom = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      filters.dateTo = new Date()
+      groupBy = 'day'
+    } else if (preset === '1m') {
+      filters.dateFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      filters.dateTo = new Date()
+      groupBy = 'day'
+    } else if (preset === '1y') {
+      filters.dateFrom = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+      filters.dateTo = new Date()
+      groupBy = 'month'
+    } else if (preset === 'all') {
+      filters.dateFrom = undefined
+      filters.dateTo = undefined
+      groupBy = 'month'
+    } else {
+      // custom / промежуток
+      if (searchParams.get('dateFrom')) {
+        filters.dateFrom = new Date(searchParams.get('dateFrom')!)
+      }
+      if (searchParams.get('dateTo')) {
+        filters.dateTo = new Date(searchParams.get('dateTo')!)
+      }
+
+      // Умный выбор groupBy для кастомного интервала, если он не задан явно
+      if (!searchParams.get('groupBy') && filters.dateFrom && filters.dateTo) {
+        const diffMs = filters.dateTo.getTime() - filters.dateFrom.getTime()
+        const diffDays = diffMs / (1000 * 60 * 60 * 24)
+        if (diffDays <= 1.1) {
+          groupBy = 'hour'
+        } else if (diffDays <= 31) {
+          groupBy = 'day'
+        } else if (diffDays <= 365) {
+          groupBy = 'week'
+        } else {
+          groupBy = 'month'
+        }
+      }
+    }
+
     const type = searchParams.get('type') || 'all'
-    const groupBy = (searchParams.get('groupBy') || 'day') as 'day' | 'week' | 'month'
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '10')))
     const shouldExport = searchParams.get('export') === 'true'
+    const exportFormat = searchParams.get('format')
 
     // Экспорт
     if (shouldExport) {
+      if (exportFormat === 'xlsx') {
+        const buffer = await exportAnalyticsToXlsx(filters)
+        logger.info('GET /api/analytics/letters', 'Analytics exported to XLSX', {
+          userId: session.user.id,
+        })
+        const filename = `analytics-${new Date().toISOString().split('T')[0]}.xlsx`
+        return new NextResponse(new Uint8Array(buffer), {
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+          },
+        })
+      }
+
       const data = await exportAnalytics(filters)
       logger.info('GET /api/analytics/letters', 'Analytics exported', {
         userId: session.user.id,

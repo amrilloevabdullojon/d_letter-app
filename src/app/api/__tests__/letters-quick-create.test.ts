@@ -27,6 +27,9 @@ const mockPrisma = {
     update: jest.fn(),
     delete: jest.fn(),
   },
+  rolePermission: {
+    findMany: jest.fn(),
+  },
   $transaction: jest.fn(),
   $queryRaw: jest.fn(),
 }
@@ -98,6 +101,10 @@ jest.mock('@/lib/file-sync', () => ({
   syncFileToDrive: jest.fn().mockResolvedValue(null),
 }))
 
+jest.mock('@/lib/embeddings', () => ({
+  getEmbedding: jest.fn().mockResolvedValue(null),
+}))
+
 import { getServerSession } from 'next-auth'
 
 function buildQuickCreateRequest(formData: FormData) {
@@ -117,6 +124,7 @@ function buildQuickCreateFormData(options?: { ownerId?: string }) {
   formData.append('number', 'AI-001')
   formData.append('org', 'Министерство здравоохранения')
   formData.append('date', '2026-04-01')
+  formData.append('type', 'incoming')
   formData.append('content', 'Краткое содержание')
   formData.append('contentRussian', 'Полный перевод письма')
   formData.append('region', 'Ташкентская область')
@@ -145,6 +153,7 @@ describe('POST /api/letters quick AI flow', () => {
     mockPrisma.file.findUnique.mockResolvedValue(null)
     mockPrisma.file.update.mockResolvedValue({})
     mockPrisma.file.delete.mockResolvedValue({})
+    mockPrisma.rolePermission.findMany.mockResolvedValue([])
     mockDeleteLocalFile.mockResolvedValue(undefined)
     mockInvalidateLettersCache.mockResolvedValue(undefined)
     mockPrisma.$transaction.mockImplementation(

@@ -1,0 +1,16 @@
+export const PrismaAdapter = (prisma: any) => ({
+  createUser: () => Promise.resolve({}),
+  getUser: () => Promise.resolve({}),
+  getUserByEmail: () => Promise.resolve({}),
+  getUserByAccount: () => Promise.resolve({}),
+  updateUser: () => Promise.resolve({}),
+  deleteUser: () => Promise.resolve({}),
+  linkAccount: () => Promise.resolve({}),
+  unlinkAccount: () => Promise.resolve({}),
+  createSession: () => Promise.resolve({}),
+  getSessionAndUser: () => Promise.resolve({}),
+  updateSession: () => Promise.resolve({}),
+  deleteSession: () => Promise.resolve({}),
+  createVerificationToken: () => Promise.resolve({}),
+  useVerificationToken: () => Promise.resolve({}),
+})

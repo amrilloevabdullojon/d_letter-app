@@ -1,6 +1,7 @@
 import 'server-only'
 import { prisma } from './prisma'
 import { LetterStatus, Prisma } from '@prisma/client'
+import ExcelJS from 'exceljs'
 
 /**
  * Параметры фильтрации аналитики
@@ -19,40 +20,28 @@ export type AnalyticsFilters = {
 export async function getLetterStats(filters: AnalyticsFilters = {}) {
   const where = buildWhereClause(filters)
 
-  const [
-    total,
-    notReviewed,
-    accepted,
-    inProgress,
-    clarification,
-    frozen,
-    rejected,
-    ready,
-    processed,
-    done,
-    overdue,
-    dueToday,
-    dueThisWeek,
-    withAnswer,
-    withoutAnswer,
-    avgPriority,
-    processingFilled,
-  ] = await Promise.all([
-    // Всего писем
-    prisma.letter.count({ where }),
+  const [statusCounts, aggregations, overdue, dueToday, dueThisWeek] = await Promise.all([
+    // Группировка по статусам
+    prisma.letter.groupBy({
+      by: ['status'],
+      where,
+      _count: { status: true },
+    }),
 
-    // По статусам
-    prisma.letter.count({ where: { ...where, status: 'NOT_REVIEWED' } }),
-    prisma.letter.count({ where: { ...where, status: 'ACCEPTED' } }),
-    prisma.letter.count({ where: { ...where, status: 'IN_PROGRESS' } }),
-    prisma.letter.count({ where: { ...where, status: 'CLARIFICATION' } }),
-    prisma.letter.count({ where: { ...where, status: 'FROZEN' } }),
-    prisma.letter.count({ where: { ...where, status: 'REJECTED' } }),
-    prisma.letter.count({ where: { ...where, status: 'READY' } }),
-    prisma.letter.count({ where: { ...where, status: 'PROCESSED' } }),
-    prisma.letter.count({ where: { ...where, status: 'DONE' } }),
+    // Общие агрегации (всего, средний приоритет, заполненность ответа и обработки)
+    prisma.letter.aggregate({
+      where,
+      _count: {
+        _all: true,
+        answer: true,
+        processing: true,
+      },
+      _avg: {
+        priority: true,
+      },
+    }),
 
-    // Просроченные
+    // Просроченные письма
     prisma.letter.count({
       where: {
         ...where,
@@ -84,34 +73,36 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
         status: { notIn: ['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'] },
       },
     }),
-
-    // С ответом / без ответа
-    prisma.letter.count({ where: { ...where, answer: { not: null } } }),
-    prisma.letter.count({ where: { ...where, answer: null } }),
-
-    // Средний приоритет
-    prisma.letter.aggregate({
-      where,
-      _avg: { priority: true },
-    }),
-
-    // Заполненность поля «Обработка»
-    prisma.letter.count({ where: { ...where, processing: { not: null } } }),
   ])
+
+  // Собираем результаты группировки по статусам
+  const byStatus = {
+    NOT_REVIEWED: 0,
+    ACCEPTED: 0,
+    IN_PROGRESS: 0,
+    CLARIFICATION: 0,
+    FROZEN: 0,
+    REJECTED: 0,
+    READY: 0,
+    PROCESSED: 0,
+    DONE: 0,
+  }
+
+  statusCounts.forEach((c) => {
+    if (c.status in byStatus) {
+      byStatus[c.status as keyof typeof byStatus] = c._count.status
+    }
+  })
+
+  const total = aggregations._count._all
+  const withAnswer = aggregations._count.answer
+  const withoutAnswer = total - withAnswer
+  const avgPriority = aggregations._avg.priority || 0
+  const processingFilled = aggregations._count.processing
 
   return {
     total,
-    byStatus: {
-      NOT_REVIEWED: notReviewed,
-      ACCEPTED: accepted,
-      IN_PROGRESS: inProgress,
-      CLARIFICATION: clarification,
-      FROZEN: frozen,
-      REJECTED: rejected,
-      READY: ready,
-      PROCESSED: processed,
-      DONE: done,
-    },
+    byStatus,
     deadlines: {
       overdue,
       dueToday,
@@ -121,7 +112,7 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
       withAnswer,
       withoutAnswer,
     },
-    avgPriority: avgPriority._avg.priority || 0,
+    avgPriority,
     processingFilled,
   }
 }
@@ -131,7 +122,7 @@ export async function getLetterStats(filters: AnalyticsFilters = {}) {
  */
 export async function getLetterTrends(
   filters: AnalyticsFilters = {},
-  groupBy: 'day' | 'week' | 'month' = 'day'
+  groupBy: 'hour' | 'day' | 'week' | 'month' = 'day'
 ) {
   const where = buildWhereClause(filters)
 
@@ -144,6 +135,8 @@ export async function getLetterTrends(
       createdAt: true,
       status: true,
       deadlineDate: true,
+      closeDate: true,
+      updatedAt: true,
     },
     orderBy: { date: 'asc' },
   })
@@ -151,21 +144,105 @@ export async function getLetterTrends(
   // Группируем по периодам
   const grouped = new Map<string, { created: number; done: number; overdue: number }>()
 
-  letters.forEach((letter) => {
-    const key = formatDateKey(letter.date, groupBy)
-    const current = grouped.get(key) || { created: 0, done: 0, overdue: 0 }
+  // Определяем границы диапазона для заполнения карты без дыр
+  let start = filters.dateFrom ? new Date(filters.dateFrom) : null
+  const end = filters.dateTo ? new Date(filters.dateTo) : new Date()
 
-    current.created++
-    if (letter.status === 'DONE' || letter.status === 'PROCESSED' || letter.status === 'READY')
-      current.done++
-    if (
-      new Date(letter.deadlineDate) < new Date() &&
-      !['DONE', 'READY', 'PROCESSED', 'FROZEN', 'REJECTED'].includes(letter.status)
-    ) {
-      current.overdue++
+  if (!start && letters.length > 0) {
+    start = new Date(letters[0].date)
+  }
+  if (!start) {
+    start = new Date()
+    start.setDate(start.getDate() - 30) // дефолт 30 дней назад
+  }
+
+  // Заполняем карту всеми временными интервалами в выбранном диапазоне
+  const temp = new Date(start)
+  if (groupBy === 'hour') {
+    temp.setMinutes(0, 0, 0)
+    const maxHours = 168 // максимум неделя в часах, чтобы избежать перегрузки
+    let count = 0
+    while (temp <= end && count < maxHours) {
+      const key = formatDateKey(temp, 'hour')
+      grouped.set(key, { created: 0, done: 0, overdue: 0 })
+      temp.setHours(temp.getHours() + 1)
+      count++
+    }
+  } else if (groupBy === 'day') {
+    temp.setHours(0, 0, 0, 0)
+    const maxDays = 366
+    let count = 0
+    while (temp <= end && count < maxDays) {
+      const key = formatDateKey(temp, 'day')
+      grouped.set(key, { created: 0, done: 0, overdue: 0 })
+      temp.setDate(temp.getDate() + 1)
+      count++
+    }
+  } else if (groupBy === 'week') {
+    temp.setHours(0, 0, 0, 0)
+    const maxWeeks = 53
+    let count = 0
+    while (temp <= end && count < maxWeeks) {
+      const key = formatDateKey(temp, 'week')
+      grouped.set(key, { created: 0, done: 0, overdue: 0 })
+      temp.setDate(temp.getDate() + 7)
+      count++
+    }
+  } else if (groupBy === 'month') {
+    temp.setDate(1)
+    temp.setHours(0, 0, 0, 0)
+    const maxMonths = 36
+    let count = 0
+    while (temp <= end && count < maxMonths) {
+      const key = formatDateKey(temp, 'month')
+      grouped.set(key, { created: 0, done: 0, overdue: 0 })
+      temp.setMonth(temp.getMonth() + 1)
+      count++
+    }
+  }
+
+  letters.forEach((letter) => {
+    // 1. Увеличение счетчика созданных писем (группируем по document date, т.к. фильтры применяются к date)
+    const createKey = formatDateKey(letter.date, groupBy)
+    if (grouped.has(createKey)) {
+      grouped.get(createKey)!.created++
+    } else {
+      // На случай если дата выходит за сгенерированные границы, добавляем динамически
+      grouped.set(createKey, { created: 1, done: 0, overdue: 0 })
     }
 
-    grouped.set(key, current)
+    // 2. Увеличение счетчика выполненных писем (по дате фактического закрытия closeDate или updatedAt)
+    const isCompleted = ['DONE', 'READY', 'PROCESSED'].includes(letter.status)
+    if (isCompleted) {
+      const resolvedDate = letter.closeDate || letter.updatedAt
+      const doneKey = formatDateKey(resolvedDate, groupBy)
+      if (grouped.has(doneKey)) {
+        grouped.get(doneKey)!.done++
+      } else if (resolvedDate >= start && resolvedDate <= end) {
+        grouped.set(doneKey, { created: 0, done: 1, overdue: 0 })
+      }
+    }
+
+    // 3. Увеличение счетчика просроченных писем (по дедлайну deadlineDate)
+    const isOverdue = (() => {
+      const deadline = letter.deadlineDate ? new Date(letter.deadlineDate) : null
+      if (!deadline) return false
+
+      const closed = letter.closeDate ? new Date(letter.closeDate) : null
+      if (isCompleted && closed) {
+        return closed > deadline
+      }
+      return deadline < new Date()
+    })()
+
+    if (isOverdue && letter.deadlineDate) {
+      const overdueKey = formatDateKey(letter.deadlineDate, groupBy)
+      if (grouped.has(overdueKey)) {
+        grouped.get(overdueKey)!.overdue++
+      } else if (letter.deadlineDate >= start && letter.deadlineDate <= end) {
+        grouped.set(overdueKey, { created: 0, done: 0, overdue: 1 })
+      }
+    }
   })
 
   return Array.from(grouped.entries())
@@ -442,10 +519,17 @@ function buildWhereClause(filters: AnalyticsFilters) {
 /**
  * Форматирует дату для группировки
  */
-function formatDateKey(date: Date, groupBy: 'day' | 'week' | 'month'): string {
+function formatDateKey(date: Date, groupBy: 'hour' | 'day' | 'week' | 'month'): string {
   const d = new Date(date)
 
   switch (groupBy) {
+    case 'hour': {
+      const year = d.getFullYear()
+      const month = (d.getMonth() + 1).toString().padStart(2, '0')
+      const day = d.getDate().toString().padStart(2, '0')
+      const hour = d.getHours().toString().padStart(2, '0')
+      return `${day}.${month} ${hour}:00`
+    }
     case 'day':
       return d.toISOString().split('T')[0] // YYYY-MM-DD
     case 'week': {
@@ -495,4 +579,397 @@ export async function exportAnalytics(filters: AnalyticsFilters = {}) {
     performance,
     activity,
   }
+}
+
+/**
+ * Экспортирует аналитику в формате Excel (XLSX)
+ */
+export async function exportAnalyticsToXlsx(filters: AnalyticsFilters = {}): Promise<Buffer> {
+  const [stats, trends, orgStats, userStats, typeStats, performance] = await Promise.all([
+    getLetterStats(filters),
+    getLetterTrends(filters),
+    getOrganizationStats(filters, 50),
+    getUserStats(filters, 50),
+    getTypeStats(filters),
+    getPerformanceMetrics(filters),
+  ])
+
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = 'D-Letter Analytics'
+  workbook.created = new Date()
+
+  // Стили
+  const primaryHeaderFill: ExcelJS.Fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4F46E5' }, // Indigo 600
+  }
+  const accentHeaderFill: ExcelJS.Fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF312E81' }, // Indigo 900
+  }
+  const zebraFill: ExcelJS.Fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFF9FAFB' }, // Slate 50
+  }
+  const borderThin: Partial<ExcelJS.Borders> = {
+    top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+    left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+    bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+    right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+  }
+  const fontRegular = { name: 'Segoe UI', size: 11 }
+  const fontBold = { name: 'Segoe UI', size: 11, bold: true }
+  const fontTitle = { name: 'Segoe UI', size: 16, bold: true, color: { argb: 'FF1E1B4B' } }
+
+  // 1. Сводная статистика
+  const summarySheet = workbook.addWorksheet('Сводная статистика')
+  summarySheet.views = [{ showGridLines: true }]
+
+  // Заголовок
+  summarySheet.mergeCells('A1:E1')
+  const titleCell = summarySheet.getCell('A1')
+  titleCell.value = 'АНАЛИТИЧЕСКИЙ ОТЧЕТ ПО ПИСЬМАМ'
+  titleCell.font = fontTitle
+  titleCell.alignment = { vertical: 'middle', horizontal: 'left' }
+  summarySheet.getRow(1).height = 40
+
+  // Блок фильтров
+  summarySheet.getCell('A3').value = 'Фильтры отчета:'
+  summarySheet.getCell('A3').font = fontBold
+
+  let dateRange = 'Все время'
+  if (filters.dateFrom && filters.dateTo) {
+    dateRange = `${filters.dateFrom.toLocaleDateString('ru-RU')} - ${filters.dateTo.toLocaleDateString('ru-RU')}`
+  } else if (filters.dateFrom) {
+    dateRange = `С ${filters.dateFrom.toLocaleDateString('ru-RU')}`
+  } else if (filters.dateTo) {
+    dateRange = `По ${filters.dateTo.toLocaleDateString('ru-RU')}`
+  }
+  summarySheet.getCell('A4').value = `Период:`
+  summarySheet.getCell('B4').value = dateRange
+  summarySheet.getCell('A5').value = `Организация:`
+  summarySheet.getCell('B5').value = filters.org || 'Все'
+  summarySheet.getCell('A6').value = `Ответственный:`
+  summarySheet.getCell('B6').value = filters.ownerId || 'Все'
+
+  summarySheet.getRow(4).getCell(1).font = fontBold
+  summarySheet.getRow(5).getCell(1).font = fontBold
+  summarySheet.getRow(6).getCell(1).font = fontBold
+
+  // Секция KPI
+  summarySheet.getCell('A8').value = 'Ключевые показатели эффективности (KPI)'
+  summarySheet.getCell('A8').font = { ...fontBold, size: 13, color: { argb: 'FF312E81' } }
+
+  const kpiHeaders = ['Показатель', 'Значение']
+  const kpiRowStart = 9
+  const kpis = [
+    ['Всего писем в системе', stats.total],
+    ['SLA Соблюдение', `${performance.slaCompliance.toFixed(1)}%`],
+    ['Среднее время ответа', `${performance.avgResponseTime.toFixed(1)} ч`],
+    ['Среднее время решения', `${performance.avgResolutionTime.toFixed(1)} дн`],
+    ['Средний приоритет писем', stats.avgPriority.toFixed(1)],
+    ['Писем с ответом', stats.answers.withAnswer],
+    ['Писем без ответа', stats.answers.withoutAnswer],
+    ['Писем с заполненной обработкой', stats.processingFilled],
+  ]
+
+  kpiHeaders.forEach((h, i) => {
+    const cell = summarySheet.getCell(kpiRowStart, i + 1)
+    cell.value = h
+    cell.fill = primaryHeaderFill
+    cell.font = { ...fontBold, color: { argb: 'FFFFFFFF' } }
+    cell.border = borderThin
+  })
+
+  kpis.forEach((kpi, rowIndex) => {
+    const rowNum = kpiRowStart + 1 + rowIndex
+    const row = summarySheet.getRow(rowNum)
+    row.getCell(1).value = kpi[0]
+    row.getCell(2).value = kpi[1]
+
+    row.getCell(1).font = fontRegular
+    row.getCell(2).font = fontBold
+    row.getCell(1).border = borderThin
+    row.getCell(2).border = borderThin
+    row.getCell(2).alignment = { horizontal: 'right' }
+
+    if (rowIndex % 2 === 1) {
+      row.getCell(1).fill = zebraFill
+      row.getCell(2).fill = zebraFill
+    }
+  })
+
+  // Секция распределения по статусам
+  summarySheet.getCell('D8').value = 'Распределение по статусам'
+  summarySheet.getCell('D8').font = { ...fontBold, size: 13, color: { argb: 'FF312E81' } }
+
+  const statusHeaders = ['Статус письма', 'Количество']
+  const statusLabels: Record<string, string> = {
+    NOT_REVIEWED: 'Не рассмотрено',
+    ACCEPTED: 'Принято',
+    IN_PROGRESS: 'В работе',
+    CLARIFICATION: 'На уточнении',
+    FROZEN: 'Заморожено',
+    REJECTED: 'Отклонено',
+    READY: 'Готово',
+    PROCESSED: 'Обработано',
+    DONE: 'Выполнено',
+  }
+
+  statusHeaders.forEach((h, i) => {
+    const cell = summarySheet.getCell(kpiRowStart, i + 4)
+    cell.value = h
+    cell.fill = primaryHeaderFill
+    cell.font = { ...fontBold, color: { argb: 'FFFFFFFF' } }
+    cell.border = borderThin
+  })
+
+  Object.entries(stats.byStatus).forEach(([status, val], rowIndex) => {
+    const rowNum = kpiRowStart + 1 + rowIndex
+    const row = summarySheet.getRow(rowNum)
+    row.getCell(4).value = statusLabels[status] || status
+    row.getCell(5).value = val
+
+    row.getCell(4).font = fontRegular
+    row.getCell(5).font = fontBold
+    row.getCell(4).border = borderThin
+    row.getCell(5).border = borderThin
+    row.getCell(5).alignment = { horizontal: 'right' }
+
+    if (rowIndex % 2 === 1) {
+      row.getCell(4).fill = zebraFill
+      row.getCell(5).fill = zebraFill
+    }
+  })
+
+  // Секция дедлайнов
+  const deadlineRowStart = kpiRowStart + kpis.length + 3
+  summarySheet.getCell(`A${deadlineRowStart - 1}`).value = 'Статус выполнения и дедлайны'
+  summarySheet.getCell(`A${deadlineRowStart - 1}`).font = {
+    ...fontBold,
+    size: 13,
+    color: { argb: 'FF312E81' },
+  }
+
+  const deadlineHeaders = ['Показатель дедлайна', 'Количество писем']
+  const deadlineData = [
+    ['Просрочено писем', stats.deadlines.overdue],
+    ['С дедлайном сегодня', stats.deadlines.dueToday],
+    ['С дедлайном на этой неделе', stats.deadlines.dueThisWeek],
+  ]
+
+  deadlineHeaders.forEach((h, i) => {
+    const cell = summarySheet.getCell(deadlineRowStart, i + 1)
+    cell.value = h
+    cell.fill = accentHeaderFill
+    cell.font = { ...fontBold, color: { argb: 'FFFFFFFF' } }
+    cell.border = borderThin
+  })
+
+  deadlineData.forEach((item, rowIndex) => {
+    const rowNum = deadlineRowStart + 1 + rowIndex
+    const row = summarySheet.getRow(rowNum)
+    row.getCell(1).value = item[0]
+    row.getCell(2).value = item[1]
+
+    row.getCell(1).font = fontRegular
+    row.getCell(2).font = fontBold
+    row.getCell(1).border = borderThin
+    row.getCell(2).border = borderThin
+    row.getCell(2).alignment = { horizontal: 'right' }
+
+    if (rowIndex % 2 === 1) {
+      row.getCell(1).fill = zebraFill
+      row.getCell(2).fill = zebraFill
+    }
+  })
+
+  summarySheet.getColumn(1).width = 30
+  summarySheet.getColumn(2).width = 15
+  summarySheet.getColumn(3).width = 5
+  summarySheet.getColumn(4).width = 25
+  summarySheet.getColumn(5).width = 15
+
+  // 2. Тренды
+  const trendsSheet = workbook.addWorksheet('Тренды')
+  trendsSheet.views = [{ showGridLines: true }]
+
+  trendsSheet.mergeCells('A1:D1')
+  const trendsTitle = trendsSheet.getCell('A1')
+  trendsTitle.value = 'ХРОНОЛОГИЯ И ДИНАМИКА ПИСЕМ'
+  trendsTitle.font = { ...fontBold, size: 14, color: { argb: 'FF1E1B4B' } }
+  trendsSheet.getRow(1).height = 30
+  trendsSheet.addRow([])
+
+  const trendsHeaders = ['Период', 'Создано писем', 'Выполнено писем', 'Просрочено писем']
+  trendsSheet.addRow(trendsHeaders).eachCell((cell) => {
+    cell.fill = primaryHeaderFill
+    cell.font = { ...fontBold, color: { argb: 'FFFFFFFF' } }
+    cell.border = borderThin
+  })
+
+  trends.forEach((t, index) => {
+    const row = trendsSheet.addRow([t.period, t.created, t.done, t.overdue])
+    row.eachCell((cell) => {
+      cell.font = fontRegular
+      cell.border = borderThin
+      if (index % 2 === 1) cell.fill = zebraFill
+    })
+    row.getCell(1).alignment = { horizontal: 'center' }
+    row.getCell(2).alignment = { horizontal: 'right' }
+    row.getCell(3).alignment = { horizontal: 'right' }
+    row.getCell(4).alignment = { horizontal: 'right' }
+  })
+  trendsSheet.getColumn(1).width = 20
+  trendsSheet.getColumn(2).width = 18
+  trendsSheet.getColumn(3).width = 18
+  trendsSheet.getColumn(4).width = 18
+
+  // 3. Учреждения
+  const orgSheet = workbook.addWorksheet('Учреждения')
+  orgSheet.views = [{ showGridLines: true }]
+
+  orgSheet.mergeCells('A1:G1')
+  const orgTitle = orgSheet.getCell('A1')
+  orgTitle.value = 'СТАТИСТИКА В РАЗРЕЗЕ МЕДИЦИНСКИХ УЧРЕЖДЕНИЙ'
+  orgTitle.font = { ...fontBold, size: 14, color: { argb: 'FF1E1B4B' } }
+  orgSheet.getRow(1).height = 30
+  orgSheet.addRow([])
+
+  const orgHeaders = [
+    'Медицинское учреждение',
+    'Всего писем',
+    'Выполнено',
+    'В работе',
+    'Просрочено',
+    'SLA Соблюдение',
+    'Средний приоритет',
+  ]
+  orgSheet.addRow(orgHeaders).eachCell((cell) => {
+    cell.fill = primaryHeaderFill
+    cell.font = { ...fontBold, color: { argb: 'FFFFFFFF' } }
+    cell.border = borderThin
+  })
+
+  orgStats.forEach((org, index) => {
+    const row = orgSheet.addRow([
+      org.org,
+      org.total,
+      org.done,
+      org.inProgress,
+      org.overdue,
+      org.completionRate / 100, // For Excel percentage format
+      org.avgPriority,
+    ])
+    row.eachCell((cell, i) => {
+      cell.font = fontRegular
+      cell.border = borderThin
+      if (index % 2 === 1) cell.fill = zebraFill
+      if (i > 1 && i < 6) cell.alignment = { horizontal: 'right' }
+    })
+    row.getCell(6).numFmt = '0.0%'
+    row.getCell(6).alignment = { horizontal: 'right' }
+    row.getCell(7).numFmt = '0.0'
+    row.getCell(7).alignment = { horizontal: 'right' }
+  })
+  orgSheet.getColumn(1).width = 40
+  orgSheet.getColumn(2).width = 15
+  orgSheet.getColumn(3).width = 15
+  orgSheet.getColumn(4).width = 15
+  orgSheet.getColumn(5).width = 15
+  orgSheet.getColumn(6).width = 20
+  orgSheet.getColumn(7).width = 18
+
+  // 4. Ответственные
+  const userSheet = workbook.addWorksheet('Ответственные')
+  userSheet.views = [{ showGridLines: true }]
+
+  userSheet.mergeCells('A1:G1')
+  const userTitle = userSheet.getCell('A1')
+  userTitle.value = 'ЭФФЕКТИВНОСТЬ РАБОТЫ СОТРУДНИКОВ'
+  userTitle.font = { ...fontBold, size: 14, color: { argb: 'FF1E1B4B' } }
+  userSheet.getRow(1).height = 30
+  userSheet.addRow([])
+
+  const userHeaders = [
+    'Сотрудник',
+    'Email',
+    'Всего писем',
+    'Выполнено',
+    'В работе',
+    'Просрочено',
+    'SLA Соблюдение',
+  ]
+  userSheet.addRow(userHeaders).eachCell((cell) => {
+    cell.fill = primaryHeaderFill
+    cell.font = { ...fontBold, color: { argb: 'FFFFFFFF' } }
+    cell.border = borderThin
+  })
+
+  userStats.forEach((us, index) => {
+    const row = userSheet.addRow([
+      us.user?.name || 'Не назначен',
+      us.user?.email || '-',
+      us.total,
+      us.done,
+      us.inProgress,
+      us.overdue,
+      us.completionRate / 100,
+    ])
+    row.eachCell((cell, i) => {
+      cell.font = fontRegular
+      cell.border = borderThin
+      if (index % 2 === 1) cell.fill = zebraFill
+      if (i > 2) cell.alignment = { horizontal: 'right' }
+    })
+    row.getCell(7).numFmt = '0.0%'
+    row.getCell(7).alignment = { horizontal: 'right' }
+  })
+  userSheet.getColumn(1).width = 30
+  userSheet.getColumn(2).width = 30
+  userSheet.getColumn(3).width = 15
+  userSheet.getColumn(4).width = 15
+  userSheet.getColumn(5).width = 15
+  userSheet.getColumn(6).width = 15
+  userSheet.getColumn(7).width = 20
+
+  // 5. Типы запросов
+  const typeSheet = workbook.addWorksheet('Типы запросов')
+  typeSheet.views = [{ showGridLines: true }]
+
+  typeSheet.mergeCells('A1:C1')
+  const typeTitle = typeSheet.getCell('A1')
+  typeTitle.value = 'СТАТИСТИКА ПО КАТЕГОРИЯМ ЗАПРОСОВ'
+  typeTitle.font = { ...fontBold, size: 14, color: { argb: 'FF1E1B4B' } }
+  typeSheet.getRow(1).height = 30
+  typeSheet.addRow([])
+
+  const typeHeaders = ['Категория / Тип запроса', 'Количество писем', 'Доля от общего числа']
+  typeSheet.addRow(typeHeaders).eachCell((cell) => {
+    cell.fill = primaryHeaderFill
+    cell.font = { ...fontBold, color: { argb: 'FFFFFFFF' } }
+    cell.border = borderThin
+  })
+
+  typeStats.forEach((t, index) => {
+    const share = stats.total > 0 ? t.count / stats.total : 0
+    const row = typeSheet.addRow([t.type, t.count, share])
+    row.eachCell((cell, i) => {
+      cell.font = fontRegular
+      cell.border = borderThin
+      if (index % 2 === 1) cell.fill = zebraFill
+      if (i > 1) cell.alignment = { horizontal: 'right' }
+    })
+    row.getCell(3).numFmt = '0.0%'
+  })
+  typeSheet.getColumn(1).width = 40
+  typeSheet.getColumn(2).width = 20
+  typeSheet.getColumn(3).width = 25
+
+  // Запись в буфер
+  const buffer = await workbook.xlsx.writeBuffer()
+  return Buffer.from(buffer)
 }
